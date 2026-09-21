@@ -72,7 +72,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);max-width:560px;width:calc(100vw - 32px)}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);max-width:400px;width:calc(100vw - 48px);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 .presetrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .presetrow select{font-size:13px}
@@ -108,7 +108,6 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
       <option value="medium" selected>Medium</option>
       <option value="hard">Hard</option>
     </select>
-    <button id="loadPreset">Apply preset</button>
     <span class="sub" id="customStatus"></span>
   </div>
 
@@ -137,7 +136,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
   <footer>Saved in this browser only. Export not needed — single file works offline.</footer>
 </div>
 
-<dialog id="dlg"><h2 id="dlgTitle" style="font-size:17px;margin:0 0 10px"></h2><div id="dlgBody"></div><div style="margin-top:14px;text-align:right"><button id="dlgClose">Close</button></div></dialog>
+<dialog id="dlg"><h2 id="dlgTitle" style="font-size:16px;margin:0 0 8px"></h2><div id="dlgBody"></div></dialog>
 
 <script>
 const DB={
@@ -317,7 +316,10 @@ function cookRows(i){
   ];
 }
 function cookCard(i){
-  return cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
+  const d=state.days[i];
+  const banner=(d.cardioW===false||d.cardioH===false)
+    ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
+  return banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
 function render(){
   document.documentElement.dataset.theme=state.theme;
@@ -415,10 +417,10 @@ document.addEventListener('click',e=>{
     $('#dlg').showModal();return;
   }
 });
-$('#dlgClose').onclick=()=>$('#dlg').close();
+$('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.mode='medium';state.custom=false;render();};
-$('#loadPreset').onclick=()=>{
+$('#presetSelect').onchange=()=>{
   const m=$('#presetSelect').value;state.mode=m;state.custom=false;
   state.days=structuredClone(DEFAULT_DAYS);
   if(m==='hard'){for(const d of state.days)if(d.s!=='S3')d.p='Y';state.days[1].b='B3';}
