@@ -286,7 +286,7 @@ function inspect(i,m){
   const note=m==='b'
     ?`<p class="hintline">Toggles today: W whey ${d.wheyW?'on':'off'} · H whey ${d.wheyH?'on':'off'} · H eggs ${d.eggH?'on':'off'}.</p>`
     :m==='d'&&(d.cardioW===false||d.cardioH===false)
-    ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Ratios above already reflect it.</p>`
+    ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Protein portions are unchanged, so the protein ratio stays the same; ratios above already reflect it.</p>`
     :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above.</p>`;
   return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
