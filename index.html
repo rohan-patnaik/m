@@ -161,7 +161,7 @@ const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunda
 const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
 const OIL=33.33;
 const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3','P','arhar'],['B2','S4','Y','moong'],['B5','S7','Y','masoor'],['B3','S5','Y','arhar'],['B2','S6','P','moong']]
- .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],wheyW:true,wheyH:true,eggH:true}));
+ .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
 
 const STORE='simple-meals-v1';
 let state;
@@ -169,7 +169,7 @@ try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
   state={days:structuredClone(DEFAULT_DAYS),labels:{},theme:'light',mode:'medium',custom:false};
 }else{
-  state.days=state.days.map(d=>({ ...d, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false }));
+  state.days=state.days.map(d=>({ ...d, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
 }
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 const L=(id,q)=>({id,q});
@@ -202,12 +202,19 @@ const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
 function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0;return id==='Y'?[L('soy',(h?60:50)+(boost?10:0))]:[L('paneer',(h?125:100)+(boost?25:0))];}
+function cardioDone(day,person){return person==='h'?day.cardioH!==false:day.cardioW!==false;}
 function meal(day,which,person){
   const h=person==='h';
+  const cardio=cardioDone(day,person);
   if(which==='b')return breakfast(day.b,person,day);
-  if(which==='e')return[L('milk',250),L('nuts',10)];
+  // Rest day (cardio skipped): no evening nuts — milk stays.
+  if(which==='e')return cardio?[L('milk',250),L('nuts',10)]:[L('milk',250)];
   const sc=n=>n.map(x=>L(x.id,x.q*(day.s==='S3'?(h?5/18:2/9):.25)));
-  const a=[L(which==='l'&&h?'rice':'atta',which==='l'&&h?50:30),L(day.dal,h?40:35),...sc(sabzi(day.s))];
+  const a=[];
+  if(which==='l')a.push(L(h?'rice':'atta',h?50:30));
+  // Rest day: no dinner roti for the person who skipped cardio.
+  else if(cardio)a.push(L('atta',30));
+  a.push(L(day.dal,h?40:35),...sc(sabzi(day.s)));
   if(which==='l')a.push(L('curd',250));
   else{a.push(...(day.s==='S3'?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
   return a;
@@ -268,15 +275,19 @@ function splitRatio(d,m){
   ];
   if(palak)rows.push(['Protein','already in sabzi · no extra']);
   else{const pq=[protein(d.p,'w',d)[0].q,protein(d.p,'h',d)[0].q];rows.push(['Protein · '+PROTEINS[d.p],'W : H = '+qratio(pq[0],pq[1])]);}
-  rows.push(['Roti','1 each · 1 : 1'],['Cucumber','W : H = 2 : 3']);
+  const cw=d.cardioW!==false,ch=d.cardioH!==false;
+  rows.push(['Roti',cw&&ch?'1 each · 1 : 1':cw?'W only · H rest day':ch?'H only · W rest day':'none · rest day'],['Cucumber','W : H = 2 : 3']);
   return rows;
 }
+function restWho(d){const w=d.cardioW===false,h=d.cardioH===false;return w&&h?'Wife + husband':w?'Wife':'Husband';}
 function inspect(i,m){
   const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
   const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
   const rows=splitRatio(d,m).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
   const note=m==='b'
     ?`<p class="hintline">Toggles today: W whey ${d.wheyW?'on':'off'} · H whey ${d.wheyH?'on':'off'} · H eggs ${d.eggH?'on':'off'}.</p>`
+    :m==='d'&&(d.cardioW===false||d.cardioH===false)
+    ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Ratios above already reflect it.</p>`
     :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above.</p>`;
   return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
@@ -289,15 +300,19 @@ function cookRows(i){
   const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
   if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''}`);
   if(d.eggH)bitems.push('Eggs — 2');
+  const cw=d.cardioW!==false,ch=d.cardioH!==false;
+  const rotis=1+(cw?1:0)+(ch?1:0),attaG=rotis*30;
+  const nutsG=10*((cw?1:0)+(ch?1:0));
+  const restTag=(!cw||!ch)?' · '+restWho(d)+' rest':'';
   return[
     ['Breakfast',bitems],
-    ['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — 150 g (wash, for the day)','Rice — 50 g uncooked (husband lunch)','Atta — 90 g (3 rotis)']],
+    ['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — 150 g (wash, for the day)','Rice — 50 g uncooked (husband lunch)','Atta — '+attaG+' g ('+rotis+' roti'+(rotis>1?'s':'')+restTag+')']],
     ['Sabzi batch · '+SABZIS[d.s],sabzi(d.s).map(x=>`${DB[x.id][0]} — ${R(x.q)} g`)],
     ['Dinner extras',(d.s==='S3'
       ?['Paneer already in sabzi — nothing extra']
       :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?[`Soya chunks — ${R(q)} g dry`]:[`Paneer — ${R(q)} g`];})())
       .concat(['Curd — 500 g (lunch)','Cucumber — 250 g (dinner)'])],
-    ['Evening',['Milk — 500 ml','Nuts — 20 g']],
+    ['Evening',['Milk — 500 ml',nutsG?('Nuts — '+nutsG+' g'):'Nuts — none (rest day)']],
     ['Oil',['Oil — '+F(OIL)+' ml for the day']],
   ];
 }
@@ -341,7 +356,7 @@ function render(){
         <button class="ing" data-ing="${i},${m}">Sharing ratio →</button></div>`;
     }).join('');
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label class="toggle${d.cardioW!==false?'':' off'}" title="Uncheck if wife skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioW" data-day="${i}"${d.cardioW!==false?' checked':''}><span>W cardio</span></label><label class="toggle${d.cardioH!==false?'':' off'}" title="Uncheck if husband skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioH" data-day="${i}"${d.cardioH!==false?' checked':''}><span>H cardio</span></label><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
       <span class="tot">W <b>${R(dw.total.k)}</b> · H <b>${R(dh.total.k)}</b> kcal</span></div></div>
       <div class="meals">${slots}</div></article>`;
   }).join('');
@@ -416,3 +431,4 @@ render();
 </script>
 </body>
 </html>
+                          
