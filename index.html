@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weekly Meal Planner</title>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f4f6f8; --paper:#ffffff; --paper2:#f8fafb;
+  --ink:#16232e; --muted:#5d7283; --line:#dde5eb;
+  --accent:#0e7a5f; --accent-ink:#ffffff;
+  --tint:#e6f4ee; --chip:#eef3f6;
+  --radius:14px; --shadow:0 1px 2px rgba(20,40,50,.06),0 8px 28px rgba(20,40,50,.07);
+}
+html[data-theme=dark]{
+  color-scheme:dark;
+  --bg:#0e1318; --paper:#161e27; --paper2:#1b2530;
+  --ink:#e9f0f6; --muted:#9db0c1; --line:#273441;
+  --accent:#4fd6a8; --accent-ink:#06281e;
+  --tint:#14312a; --chip:#1e2a36;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:auto;padding:24px 20px 64px}
+header.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+h1{font-size:26px;letter-spacing:-.5px;margin:0}
+.sub{color:var(--muted);font-size:13px;margin:4px 0 0}
+.tools{display:flex;gap:8px}
+button,select,input{font:inherit;color:inherit}
+button,select,input[type=number]{border:1px solid var(--line);border-radius:9px;background:var(--paper);padding:8px 11px}
+button{cursor:pointer;font-weight:600;font-size:13px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs{position:sticky;top:0;z-index:5;display:flex;gap:8px;padding:10px 0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px)}
+.tabs a{text-decoration:none;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font-weight:650;font-size:13px;color:var(--ink)}
+.tabs a.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 18px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+.stat .who{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.stat strong{font-size:28px;letter-spacing:-.5px}
+.stat .p{color:var(--muted);font-size:13px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.day{padding:16px;margin-bottom:14px}
+.dayhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.dayhead h2{font-size:18px;margin:0}
+.dayhead select{font-size:13px;padding:6px 9px}
+.tot{font-size:13px;color:var(--muted)}
+.tot b{color:var(--ink)}
+.meals{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.slot{background:var(--paper2);border:1px solid var(--line);border-radius:11px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.slot .lbl{font-size:11px;font-weight:750;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.slot h3{font-size:14px;margin:0;line-height:1.35}
+.slot select{width:100%;font-size:13px}
+.nums{display:flex;gap:12px;margin-top:auto;padding-top:8px;border-top:1px dashed var(--line)}
+.nums div{font-size:12px;color:var(--muted)}
+.nums b{display:block;font-size:15px;color:var(--ink)}
+.toggles{display:flex;gap:6px;flex-wrap:wrap}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--paper);cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--accent);margin:0}
+.toggle.off{opacity:.55}
+.toggle.off span{text-decoration:line-through}
+.ing{font-size:12px;color:var(--accent);font-weight:600;background:none;border:none;padding:0;text-align:left;cursor:pointer}
+.ing:hover{text-decoration:underline}
+.cookbtn{display:inline-flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
+@media(max-width:680px){.cookbtn .cook-tx{display:none}.cookbtn{font-size:16px;padding:6px 10px}}
+.section{padding:18px;margin-top:18px}
+.section h2{font-size:18px;margin:0 0 12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);max-width:560px;width:calc(100vw - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.presetrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.presetrow select{font-size:13px}
+.hintline{font-size:12px;color:var(--muted);margin-top:10px}
+footer{color:var(--muted);font-size:12px;margin-top:22px}
+@media(max-width:860px){.meals{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr}header.top{flex-direction:column;align-items:start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Weekly Meal Planner</h1>
+      <p class="sub">Plan the week · shopping updates automatically</p>
+    </div>
+    <div class="tools">
+      <button id="themeBtn">Dark mode</button>
+      <button id="resetBtn">Reset week</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <a href="#planner" class="active">Weekly planner</a>
+    <a href="#shopping">Shopping</a>
+    <a href="#labels">Packet labels</a>
+  </nav>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="presetrow panel" style="padding:12px 14px">
+    <select id="presetSelect" aria-label="Preset">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+    <button id="loadPreset">Apply preset</button>
+    <span class="sub" id="customStatus"></span>
+  </div>
+
+  <div id="planner"></div>
+
+  <section class="panel section" id="shopping">
+    <h2>Shopping</h2>
+    <div class="grid2">
+      <div>
+        <h3 style="font-size:14px;margin:0 0 8px">Veggies</h3>
+        <div id="vegTable"></div>
+      </div>
+      <div>
+        <h3 style="font-size:14px;margin:0 0 8px">DMart</h3>
+        <div id="dmartTable"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel section" id="labels">
+    <h2>Packet labels</h2>
+    <div id="labelTable"></div>
+    <p class="hintline" id="labelStatus"></p>
+  </section>
+
+  <footer>Saved in this browser only. Export not needed — single file works offline.</footer>
+</div>
+
+<dialog id="dlg"><h2 id="dlgTitle" style="font-size:17px;margin:0 0 10px"></h2><div id="dlgBody"></div><div style="margin-top:14px;text-align:right"><button id="dlgClose">Close</button></div></dialog>
+
+<script>
+const DB={
+ atta:['Atta',350,12,'g'],rice:['Rice (uncooked)',360,7,'g'],
+ oats:['Oats (dry)',389,13,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',350,24,'g'],
+ masoor:['Masoor dal (dry)',350,24,'g'],arhar:['Arhar dal (dry)',350,22,'g'],poha:['Poha (dry)',350,7,'g'],
+ chana:['Roasted chana',380,20,'g'],whey:['Whey (1 serving)',130,29,'serving'],
+ egg:['Egg',72,6.3,'egg'],curd:['Curd',62,3.5,'g'],
+ milk:['Milk',60,3.2,'ml'],paneer:['Paneer',300,18,'g'],
+ soy:['Soya chunks (dry)',345,52,'g'],nuts:['Nuts',600,20,'g'],
+ oil:['Oil',828,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
+ carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
+ bhindi:['Bhindi',33,1.9,'g'],palak:['Palak',23,2.9,'g'],
+ arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
+ rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g']
+};
+const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha + chana',B5:'W: oats · H: egg poha'};
+const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole'};
+const PROTEINS={P:'Paneer',Y:'Soya chunks'};
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
+const OIL=33.33;
+const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3','P','arhar'],['B2','S4','Y','moong'],['B5','S7','Y','masoor'],['B3','S5','Y','arhar'],['B2','S6','P','moong']]
+ .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],wheyW:true,wheyH:true,eggH:true}));
+
+const STORE='simple-meals-v1';
+let state;
+try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
+if(!state||!Array.isArray(state.days)||state.days.length!==7){
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},theme:'light',mode:'medium',custom:false};
+}else{
+  state.days=state.days.map(d=>({ ...d, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false }));
+}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
+const L=(id,q)=>({id,q});
+function nut(id){return state.labels[id]||DB[id].slice(1,3);}
+function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f};}
+function sum(a){return a.reduce((t,x)=>{const v=val(x);return{k:t.k+v.k,p:t.p+v.p};},{k:0,p:0});}
+const R=n=>Math.round(n), F=n=>+n.toFixed(1);
+
+function breakfast(id,person,day){
+  const h=person==='h';let a=[];
+  if(id==='B1')a=[L('oats',15),L('besan',10),L('onion',12.5),L('carrot',12.5)];
+  if(id==='B2')a=[L('besan',25),L('onion',12.5),L('carrot',12.5)];
+  if(id==='B3')a=[L('moong',25),L('onion',12.5),L('carrot',12.5)];
+  if(id==='B4')a=[L('poha',h?50:40),L('chana',20),L('onion',h?27.78:22.22),L('carrot',h?27.78:22.22)];
+  if(id==='B5')a=h?[L('poha',50),L('onion',25),L('carrot',25)]:[L('oats',40)];
+  if(h?(day.wheyH):(day.wheyW))a.push(L('whey',1));
+  if(h&&day.eggH)a.push(L('egg',2));
+  return a;
+}
+function sabzi(id){
+  return({S1:[L('bhindi',YIELDS.bhindi),L('onion',100)],
+   S2:[L('gobi',YIELDS.gobi),L('carrot',350),L('potato',150),L('onion',100)],
+   S3:[L('palak',YIELDS.palak),L('onion',100),L('tomato',150),L('paneer',225)],
+   S4:[L('arbi',YIELDS.arbi),L('onion',100),L('tomato',100)],
+   S5:[L('mushroom',400),L('onion',150),L('tomato',100)],
+   S6:[L('rajma',100),L('onion',100),L('tomato',150)],
+   S7:[L('chickpea',100),L('onion',100),L('tomato',150)]})[id];
+}
+const CHILLA=d=>['B1','B2','B3'].includes(d.b);
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
+function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0;return id==='Y'?[L('soy',(h?60:50)+(boost?10:0))]:[L('paneer',(h?125:100)+(boost?25:0))];}
+function meal(day,which,person){
+  const h=person==='h';
+  if(which==='b')return breakfast(day.b,person,day);
+  if(which==='e')return[L('milk',250),L('nuts',10)];
+  const sc=n=>n.map(x=>L(x.id,x.q*(day.s==='S3'?(h?5/18:2/9):.25)));
+  const a=[L(which==='l'&&h?'rice':'atta',which==='l'&&h?50:30),L(day.dal,h?40:35),...sc(sabzi(day.s))];
+  if(which==='l')a.push(L('curd',250));
+  else{a.push(...(day.s==='S3'?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
+  return a;
+}
+function daily(i,person){
+  const d=state.days[i],m={};
+  for(const k of['b','l','d','e'])m[k]=sum(meal(d,k,person));
+  m.c=sum([L('oil',OIL/2),L('spice',3)]);
+  m.total={k:m.b.k+m.l.k+m.d.k+m.e.k+m.c.k,p:m.b.p+m.l.p+m.d.p+m.e.p+m.c.p};
+  return m;
+}
+function ledger(){
+  const r={};const add=a=>{for(const x of a)r[x.id]=(r[x.id]||0)+x.q;};
+  state.days.forEach(d=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,p));add([L('oil',OIL),L('spice',6)]);});
+  return r;
+}
+function vegList(){
+  const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1};
+  return Object.entries(rates).filter(([id])=>used[id]>0).map(([id,y])=>{const step=id==='gobi'?300:id==='mushroom'?200:250,buy=Math.ceil((used[id]/y-1e-8)/step)*step;return{id,used:used[id],buy};});
+}
+const $=s=>document.querySelector(s);
+function opts(o,cur){return Object.entries(o).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${id} · ${n}</option>`).join('');}
+function mealTitle(d,m){
+  if(m==='b')return`${d.b} · ${BREAKFASTS[d.b]}`;
+  if(m==='l')return`${d.s} · ${SABZIS[d.s]}`;
+  return d.s==='S3'?'Palak paneer (no extra)':`${d.s}-${d.p} · ${SABZIS[d.s]} + ${PROTEINS[d.p]}`;
+}
+const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar'};
+function splitRatio(d,m){
+  const palak=d.s==='S3';
+  if(m==='b'){
+    if(d.b==='B4')return[
+      ['Cooked poha','W : H = 4 : 5'],
+      ['Roasted chana','1 : 1 · own portion each'],
+      ['Whey','separate · per toggles'],
+      ['Eggs (H)','separate · per toggle'],
+    ];
+    if(d.b==='B5')return[
+      ['Oats (W) / Poha (H)','separate dishes'],
+      ['Whey','separate · per toggles'],
+      ['Eggs (H)','separate · per toggle'],
+    ];
+    return[
+      ['Chillas','1 each · W : H = 1 : 1'],
+      ['Whey','separate · per toggles'],
+      ['Eggs (H)','separate · per toggle'],
+    ];
+  }
+  if(m==='l')return[
+    ['Sabzi · '+SABZIS[d.s],palak?'W : H = 4 : 5':'W : H = 1 : 1'],
+    ['Dal · '+DALNAMES[d.dal],'W : H = 7 : 8'],
+    ['Starch','W roti ×1 · H rice · separate'],
+    ['Curd','W : H = 1 : 1'],
+  ];
+  const rows=[
+    ['Sabzi · '+SABZIS[d.s],palak?'W : H = 4 : 5':'W : H = 1 : 1'],
+    ['Dal · '+DALNAMES[d.dal],'W : H = 7 : 8'],
+  ];
+  if(palak)rows.push(['Protein','already in sabzi · no extra']);
+  else{const pq=[protein(d.p,'w',d)[0].q,protein(d.p,'h',d)[0].q];rows.push(['Protein · '+PROTEINS[d.p],'W : H = '+qratio(pq[0],pq[1])]);}
+  rows.push(['Roti','1 each · 1 : 1'],['Cucumber','W : H = 2 : 3']);
+  return rows;
+}
+function inspect(i,m){
+  const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
+  const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
+  const rows=splitRatio(d,m).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
+  const note=m==='b'
+    ?`<p class="hintline">Toggles today: W whey ${d.wheyW?'on':'off'} · H whey ${d.wheyH?'on':'off'} · H eggs ${d.eggH?'on':'off'}.</p>`
+    :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above.</p>`;
+  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
+}
+function cookRows(i){
+  const d=state.days[i];
+  const bw=breakfast(d.b,'w',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
+  const bh=breakfast(d.b,'h',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
+  const merged={};for(const x of[...bw,...bh])merged[x.id]=(merged[x.id]||0)+x.q;
+  const bitems=Object.entries(merged).map(([id,q])=>`${DB[id][0]} — ${F(q)} ${DB[id][3]}`);
+  const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
+  if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''}`);
+  if(d.eggH)bitems.push('Eggs — 2');
+  return[
+    ['Breakfast',bitems],
+    ['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — 150 g (wash, for the day)','Rice — 50 g uncooked (husband lunch)','Atta — 90 g (3 rotis)']],
+    ['Sabzi batch · '+SABZIS[d.s],sabzi(d.s).map(x=>`${DB[x.id][0]} — ${R(x.q)} g`)],
+    ['Dinner extras',(d.s==='S3'
+      ?['Paneer already in sabzi — nothing extra']
+      :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?[`Soya chunks — ${R(q)} g dry`]:[`Paneer — ${R(q)} g`];})())
+      .concat(['Curd — 500 g (lunch)','Cucumber — 250 g (dinner)'])],
+    ['Evening',['Milk — 500 ml','Nuts — 20 g']],
+    ['Oil',['Oil — '+F(OIL)+' ml for the day']],
+  ];
+}
+function cookCard(i){
+  return cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
+}
+function render(){
+  document.documentElement.dataset.theme=state.theme;
+  $('#themeBtn').textContent=state.theme==='light'?'Dark mode':'Light mode';
+  // stats
+  const avg=p=>state.days.reduce((a,_,i)=>{const t=daily(i,p).total;return{k:a.k+t.k/7,p:a.p+t.p/7};},{k:0,p:0});
+  const w=avg('w'),h=avg('h');
+  $('#stats').innerHTML=['w','h'].map(p=>{
+    const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
+    return`<div class="stat"><div class="who">${n} · daily average</div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein</span></div>`;
+  }).join('');
+  $('#customStatus').textContent=state.custom?'Customised':'';
+  $('#presetSelect').value=state.mode;
+  // planner
+  $('#planner').innerHTML=state.days.map((d,i)=>{
+    const dw=daily(i,'w'),dh=daily(i,'h');
+    const slots=['b','l','d'].map(m=>{
+      let extra='';
+      if(m==='b'){
+        extra=`<div class="toggles">
+          <label class="toggle${d.wheyW?'':' off'}"><input type="checkbox" data-t="wheyW" data-day="${i}"${d.wheyW?' checked':''}><span>W whey</span></label>
+          <label class="toggle${d.wheyH?'':' off'}"><input type="checkbox" data-t="wheyH" data-day="${i}"${d.wheyH?' checked':''}><span>H whey</span></label>
+          <label class="toggle${d.eggH?'':' off'}"><input type="checkbox" data-t="eggH" data-day="${i}"${d.eggH?' checked':''}><span>H eggs</span></label>
+        </div>`;
+      }
+      const sel=m==='b'
+        ?`<select data-day="${i}" data-k="b">${opts(BREAKFASTS,d.b)}</select>`
+        :m==='l'
+        ?`<select data-day="${i}" data-k="s">${opts(SABZIS,d.s)}</select>`
+        :d.s==='S3'
+        ?`<select disabled><option>No extra protein</option></select>`
+        :`<select data-day="${i}" data-k="p">${opts(PROTEINS,d.p)}</select>`;
+      const nums=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
+      return`<div class="slot"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div><h3>${mealTitle(d,m)}</h3>${sel}${extra}
+        <div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g</div></div>
+        <button class="ing" data-ing="${i},${m}">Sharing ratio →</button></div>`;
+    }).join('');
+    return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
+      <span class="tot">W <b>${R(dw.total.k)}</b> · H <b>${R(dh.total.k)}</b> kcal</span></div></div>
+      <div class="meals">${slots}</div></article>`;
+  }).join('');
+  // shopping
+  $('#vegTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${vegList().map(x=>`<tr><td>${DB[x.id][0]}</td><td class="num">${R(x.used)} g</td><td class="num"><b>${R(x.buy)} g</b></td></tr>`).join('')}</tbody></table>`;
+  const led=ledger();
+  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,paneer:500,soy:200,curd:1000,milk:500,nuts:200};
+  const ids=Object.keys(packets).concat(['egg','whey','oil','spice']);
+  $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
+    const u=DB[id][3],q=led[id],size=packets[id];
+    const buy=size?Math.ceil((q-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q)+' servings':id==='egg'?R(q)+' eggs':'pantry';
+    return`<tr><td>${DB[id][0]}</td><td class="num">${F(q)} ${u}</td><td class="num">${buy}</td></tr>`;
+  }).join('')}</tbody></table>`;
+  // labels
+  const keys=['whey','paneer','curd','milk'];
+  $('#labelTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">kcal</th><th class="num">Protein g</th></tr></thead><tbody>${keys.map(id=>{
+    const n=nut(id),basis=DB[id][3]==='serving'?'serving':DB[id][3]==='egg'?'egg':'100 '+DB[id][3];
+    return`<tr><td>${DB[id][0]}<div style="font-size:11px;color:var(--muted)">per ${basis}</div></td>
+    <td class="num"><input type="number" step="0.1" min="0" value="${n[0]}" data-lab="${id}" data-c="0" style="width:84px"></td>
+    <td class="num"><input type="number" step="0.1" min="0" value="${n[1]}" data-lab="${id}" data-c="1" style="width:84px"></td></tr>`;
+  }).join('')}</tbody></table>`;
+  $('#labelStatus').textContent='Per '+( 'serving / egg / 100 g' )+' as shown. Totals recalculate instantly.';
+  save();
+}
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.day!==undefined&&t.dataset.k){
+    const i=+t.dataset.day,k=t.dataset.k;
+    // sabzi uniqueness: swap with other day
+    if(k==='s'){
+      const other=state.days.findIndex((d,j)=>j!==i&&d.s===t.value);
+      if(other>=0){const old=state.days[i].s;state.days[other].s=old;}
+      state.days[i].s=t.value;
+      if(state.days[i].s==='S3')state.days[i].p='P';
+    }else state.days[i][k]=t.value;
+    state.custom=true;render();return;
+  }
+  if(t.dataset.t){
+    state.days[+t.dataset.day][t.dataset.t]=t.checked;
+    state.custom=true;render();return;
+  }
+  if(t.dataset.lab){
+    const id=t.dataset.lab,c=+t.dataset.c,v=+t.value;
+    if(!Number.isFinite(v)||v<0){render();return;}
+    state.labels[id]=[...nut(id)];state.labels[id][c]=v;render();return;
+  }
+});
+document.addEventListener('click',e=>{
+  const c=e.target.closest('[data-cook]');
+  if(c){const i=+c.dataset.cook;$('#dlgTitle').textContent=DAYS[i]+' · For the cook';$('#dlgBody').innerHTML=cookCard(i);$('#dlg').showModal();return;}
+  const b=e.target.closest('[data-ing]');
+  if(b){
+    const[i,m]=b.dataset.ing.split(',').map((x,j)=>j===0?+x:x);
+    $('#dlgTitle').textContent=DAYS[i]+' · '+mealTitle(state.days[i],m);
+    $('#dlgBody').innerHTML=inspect(i,m);
+    $('#dlg').showModal();return;
+  }
+});
+$('#dlgClose').onclick=()=>$('#dlg').close();
+$('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
+$('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.mode='medium';state.custom=false;render();};
+$('#loadPreset').onclick=()=>{
+  const m=$('#presetSelect').value;state.mode=m;state.custom=false;
+  state.days=structuredClone(DEFAULT_DAYS);
+  if(m==='hard'){for(const d of state.days)if(d.s!=='S3')d.p='Y';state.days[1].b='B3';}
+  render();
+};
+document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
+}));
+render();
+</script>
+</body>
+</html>
