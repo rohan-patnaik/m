@@ -177,8 +177,12 @@ const DB={
  carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
  bhindi:['Bhindi',33,1.9,'g'],palak:['Palak',23,2.9,'g'],
  arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
- rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g']
+  rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g']
 };
+// Fibre g per 100 g (per serving / egg / ml where the DB unit says so). Approximate home-planner values.
+const FIB={atta:11,rice:1.3,oats:10,besan:11,moong:8,masoor:11,arhar:15,poha:1.5,chana:17,
+  whey:1,egg:0,curd:0,milk:0,paneer:0,soy:9,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
+  potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20};
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha + chana',B5:'W: oats · H: egg poha'};
 const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
@@ -201,8 +205,8 @@ if(!state||!Array.isArray(state.days)||state.days.length!==7){
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 const L=(id,q)=>({id,q});
 function nut(id){return state.labels[id]||DB[id].slice(1,3);}
-function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f};}
-function sum(a){return a.reduce((t,x)=>{const v=val(x);return{k:t.k+v.k,p:t.p+v.p};},{k:0,p:0});}
+function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f,fb:(FIB[x.id]||0)*f};}
+function sum(a){return a.reduce((t,x)=>{const v=val(x);return{k:t.k+v.k,p:t.p+v.p,fb:t.fb+v.fb};},{k:0,p:0,fb:0});}
 const R=n=>Math.round(n), F=n=>+n.toFixed(1);
 
 function breakfast(id,person,day){
@@ -250,7 +254,7 @@ function daily(i,person){
   const d=state.days[i],m={};
   for(const k of['b','l','d','e'])m[k]=sum(meal(d,k,person));
   m.c=sum([L('oil',OIL/2),L('spice',3)]);
-  m.total={k:m.b.k+m.l.k+m.d.k+m.e.k+m.c.k,p:m.b.p+m.l.p+m.d.p+m.e.p+m.c.p};
+  m.total={k:m.b.k+m.l.k+m.d.k+m.e.k+m.c.k,p:m.b.p+m.l.p+m.d.p+m.e.p+m.c.p,fb:m.b.fb+m.l.fb+m.d.fb+m.e.fb+m.c.fb};
   return m;
 }
 function ledger(){
@@ -394,11 +398,11 @@ function render(){
   document.documentElement.dataset.theme=state.theme;
   const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
   // stats
-  const avg=p=>state.days.reduce((a,_,i)=>{const t=daily(i,p).total;return{k:a.k+t.k/7,p:a.p+t.p/7};},{k:0,p:0});
+  const avg=p=>state.days.reduce((a,_,i)=>{const t=daily(i,p).total;return{k:a.k+t.k/7,p:a.p+t.p/7,fb:a.fb+t.fb/7};},{k:0,p:0,fb:0});
   const w=avg('w'),h=avg('h');
   $('#stats').innerHTML=['w','h'].map(p=>{
     const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
-    return`<div class="stat"><div class="who">${n} · daily average</div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein</span></div>`;
+    return`<div class="stat"><div class="who">${n} · daily average</div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
   }).join('');
   $('#customStatus').textContent=state.custom?'Customised':'';
   $('#presetSelect').value=state.mode;
@@ -428,7 +432,7 @@ function render(){
     }).join('');
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label class="toggle${d.cardioW!==false?'':' off'}" title="Uncheck if wife skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioW" data-day="${i}"${d.cardioW!==false?' checked':''}><span>W cardio</span></label><label class="toggle${d.cardioH!==false?'':' off'}" title="Uncheck if husband skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioH" data-day="${i}"${d.cardioH!==false?' checked':''}><span>H cardio</span></label><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
-      <span class="tot">W <b>${R(dw.total.k)}</b> kcal · ${R(dw.total.p)} g P · H <b>${R(dh.total.k)}</b> kcal · ${R(dh.total.p)} g P</span></div></div>
+      <span class="tot">W <b>${R(dw.total.k)}</b> kcal · ${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre · H <b>${R(dh.total.k)}</b> kcal · ${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>
       <div class="meals">${slots}</div></article>`;
   }).join('');
   // shopping
