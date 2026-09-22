@@ -80,6 +80,11 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .presetrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .presetrow select{font-size:13px}
 .hintline{font-size:12px;color:var(--muted);margin-top:10px}
+.splitcalc{margin-top:10px;display:grid;gap:8px}
+.splitrow{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px}
+.splitrow label{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.splitrow input{width:92px;padding:6px 8px}
+.splitrow [data-out]{font-weight:700;margin-top:4px}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:860px){.meals{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr}header.top{flex-direction:column;align-items:center}}
 </style>
@@ -280,16 +285,23 @@ function splitRatio(d,m){
   return rows;
 }
 function restWho(d){const w=d.cardioW===false,h=d.cardioH===false;return w&&h?'Wife + husband':w?'Wife':'Husband';}
+function splitCalc(d,m){
+  if(m!=='l'&&m!=='d')return'';
+  const palak=d.s==='S3';
+  const row=(label,wn,wd,hn,hd)=>`<div class="splitrow"><label>${label} <input type="number" min="0" step="any" inputmode="decimal" placeholder="cooked g" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}"> g</label><div data-out>W — · H —</div></div>`;
+  return`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4)}${row('Cooked dal batch',7,30,4,15)}</div>`;
+}
 function inspect(i,m){
   const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
   const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
   const rows=splitRatio(d,m).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
+  const calc=splitCalc(d,m);
   const note=m==='b'
     ?`<p class="hintline">Toggles today: W whey ${d.wheyW?'on':'off'} · H whey ${d.wheyH?'on':'off'} · H eggs ${d.eggH?'on':'off'}.</p>`
     :m==='d'&&(d.cardioW===false||d.cardioH===false)
     ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Protein portions are unchanged, so the protein ratio stays the same; ratios above already reflect it.</p>`
     :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above.</p>`;
-  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
+  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
 function cookRows(i){
   const d=state.days[i];
@@ -405,6 +417,15 @@ document.addEventListener('change',e=>{
     const id=t.dataset.lab,c=+t.dataset.c,v=+t.value;
     if(!Number.isFinite(v)||v<0){render();return;}
     state.labels[id]=[...nut(id)];state.labels[id][c]=v;render();return;
+  }
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.split!==undefined){
+    const out=t.closest('.splitrow').querySelector('[data-out]');
+    const v=parseFloat(t.value);
+    if(!Number.isFinite(v)||v<0){out.textContent='W — · H —';return;}
+    out.textContent=`W ${Math.round(v*(+t.dataset.wn)/(+t.dataset.wd))} g · H ${Math.round(v*(+t.dataset.hn)/(+t.dataset.hd))} g`;
   }
 });
 document.addEventListener('click',e=>{
