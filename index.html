@@ -87,8 +87,14 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .splitrow .splitin{display:flex;align-items:center;gap:6px;margin:0 0 6px}
 .splitrow .splitin input{width:110px;padding:6px 8px}
 .splitrow .splitin span{color:var(--muted);font-size:12px}
-.splitrow input[type=number]::-webkit-outer-spin-button,.splitrow input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.splitrow input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.slothead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.skipbtn{font-size:11px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:none;color:var(--muted);white-space:nowrap}
+.skipbtn.on{background:var(--tint);border-color:var(--accent);color:var(--accent)}
+.slot.skipped{opacity:.55}
+.infobtn{border:none;background:none;padding:0 2px;font-size:12px;color:var(--accent);font-weight:700;cursor:pointer;line-height:1}
+.eatout-tag{font-size:12px;font-weight:700;color:var(--accent)}
 .splitrow [data-out]{font-weight:700;margin-top:6px}
 .splitrow .tare{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500;margin:0}
 .splitrow .tare input{accent-color:var(--accent);margin:0}
@@ -115,13 +121,14 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <a href="#planner" class="active"><span class="full">Weekly planner</span><span class="short">Planner</span></a>
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
-    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
-    <select id="presetSelect" class="navsel" aria-label="Preset" title="Calorie plan preset">
-      <option value="easy">Easy</option>
+    <select id="presetSelect" class="navsel" aria-label="Preset" title="Calorie plan: Low, Medium or High portions">
+      <option value="easy">Low</option>
       <option value="medium" selected>Medium</option>
-      <option value="hard">Hard</option>
+      <option value="hard">High</option>
     </select>
+    <button class="infobtn" data-presets title="Compare plans vs maintenance" aria-label="Compare plans">ⓘ</button>
     <span class="customflag" id="customStatus"></span>
+    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
 
@@ -170,8 +177,8 @@ const DB={
  oats:['Oats (dry)',389,13,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',350,24,'g'],
  masoor:['Masoor dal (dry)',350,24,'g'],arhar:['Arhar dal (dry)',350,22,'g'],poha:['Poha (dry)',350,7,'g'],
  chana:['Roasted chana',380,20,'g'],whey:['Whey (1 serving)',130,29,'serving'],
- egg:['Egg',72,6.3,'egg'],curd:['Curd',62,3.5,'g'],
- milk:['Milk',60,3.2,'ml'],paneer:['Paneer',300,18,'g'],
+  egg:['Egg',72,6.3,'egg'],curd:['Curd · Milky Mist',61,3.5,'g'],
+  milk:['Milk · Heritage green',60,3.2,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
  soy:['Soya chunks (dry)',345,52,'g'],nuts:['Nuts',600,20,'g'],
  oil:['Oil',828,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
  carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
@@ -181,8 +188,20 @@ const DB={
 };
 // Fibre g per 100 g (per serving / egg / ml where the DB unit says so). Approximate home-planner values.
 const FIB={atta:11,rice:1.3,oats:10,besan:11,moong:8,masoor:11,arhar:15,poha:1.5,chana:17,
-  whey:1,egg:0,curd:0,milk:0,paneer:0,soy:9,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
+  whey:1,egg:0,curd:0,milk:0,paneer:0,soy:13,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20};
+// Portion levels: plans move carbs + milk/nuts; protein portions stay identical.
+const PORTIONS={
+  easy:{rice:40,attaLunch:20,attaDinner:20,milk:200,nuts:0},
+  medium:{rice:50,attaLunch:30,attaDinner:30,milk:250,nuts:10},
+  hard:{rice:60,attaLunch:40,attaDinner:40,milk:300,nuts:20}
+};
+const P=()=>PORTIONS[state.mode]||PORTIONS.medium;
+// Household profiles (maintenance via Mifflin-St Jeor; desk job + daily cardio ≈ ×1.55)
+const PROFILE={w:{name:'Wife',height:165,weight:64,age:29},h:{name:'Husband',height:173,weight:76,age:29}};
+const ACT=1.55;
+function tdee(pr){const b=10*pr.weight+6.25*pr.height-5*pr.age+(pr===PROFILE.h?5:-161);return Math.round(b*ACT);}
+function protRange(pr){return[Math.round(1.6*pr.weight),Math.round(2*pr.weight)];}
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha + chana',B5:'W: oats · H: egg poha'};
 const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
@@ -190,7 +209,7 @@ const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunda
 const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
 const OIL=33.33;
 const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3','P','arhar'],['B2','S4','Y','moong'],['B5','S7','Y','masoor'],['B3','S5','Y','arhar'],['B2','S6','P','moong']]
- .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
+ .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],off:false,skip:{b:false,l:false,d:false},wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
 
 const STORE='simple-meals-v1';
 const DEFAULT_UTENSILS={kadhai:0,cooker:0,pan:0};
@@ -199,7 +218,7 @@ try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
   state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false};
 }else{
-  state.days=state.days.map(d=>({ ...d, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
+  state.days=state.days.map(d=>({ ...d, off:!!d.off, skip:{b:false,l:false,d:false,...(d.skip||{})}, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
 }
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
@@ -237,14 +256,16 @@ function cardioDone(day,person){return person==='h'?day.cardioH!==false:day.card
 function meal(day,which,person){
   const h=person==='h';
   const cardio=cardioDone(day,person);
+  if(day.off)return[];
+  if(which!=='e'&&day.skip&&day.skip[which])return[];
   if(which==='b')return breakfast(day.b,person,day);
   // Rest day (cardio skipped): no evening nuts — milk stays.
-  if(which==='e')return cardio?[L('milk',250),L('nuts',10)]:[L('milk',250)];
+  if(which==='e')return cardio?[L('milk',P().milk),L('nuts',P().nuts)]:[L('milk',P().milk)];
   const sc=n=>n.map(x=>L(x.id,x.q*(day.s==='S3'?(h?5/18:2/9):.25)));
   const a=[];
-  if(which==='l')a.push(L(h?'rice':'atta',h?50:30));
+  if(which==='l')a.push(L(h?'rice':'atta',h?P().rice:P().attaLunch));
   // Rest day: no dinner roti for the person who skipped cardio.
-  else if(cardio)a.push(L('atta',30));
+  else if(cardio)a.push(L('atta',P().attaDinner));
   a.push(L(day.dal,h?40:35),...sc(sabzi(day.s)));
   if(which==='l')a.push(L('curd',250));
   else{a.push(...(day.s==='S3'?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
@@ -253,13 +274,14 @@ function meal(day,which,person){
 function daily(i,person){
   const d=state.days[i],m={};
   for(const k of['b','l','d','e'])m[k]=sum(meal(d,k,person));
-  m.c=sum([L('oil',OIL/2),L('spice',3)]);
+  const cooking=!d.off&&!(d.skip&&d.skip.b&&d.skip.l&&d.skip.d);
+  m.c=cooking?sum([L('oil',OIL/2),L('spice',3)]):{k:0,p:0,fb:0};
   m.total={k:m.b.k+m.l.k+m.d.k+m.e.k+m.c.k,p:m.b.p+m.l.p+m.d.p+m.e.p+m.c.p,fb:m.b.fb+m.l.fb+m.d.fb+m.e.fb+m.c.fb};
   return m;
 }
 function ledger(){
   const r={};const add=a=>{for(const x of a)r[x.id]=(r[x.id]||0)+x.q;};
-  state.days.forEach(d=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,p));add([L('oil',OIL),L('spice',6)]);});
+  state.days.forEach(d=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,p));if(!d.off&&!(d.skip&&d.skip.b&&d.skip.l&&d.skip.d))add([L('oil',OIL),L('spice',6)]);});
   return r;
 }
 function vegList(){
@@ -353,6 +375,7 @@ function splitOut(input){
 }
 function inspect(i,m){
   const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
+  if(d.off||(d.skip&&d.skip[m]))return`<p>Skipped — eating out. Nothing to split for this meal.</p><p class="hintline">Unskip it on the day card to bring the ratios back.</p>`;
   const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
   const rows=splitRatio(d,m).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
   const calc=splitCalc(d,m);
@@ -363,46 +386,93 @@ function inspect(i,m){
     :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above. Tip: enter the scale reading with the vessel on it — tick “includes …” to auto-subtract (weights in Utensil weights).</p>`;
   return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
+function avgForMode(m,p){
+  const keep=state.mode;state.mode=m;
+  const t=state.days.reduce((a,_,i)=>{const v=daily(i,p).total;return{k:a.k+v.k/7,p:a.p+v.p/7,fb:a.fb+v.fb/7};},{k:0,p:0,fb:0});
+  state.mode=keep;return t;
+}
+function personBlurb(p){const pr=PROFILE[p];return`${pr.weight} kg · ${pr.height} cm · ${pr.age} y · maintenance ~${tdee(pr)} kcal/day`;}
+function personCard(p){
+  const pr=PROFILE[p],[plo,phi]=protRange(pr);
+  const a=avgForMode(state.mode,p);
+  const modeName={easy:'Low',medium:'Medium',hard:'High'}[state.mode];
+  return`<table><tbody>
+    <tr><td>Profile</td><td class="num"><b>${pr.weight} kg · ${pr.height} cm · ${pr.age} y</b></td></tr>
+    <tr><td>Maintenance (Mifflin-St Jeor ×1.55, desk + daily cardio)</td><td class="num"><b>~${tdee(pr)} kcal</b></td></tr>
+    <tr><td>Protein target (1.6–2.0 g/kg)</td><td class="num"><b>${plo}–${phi} g</b></td></tr>
+    <tr><td>Fibre target (ICMR-NIN 2024)</td><td class="num"><b>25–35 g</b></td></tr>
+    <tr><td>Carbs guide (~45–55% of kcal)</td><td class="num"><b>~${Math.round(tdee(pr)*0.45/4)}–${Math.round(tdee(pr)*0.55/4)} g</b></td></tr>
+  </tbody></table>
+  <p class="hintline">Current plan (${modeName}, with today's toggles): <b>${R(a.k)} kcal · ${R(a.p)} g protein · ${R(a.fb)} g fibre</b> — a ~${Math.max(0,R(tdee(pr)-a.k))} kcal deficit.</p>`;
+}
+function presetCard(){
+  const rows=['easy','medium','hard'].map(m=>{
+    const w=avgForMode(m,'w'),h=avgForMode(m,'h');
+    const n={easy:'Low',medium:'Medium',hard:'High'}[m];
+    return`<tr><td>${n}${m===state.mode?' ●':''}</td><td class="num">${R(w.k)} / ${R(w.p)} g</td><td class="num">${R(h.k)} / ${R(h.p)} g</td></tr>`;
+  }).join('');
+  const[wplo,wphi]=protRange(PROFILE.w),[hplo,hphi]=protRange(PROFILE.h);
+  return`<table><thead><tr><th>Plan</th><th class="num">Wife kcal / protein</th><th class="num">Husband kcal / protein</th></tr></thead><tbody>${rows}
+    <tr><td>Maintenance</td><td class="num"><b>~${tdee(PROFILE.w)} / ${wplo}–${wphi} g</b></td><td class="num"><b>~${tdee(PROFILE.h)} / ${hplo}–${hphi} g</b></td></tr>
+  </tbody></table>
+  <p class="hintline">Plans move carbs + milk/nuts only — protein portions are identical across Low/Medium/High. Values use today's toggles. ● = active.</p>`;
+}
+const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function cookRows(i){
   const d=state.days[i];
-  const bw=breakfast(d.b,'w',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
-  const bh=breakfast(d.b,'h',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
-  const merged={};for(const x of[...bw,...bh])merged[x.id]=(merged[x.id]||0)+x.q;
-  const bitems=Object.entries(merged).map(([id,q])=>`${DB[id][0]} — ${F(q)} ${DB[id][3]}`);
-  const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
-  if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''}`);
-  if(d.eggH)bitems.push('Eggs — 2');
+  if(d.off)return[['Note',['Eating out — nothing to cook at home today.']]];
+  const groups=[];
+  if(kept(d,'b')){
+    const bw=breakfast(d.b,'w',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
+    const bh=breakfast(d.b,'h',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
+    const merged={};for(const x of[...bw,...bh])merged[x.id]=(merged[x.id]||0)+x.q;
+    const bitems=Object.entries(merged).map(([id,q])=>`${DB[id][0]} — ${F(q)} ${DB[id][3]}`);
+    const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
+    if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''}`);
+    if(d.eggH)bitems.push('Eggs — 2');
+    groups.push(['Breakfast',bitems]);
+  }
+  const lunch=kept(d,'l'),dinner=kept(d,'d');
   const cw=d.cardioW!==false,ch=d.cardioH!==false;
-  const rotis=1+(cw?1:0)+(ch?1:0),attaG=rotis*30;
-  const nutsG=10*((cw?1:0)+(ch?1:0));
   const restTag=(!cw||!ch)?' · '+restWho(d)+' rest':'';
-  return[
-    ['Breakfast',bitems],
-    ['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — 150 g (wash, for the day)','Rice — 50 g uncooked (husband lunch)','Atta — '+attaG+' g ('+rotis+' roti'+(rotis>1?'s':'')+restTag+')']],
-    ['Sabzi batch · '+SABZIS[d.s],sabzi(d.s).map(x=>`${DB[x.id][0]} — ${R(x.q)} g`)],
-    ['Dinner extras',(d.s==='S3'
-      ?['Paneer already in sabzi — nothing extra']
-      :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?[`Soya chunks — ${R(q)} g dry`]:[`Paneer — ${R(q)} g`];})())
-      .concat(['Curd — 500 g (lunch)','Cucumber — 250 g (dinner)'])],
-    ['Evening',['Milk — 500 ml',nutsG?('Nuts — '+nutsG+' g'):'Nuts — none (rest day)']],
-    ['Oil',['Oil — '+F(OIL)+' ml for the day']],
-  ];
+  if(lunch||dinner){
+    const attaG=(lunch?P().attaLunch:0)+(dinner?((cw?P().attaDinner:0)+(ch?P().attaDinner:0)):0);
+    const rotis=(lunch?1:0)+(dinner?((cw?1:0)+(ch?1:0)):0);
+    const starch=[(lunch?`Rice — ${P().rice} g uncooked (husband lunch)`:null),`Atta — ${attaG} g (${rotis} roti${rotis>1?'s':''}${restTag})`].filter(Boolean);
+    groups.push(['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — 150 g (wash, for the day)',...starch]]);
+    groups.push(['Sabzi batch · '+SABZIS[d.s],sabzi(d.s).map(x=>`${DB[x.id][0]} — ${R(x.q)} g`)]);
+  }
+  if(dinner||lunch){
+    const extras=[];
+    if(dinner)extras.push(d.s==='S3'?'Paneer already in sabzi — nothing extra'
+      :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?`Soya chunks — ${R(q)} g dry`:`Paneer — ${R(q)} g`;})());
+    if(lunch)extras.push('Curd — 500 g (lunch)');
+    if(dinner)extras.push('Cucumber — 250 g (dinner)');
+    if(extras.length)groups.push([dinner&&lunch?'Dinner + lunch extras':dinner?'Dinner extras':'Lunch extras',extras]);
+  }
+  const nutsG=P().nuts*((cw?1:0)+(ch?1:0));
+  const nutsTxt=P().nuts===0?'Nuts — none (light plan)':nutsG?('Nuts — '+nutsG+' g'):'Nuts — none (rest day)';
+  groups.push(['Evening',[`Milk — ${P().milk} ml`,nutsTxt]]);
+  if(lunch||dinner||kept(d,'b'))groups.push(['Oil',['Oil — '+F(OIL)+' ml for the day']]);
+  return groups;
 }
 function cookCard(i){
   const d=state.days[i];
+  const skipped=['b','l','d'].filter(m=>d.skip&&d.skip[m]);
+  const skipNote=skipped.length&&!d.off
+    ?`<p class="hintline" style="margin:0 0 4px">⛔ Skipped (${skipped.map(m=>({b:'breakfast',l:'lunch',d:'dinner'})[m]).join(', ')}) — cook list below excludes ${skipped.length>1?'them':'it'}.</p>`:'';
   const banner=(d.cardioW===false||d.cardioH===false)
     ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
-  return banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
+  return skipNote+banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
 function render(){
   document.documentElement.dataset.theme=state.theme;
   const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
   // stats
-  const avg=p=>state.days.reduce((a,_,i)=>{const t=daily(i,p).total;return{k:a.k+t.k/7,p:a.p+t.p/7,fb:a.fb+t.fb/7};},{k:0,p:0,fb:0});
-  const w=avg('w'),h=avg('h');
+  const w=avgForMode(state.mode,'w'),h=avgForMode(state.mode,'h');
   $('#stats').innerHTML=['w','h'].map(p=>{
     const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
-    return`<div class="stat"><div class="who">${n} · daily average</div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
+    return`<div class="stat"><div class="who">${n} · daily average <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
   }).join('');
   $('#customStatus').textContent=state.custom?'Customised':'';
   $('#presetSelect').value=state.mode;
@@ -426,24 +496,30 @@ function render(){
         ?`<select disabled><option>No extra protein</option></select>`
         :`<select data-day="${i}" data-k="p">${opts(PROTEINS,d.p)}</select>`;
       const nums=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
-      return`<div class="slot"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div><h3>${mealTitle(d,m)}</h3>${sel}${extra}
-        <div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g</div></div>
-        <button class="ing" data-ing="${i},${m}">Sharing ratio →</button></div>`;
+      const skipped=d.off||(d.skip&&d.skip[m]);
+      const numsHtml=skipped?`<div class="nums"><div>Skipped · eating out</div></div>`
+        :`<div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g</div></div>`;
+      const ratioBtn=skipped?'':`<button class="ing" data-ing="${i},${m}">Sharing ratio →</button>`;
+      const skipBtn=`<button class="skipbtn${skipped?' on':''}" data-skip="${m}" data-day="${i}">${skipped?'Skipped ↩':'Skip'}</button>`;
+      return`<div class="slot${skipped?' skipped':''}"><div class="slothead"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div>${skipBtn}</div><h3>${mealTitle(d,m)}</h3>${sel}${extra}
+        ${numsHtml}
+        ${ratioBtn}</div>`;
     }).join('');
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label class="toggle${d.cardioW!==false?'':' off'}" title="Uncheck if wife skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioW" data-day="${i}"${d.cardioW!==false?' checked':''}><span>W cardio</span></label><label class="toggle${d.cardioH!==false?'':' off'}" title="Uncheck if husband skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioH" data-day="${i}"${d.cardioH!==false?' checked':''}><span>H cardio</span></label><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
-      <span class="tot">W <b>${R(dw.total.k)}</b> kcal · ${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre · H <b>${R(dh.total.k)}</b> kcal · ${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label class="toggle${d.off?'':' off'}" title="Whole day eating out: totals, cook list and shopping exclude this day"><input type="checkbox" data-t="off" data-day="${i}"${d.off?' checked':''}><span>Eat out</span></label><label class="toggle${d.cardioW!==false?'':' off'}" title="Uncheck if wife skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioW" data-day="${i}"${d.cardioW!==false?' checked':''}><span>W cardio</span></label><label class="toggle${d.cardioH!==false?'':' off'}" title="Uncheck if husband skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioH" data-day="${i}"${d.cardioH!==false?' checked':''}><span>H cardio</span></label><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
+      ${d.off?'<span class="eatout-tag">Eating out — excluded from shopping</span>':`<span class="tot">W <b>${R(dw.total.k)}</b> kcal · ${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre · H <b>${R(dh.total.k)}</b> kcal · ${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span>`}</div></div>
       <div class="meals">${slots}</div></article>`;
   }).join('');
   // shopping
   $('#vegTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${vegList().map(x=>`<tr><td>${DB[x.id][0]}</td><td class="num">${R(x.used)} g</td><td class="num"><b>${R(x.buy)} g</b></td></tr>`).join('')}</tbody></table>`;
   const led=ledger();
-  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,paneer:500,soy:200,curd:1000,milk:500,nuts:200};
-  const ids=Object.keys(packets).concat(['egg','whey','oil','spice']);
+  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,paneer:500,soy:200,curd:1000,milk:500,nuts:200,oil:1000};
+  const brands={moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Arhar dal · Tata',paneer:'Paneer · Heritage 500 g',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
+  const ids=Object.keys(packets).concat(['egg','whey','spice']);
   $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
     const u=DB[id][3],q=led[id],size=packets[id];
     const buy=size?Math.ceil((q-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q)+' servings':id==='egg'?R(q)+' eggs':'pantry';
-    return`<tr><td>${DB[id][0]}</td><td class="num">${F(q)} ${u}</td><td class="num">${buy}</td></tr>`;
+    return`<tr><td>${brands[id]||DB[id][0]}</td><td class="num">${F(q)} ${u}</td><td class="num">${buy}</td></tr>`;
   }).join('')}</tbody></table>`;
   // labels
   const keys=['whey','paneer','curd','milk'];
@@ -508,15 +584,17 @@ document.addEventListener('click',e=>{
     $('#dlgBody').innerHTML=inspect(i,m);
     $('#dlg').showModal();return;
   }
+  const s=e.target.closest('[data-skip]');
+  if(s){const d=state.days[+s.dataset.day];d.skip[s.dataset.skip]=!d.skip[s.dataset.skip];state.custom=true;render();return;}
+  const pi=e.target.closest('[data-info]');
+  if(pi){const n=pi.dataset.info==='w'?'Wife':'Husband';$('#dlgTitle').textContent=n+' · profile & targets';$('#dlgBody').innerHTML=personCard(pi.dataset.info);$('#dlg').showModal();return;}
+  if(e.target.closest('[data-presets]')){$('#dlgTitle').textContent='Plans vs maintenance';$('#dlgBody').innerHTML=presetCard();$('#dlg').showModal();return;}
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.mode='medium';state.custom=false;render();};
 $('#presetSelect').onchange=()=>{
-  const m=$('#presetSelect').value;state.mode=m;state.custom=false;
-  state.days=structuredClone(DEFAULT_DAYS);
-  if(m==='hard'){for(const d of state.days)if(d.s!=='S3')d.p='Y';state.days[1].b='B3';}
-  render();
+  state.mode=$('#presetSelect').value;state.custom=false;render();
 };
 document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
   document.querySelectorAll('.tabs a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
