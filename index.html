@@ -85,6 +85,14 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .splitrow label{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .splitrow input{width:92px;padding:6px 8px}
 .splitrow [data-out]{font-weight:700;margin-top:4px}
+.splitrow .tare{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500;margin-top:6px}
+.splitrow .tare input{accent-color:var(--accent);margin:0}
+.ut-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ut-card{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
+.ut-card label{display:grid;gap:6px;font-weight:600}
+.ut-card input{width:110px;padding:6px 8px}
+.ut-card small{color:var(--muted);font-weight:400}
+@media(max-width:680px){.ut-grid{grid-template-columns:1fr}}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:860px){.meals{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr}header.top{flex-direction:column;align-items:center}}
 </style>
@@ -118,6 +126,16 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
   </div>
 
   <div id="planner"></div>
+
+  <section class="panel section" id="utensils">
+    <h2>Utensil weights</h2>
+    <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then in any lunch/dinner sharing-ratio popup you can enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts the vessel and splits only the food. Saved in this browser.</p>
+    <div class="ut-grid">
+      <div class="ut-card"><label>Kadhai · sabzi <input type="number" min="0" step="any" inputmode="decimal" data-ut="kadhai" placeholder="e.g. 850"> <small>grams (empty kadhai)</small></label></div>
+      <div class="ut-card"><label>Pressure cooker · dal <input type="number" min="0" step="any" inputmode="decimal" data-ut="cooker" placeholder="e.g. 2000"> <small>grams (empty cooker)</small></label></div>
+      <div class="ut-card"><label>Frying pan · paneer / soya <input type="number" min="0" step="any" inputmode="decimal" data-ut="pan" placeholder="e.g. 500"> <small>grams (empty pan)</small></label></div>
+    </div>
+  </section>
 
   <section class="panel section" id="shopping">
     <h2>Shopping</h2>
@@ -169,12 +187,14 @@ const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3',
  .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
 
 const STORE='simple-meals-v1';
+const DEFAULT_UTENSILS={kadhai:0,cooker:0,pan:0};
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
-  state={days:structuredClone(DEFAULT_DAYS),labels:{},theme:'light',mode:'medium',custom:false};
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false};
 }else{
   state.days=state.days.map(d=>({ ...d, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
+  state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
 }
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 const L=(id,q)=>({id,q});
@@ -241,6 +261,12 @@ function vegList(){
   return Object.entries(rates).filter(([id])=>used[id]>0).map(([id,y])=>{const step=id==='gobi'?300:id==='mushroom'?200:250,buy=Math.ceil((used[id]/y-1e-8)/step)*step;return{id,used:used[id],buy};});
 }
 const $=s=>document.querySelector(s);
+function syncUtensils(){
+  document.querySelectorAll('[data-ut]').forEach(inp=>{
+    const v=(state.utensils||{})[inp.dataset.ut];
+    inp.value=(v>0)?v:'';
+  });
+}
 function opts(o,cur){return Object.entries(o).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${id} · ${n}</option>`).join('');}
 function mealTitle(d,m){
   if(m==='b')return`${d.b} · ${BREAKFASTS[d.b]}`;
@@ -288,8 +314,36 @@ function restWho(d){const w=d.cardioW===false,h=d.cardioH===false;return w&&h?'W
 function splitCalc(d,m){
   if(m!=='l'&&m!=='d')return'';
   const palak=d.s==='S3';
-  const row=(label,wn,wd,hn,hd)=>`<div class="splitrow"><label>${label} <input type="number" min="0" step="any" inputmode="decimal" placeholder="cooked g" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}"> g</label><div data-out>W — · H —</div></div>`;
-  return`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4)}${row('Cooked dal batch',7,30,4,15)}</div>`;
+  const u=state.utensils||DEFAULT_UTENSILS;
+  const row=(label,wn,wd,hn,hd,ukey,uvessel)=>{
+    const tare=Math.max(0,+u[ukey]||0);
+    const checked=tare>0?' checked':'';
+    const tareTxt=tare>0?`${tare} g`:'not set yet';
+    return`<div class="splitrow"><label>${label} <input type="number" min="0" step="any" inputmode="decimal" placeholder="scale reading" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> g</label><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
+  };
+  let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,'kadhai','kadhai')}${row('Cooked dal batch',7,30,4,15,'cooker','cooker')}`;
+  if(m==='d'&&!palak){
+    const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q,tot=qw+qh;
+    html+=row('Cooked '+PROTEINS[d.p].toLowerCase()+' batch',qw,tot,qh,tot,'pan','frying pan');
+  }
+  html+='</div>';
+  return html;
+}
+function splitOut(input){
+  const rowEl=input.closest('.splitrow');if(!rowEl)return'W — · H —';
+  const out=rowEl.querySelector('[data-out]');
+  const gross=parseFloat(input.value);
+  if(!Number.isFinite(gross)||gross<0)return'W — · H —';
+  const key=input.dataset.ukey;
+  const tareBox=key?rowEl.querySelector(`[data-tare="${key}"]`):null;
+  const tare=key?Math.max(0,+(state.utensils||{})[key]||0):0;
+  const net=tareBox&&tareBox.checked?gross-tare:gross;
+  if(net<0)return`Vessel (${Math.round(tare)} g) heavier than reading — check scale`;
+  if(!Number.isFinite(net))return'W — · H —';
+  const w=Math.round(net*(+input.dataset.wn)/(+input.dataset.wd));
+  const h=Math.round(net*(+input.dataset.hn)/(+input.dataset.hd));
+  const prefix=tareBox&&tareBox.checked?`Net ${Math.round(net)} g → `:'';
+  return`${prefix}W ${w} g · H ${h} g`;
 }
 function inspect(i,m){
   const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
@@ -300,7 +354,7 @@ function inspect(i,m){
     ?`<p class="hintline">Toggles today: W whey ${d.wheyW?'on':'off'} · H whey ${d.wheyH?'on':'off'} · H eggs ${d.eggH?'on':'off'}.</p>`
     :m==='d'&&(d.cardioW===false||d.cardioH===false)
     ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Protein portions are unchanged, so the protein ratio stays the same; ratios above already reflect it.</p>`
-    :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above.</p>`;
+    :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above. Tip: put the vessel on the scale and enter that reading below — tick “includes …” to auto-subtract it (set weights in Utensil weights).</p>`;
   return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
 function cookRows(i){
@@ -418,14 +472,24 @@ document.addEventListener('change',e=>{
     if(!Number.isFinite(v)||v<0){render();return;}
     state.labels[id]=[...nut(id)];state.labels[id][c]=v;render();return;
   }
+  if(t.dataset&&t.dataset.ut){
+    const v=parseFloat(t.value);
+    state.utensils[t.dataset.ut]=(!Number.isFinite(v)||v<0)?0:Math.round(v);
+    save();return;
+  }
+  if(t.dataset&&t.dataset.tare!==undefined){
+    const rowEl=t.closest('.splitrow');
+    const inp=rowEl?rowEl.querySelector('[data-split]'):null;
+    const out=rowEl?rowEl.querySelector('[data-out]'):null;
+    if(inp&&out)out.textContent=splitOut(inp);
+    return;
+  }
 });
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.split!==undefined){
     const out=t.closest('.splitrow').querySelector('[data-out]');
-    const v=parseFloat(t.value);
-    if(!Number.isFinite(v)||v<0){out.textContent='W — · H —';return;}
-    out.textContent=`W ${Math.round(v*(+t.dataset.wn)/(+t.dataset.wd))} g · H ${Math.round(v*(+t.dataset.hn)/(+t.dataset.hd))} g`;
+    out.textContent=splitOut(t);
   }
 });
 document.addEventListener('click',e=>{
@@ -452,6 +516,7 @@ document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
   document.querySelectorAll('.tabs a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
 }));
 render();
+syncUtensils();
 </script>
 </body>
 </html>
