@@ -426,7 +426,7 @@ function render(){
     }).join('');
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><label class="toggle${d.cardioW!==false?'':' off'}" title="Uncheck if wife skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioW" data-day="${i}"${d.cardioW!==false?' checked':''}><span>W cardio</span></label><label class="toggle${d.cardioH!==false?'':' off'}" title="Uncheck if husband skips cardio: no dinner roti + no evening nuts"><input type="checkbox" data-t="cardioH" data-day="${i}"${d.cardioH!==false?' checked':''}><span>H cardio</span></label><label style="font-size:12px;color:var(--muted)">Dal <select data-day="${i}" data-k="dal" style="font-size:13px;padding:6px 9px">${opts({moong:'Moong',masoor:'Masoor',arhar:'Arhar'},d.dal)}</select></label>
-      <span class="tot">W <b>${R(dw.total.k)}</b> · H <b>${R(dh.total.k)}</b> kcal</span></div></div>
+      <span class="tot">W <b>${R(dw.total.k)}</b> kcal · ${R(dw.total.p)} g P · H <b>${R(dh.total.k)}</b> kcal · ${R(dh.total.p)} g P</span></div></div>
       <div class="meals">${slots}</div></article>`;
   }).join('');
   // shopping
