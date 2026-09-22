@@ -36,6 +36,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:var(--a
 .tabs{position:sticky;top:0;z-index:5;display:flex;gap:8px;padding:10px 0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px)}
 .tabs a{text-decoration:none;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font-weight:650;font-size:13px;color:var(--ink)}
 .tabs a.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs .theme-toggle{margin-left:auto;border-radius:999px;width:38px;height:38px;padding:0;font-size:18px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0 18px}
 .stat{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
 .stat .who{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
@@ -89,7 +90,6 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
       <p class="sub">Plan the week · shopping updates automatically</p>
     </div>
     <div class="tools">
-      <button id="themeBtn">Dark mode</button>
       <button id="resetBtn">Reset week</button>
     </div>
   </header>
@@ -98,6 +98,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <a href="#planner" class="active">Weekly planner</a>
     <a href="#shopping">Shopping</a>
     <a href="#labels">Packet labels</a>
+    <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
 
   <div class="stats" id="stats"></div>
@@ -323,7 +324,7 @@ function cookCard(i){
 }
 function render(){
   document.documentElement.dataset.theme=state.theme;
-  $('#themeBtn').textContent=state.theme==='light'?'Dark mode':'Light mode';
+  const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
   // stats
   const avg=p=>state.days.reduce((a,_,i)=>{const t=daily(i,p).total;return{k:a.k+t.k/7,p:a.p+t.p/7};},{k:0,p:0});
   const w=avg('w'),h=avg('h');
