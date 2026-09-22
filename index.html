@@ -82,11 +82,15 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 @media(max-width:680px){.tabs select.navsel{font-size:12px;padding:7px 8px}.tabs .customflag{display:none}}
 .hintline{font-size:12px;color:var(--muted);margin-top:10px}
 .splitcalc{margin-top:10px;display:grid;gap:8px}
-.splitrow{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px}
-.splitrow label{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.splitrow input{width:92px;padding:6px 8px}
-.splitrow [data-out]{font-weight:700;margin-top:4px}
-.splitrow .tare{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500;margin-top:6px}
+.splitrow{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
+.splitrow .splithead{font-weight:650;margin-bottom:6px}
+.splitrow .splitin{display:flex;align-items:center;gap:6px;margin:0 0 6px}
+.splitrow .splitin input{width:110px;padding:6px 8px}
+.splitrow .splitin span{color:var(--muted);font-size:12px}
+.splitrow input[type=number]::-webkit-outer-spin-button,.splitrow input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.splitrow input[type=number]{-moz-appearance:textfield;appearance:textfield}
+.splitrow [data-out]{font-weight:700;margin-top:6px}
+.splitrow .tare{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500;margin:0}
 .splitrow .tare input{accent-color:var(--accent);margin:0}
 .ut-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .ut-card{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:13px}
@@ -317,7 +321,7 @@ function splitCalc(d,m){
     const tare=Math.max(0,+u[ukey]||0);
     const checked=tare>0?' checked':'';
     const tareTxt=tare>0?`${tare} g`:'not set yet';
-    return`<div class="splitrow"><label>${label} <input type="number" min="0" step="any" inputmode="decimal" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> g</label><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
+    return`<div class="splitrow"><div class="splithead">${label}</div><div class="splitin"><input type="number" min="0" step="any" inputmode="decimal" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> <span>g</span></div><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
   };
   let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,'kadhai','kadhai')}${row('Cooked dal batch',7,30,4,15,'cooker','cooker')}`;
   if(m==='d'&&!palak){
@@ -352,7 +356,7 @@ function inspect(i,m){
     ?`<p class="hintline">Toggles today: W whey ${d.wheyW?'on':'off'} · H whey ${d.wheyH?'on':'off'} · H eggs ${d.eggH?'on':'off'}.</p>`
     :m==='d'&&(d.cardioW===false||d.cardioH===false)
     ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Protein portions are unchanged, so the protein ratio stays the same; ratios above already reflect it.</p>`
-    :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above. Tip: put the vessel on the scale and enter that reading below — tick “includes …” to auto-subtract it (set weights in Utensil weights).</p>`;
+    :`<p class="hintline">Cook the full batch, mix well, then split by the ratios above. Tip: enter the scale reading with the vessel on it — tick “includes …” to auto-subtract (weights in Utensil weights).</p>`;
   return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
 function cookRows(i){
