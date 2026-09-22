@@ -77,8 +77,9 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 dialog{border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);max-width:400px;width:calc(100vw - 48px);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
-.presetrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-.presetrow select{font-size:13px}
+.tabs select.navsel{border-radius:999px;font-size:13px;padding:8px 10px;background:var(--paper);font-weight:650;color:var(--ink)}
+.tabs .customflag{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+@media(max-width:680px){.tabs select.navsel{font-size:12px;padding:7px 8px}.tabs .customflag{display:none}}
 .hintline{font-size:12px;color:var(--muted);margin-top:10px}
 .splitcalc{margin-top:10px;display:grid;gap:8px}
 .splitrow{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px}
@@ -111,19 +112,16 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
     <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
-    <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
-  </nav>
-
-  <div class="stats" id="stats"></div>
-
-  <div class="presetrow panel" style="padding:12px 14px">
-    <select id="presetSelect" aria-label="Preset">
+    <select id="presetSelect" class="navsel" aria-label="Preset" title="Calorie plan preset">
       <option value="easy">Easy</option>
       <option value="medium" selected>Medium</option>
       <option value="hard">Hard</option>
     </select>
-    <span class="sub" id="customStatus"></span>
-  </div>
+    <span class="customflag" id="customStatus"></span>
+    <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
+  </nav>
+
+  <div class="stats" id="stats"></div>
 
   <div id="planner"></div>
 
@@ -319,7 +317,7 @@ function splitCalc(d,m){
     const tare=Math.max(0,+u[ukey]||0);
     const checked=tare>0?' checked':'';
     const tareTxt=tare>0?`${tare} g`:'not set yet';
-    return`<div class="splitrow"><label>${label} <input type="number" min="0" step="any" inputmode="decimal" placeholder="scale reading" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> g</label><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
+    return`<div class="splitrow"><label>${label} <input type="number" min="0" step="any" inputmode="decimal" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> g</label><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
   };
   let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,'kadhai','kadhai')}${row('Cooked dal batch',7,30,4,15,'cooker','cooker')}`;
   if(m==='d'&&!palak){
