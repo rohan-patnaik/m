@@ -108,6 +108,12 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .ut-card input{width:110px;padding:6px 8px}
 .ut-card small{color:var(--muted);font-weight:400}
 @media(max-width:680px){.ut-grid{grid-template-columns:1fr}}
+.weekbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--tint);border:1px solid var(--accent);border-radius:11px;padding:9px 12px;font-size:13px;margin:14px 0 0}
+.weekbar button{font-size:12px;padding:5px 11px;border-radius:999px}
+.callist{display:grid;gap:8px;margin-top:10px}
+.calrow{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px}
+.calrow .acts{display:flex;gap:6px}
+.calrow button{font-size:12px;padding:4px 10px}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:860px){.meals{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr}header.top{flex-direction:column;align-items:center}}
 </style>
@@ -125,6 +131,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <a href="#planner" class="active"><span class="full">Weekly planner</span><span class="short">Planner</span></a>
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
+    <button id="calBtn" class="navbtn" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅 Cal</span></button>
     <select id="presetSelect" class="navsel" aria-label="Preset" title="Calorie plan: Low, Medium or High portions">
       <option value="easy">Low</option>
       <option value="medium" selected>Medium</option>
@@ -135,6 +142,8 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
+
+  <div id="weekBar" class="weekbar" hidden></div>
 
   <div class="stats" id="stats"></div>
 
@@ -194,13 +203,17 @@ const DB={
  oil:['Oil',828,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
  carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
  bhindi:['Bhindi',33,1.9,'g'],palak:['Palak',23,2.9,'g'],
- arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
-  rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g']
+  arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
+   rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g'],
+  soyabean:['Soya bean (dry)',446,36,'g'],kalachana:['Kala chana (dry)',360,19,'g'],
+  pasta:['Pasta (dry)',350,12,'g'],maida:['Maida',364,10,'g'],butter:['Butter',717,0.9,'g'],
+  beans:['Green beans',31,1.8,'g']
 };
 // Fibre g per 100 g (per serving / egg / ml where the DB unit says so). Approximate home-planner values.
 const FIB={atta:11,rice:1.3,oats:10,besan:11,moong:8,masoor:11,arhar:15,poha:1.5,chana:17,
   whey:1,egg:0,curd:0,milk:0,paneer:0,soy:13,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
-  potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20};
+  potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20,
+  soyabean:9.3,kalachana:17,pasta:3,maida:2.7,butter:0,beans:2.7};
 // Portion levels: plans move carbs + milk/nuts; protein portions stay identical.
 const PORTIONS={
   easy:{rice:40,attaLunch:20,attaDinner:20,milk:200,nuts:0},
@@ -214,7 +227,7 @@ const ACT=1.55;
 function tdee(pr){const b=10*pr.weight+6.25*pr.height-5*pr.age+(pr===PROFILE.h?5:-161);return Math.round(b*ACT);}
 function protRange(pr){return[Math.round(1.6*pr.weight),Math.round(2*pr.weight)];}
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha + chana',B5:'W: oats · H: egg poha'};
-const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole'};
+const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya bean sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + aloo'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
@@ -227,13 +240,24 @@ const DEFAULT_UTENSILS={kadhai:0,cooker:0,pan:0};
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
-  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false,weeks:1};
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null};
 }else{
   state.days=state.days.map(d=>({ ...d, off:!!d.off, skip:{b:false,l:false,d:false,...(d.skip||{})}, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
   state.weeks=state.weeks===2?2:1;
+  if(typeof state.weekKey!=='string')state.weekKey=null;
 }
-function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
+// Locked weeks: weekKey (Monday ISO) -> {days, mode, savedAt}
+const WEEKSTORE='simple-meals-weeks-v1';
+let lockedWeeks={};
+try{lockedWeeks=JSON.parse(localStorage.getItem(WEEKSTORE))||{};}catch(e){lockedWeeks={};}
+function persistWeeks(){try{localStorage.setItem(WEEKSTORE,JSON.stringify(lockedWeeks));}catch(e){}}
+function mondayOf(iso){const d=new Date(iso+'T12:00:00');if(isNaN(d))return null;const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return d.toISOString().slice(0,10);}
+function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});}catch(e){return iso;}}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
+  // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
+  if(state.weekKey){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,savedAt:Date.now()};persistWeeks();}
+}
 const L=(id,q)=>({id,q});
 function nut(id){return state.labels[id]||DB[id].slice(1,3);}
 function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f,fb:(FIB[x.id]||0)*f};}
@@ -258,8 +282,14 @@ function sabzi(id){
    S4:[L('arbi',YIELDS.arbi),L('onion',100),L('tomato',100)],
    S5:[L('mushroom',400),L('onion',150),L('tomato',100)],
    S6:[L('rajma',100),L('onion',100),L('tomato',150)],
-   S7:[L('chickpea',100),L('onion',100),L('tomato',150)]})[id];
+   S7:[L('chickpea',100),L('onion',100),L('tomato',150)],
+   S8:[L('soyabean',100),L('onion',100),L('tomato',150)],
+   S9:[L('kalachana',100),L('onion',100),L('tomato',150)],
+   S10:[L('pasta',200),L('maida',30),L('milk',200),L('butter',15),L('onion',100),L('tomato',150)],
+   S11:[L('beans',300),L('potato',150),L('onion',100)]})[id];
 }
+// Sabzis with protein already cooked in (no extra dinner protein).
+const NO_EXTRA=s=>['S3','S8','S9','S10'].includes(s);
 const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
@@ -280,7 +310,7 @@ function meal(day,which,person){
   else if(cardio)a.push(L('atta',P().attaDinner));
   a.push(L(day.dal,h?40:35),...sc(sabzi(day.s)));
   if(which==='l')a.push(L('curd',200));
-  else{a.push(...(day.s==='S3'?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
+  else{a.push(...(NO_EXTRA(day.s)?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
   return a;
 }
 function daily(i,person){
@@ -297,7 +327,7 @@ function ledger(){
   return r;
 }
 function vegList(){
-  const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1};
+  const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1,beans:.9};
   return Object.entries(rates).filter(([id])=>used[id]>0).map(([id,y])=>{const step=id==='gobi'?300:id==='mushroom'?200:250,buy=Math.ceil((used[id]/y-1e-8)/step)*step;return{id,used:used[id],buy};});
 }
 const $=s=>document.querySelector(s);
@@ -311,7 +341,7 @@ function opts(o,cur){return Object.entries(o).map(([id,n])=>`<option value="${id
 function mealTitle(d,m){
   if(m==='b')return`${d.b} · ${BREAKFASTS[d.b]}`;
   if(m==='l')return`${d.s} · ${SABZIS[d.s]}`;
-  return d.s==='S3'?'Palak paneer (no extra)':`${d.s}-${d.p} · ${SABZIS[d.s]} + ${PROTEINS[d.p]}`;
+  return NO_EXTRA(d.s)?`${SABZIS[d.s]} (no extra)`:`${d.s}-${d.p} · ${SABZIS[d.s]} + ${PROTEINS[d.p]}`;
 }
 const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar'};
 function splitRatio(d,m){
@@ -345,6 +375,7 @@ function splitRatio(d,m){
     ['Dal · '+DALNAMES[d.dal],'W : H = 7 : 8'],
   ];
   if(palak)rows.push(['Protein','already in sabzi · no extra']);
+  else if(NO_EXTRA(d.s))rows.push(['Protein','already in sabzi · no extra']);
   else{const pq=[protein(d.p,'w',d)[0].q,protein(d.p,'h',d)[0].q];rows.push(['Protein · '+PROTEINS[d.p],'W : H = '+qratio(pq[0],pq[1])]);}
   const cw=d.cardioW!==false,ch=d.cardioH!==false;
   rows.push(['Roti',cw&&ch?'1 each · 1 : 1':cw?'W only · H rest day':ch?'H only · W rest day':'none · rest day'],['Cucumber','W : H = 2 : 3']);
@@ -362,7 +393,7 @@ function splitCalc(d,m){
     return`<div class="splitrow"><div class="splithead">${label}</div><div class="splitin"><input type="number" min="0" step="any" inputmode="decimal" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> <span>g</span></div><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
   };
   let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,'kadhai','kadhai')}${row('Cooked dal batch',7,30,4,15,'cooker','cooker')}`;
-  if(m==='d'&&!palak){
+  if(m==='d'&&!NO_EXTRA(d.s)){
     const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q,tot=qw+qh;
     html+=row('Cooked '+PROTEINS[d.p].toLowerCase()+' batch',qw,tot,qh,tot,'pan','frying pan');
   }
@@ -456,7 +487,7 @@ function cookRows(i){
   }
   if(dinner||lunch){
     const extras=[];
-    if(dinner)extras.push(d.s==='S3'?'Paneer already in sabzi — nothing extra'
+    if(dinner)extras.push(NO_EXTRA(d.s)?`${SABZIS[d.s]} already in sabzi — nothing extra`
       :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?`Soya chunks — ${R(q)} g dry`:`Paneer — ${R(q)} g`;})());
     if(lunch)extras.push('Curd — 400 g (lunch)');
     if(dinner)extras.push('Cucumber — 250 g (dinner)');
@@ -477,9 +508,27 @@ function cookCard(i){
     ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
   return skipNote+banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
+function calCard(){
+  const today=new Date();const iso=today.toISOString().slice(0,10);
+  const def=state.weekKey||mondayOf(iso)||iso;
+  const keys=Object.keys(lockedWeeks).sort();
+  const rows=keys.length?keys.map(k=>{
+    const w=lockedWeeks[k],cur=k===state.weekKey;
+    return`<div class="calrow"><span>📅 <b>${fmtMon(k)}</b>${cur?' · viewing':''}</span><span class="acts"><button data-calload="${k}">View</button><button data-caldel="${k}">Delete</button></span></div>`;
+  }).join(''):'<p class="hintline">No locked weeks yet. Pick a date above and lock this week to it.</p>';
+  return`<p class="hintline" style="margin:0 0 8px">Lock the current planner to a calendar week (Monday). Viewing a locked week shows its meals; editing any day overwrites that date automatically.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="calDate" value="${def}"><button class="primary" data-calsave>Lock this week to date</button></div>
+  <div class="callist">${rows}</div>
+  ${state.weekKey?`<p class="hintline">Viewing week of <b>${fmtMon(state.weekKey)}</b>. <button data-calunlink>Back to live week</button></p>`:''}`;
+}
+function openCal(){$('#dlgTitle').textContent='Calendar · locked weeks';$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
 function render(){
   document.documentElement.dataset.theme=state.theme;
   const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
+  // locked-week banner
+  const wb=$('#weekBar');
+  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b> · locked ✓ — edits to any day overwrite this date.</span><button data-calunlink>Back to live week</button>`;}
+  else{wb.hidden=true;wb.innerHTML='';}
   // stats
   const w=avgForMode(state.mode,'w'),h=avgForMode(state.mode,'h');
   $('#stats').innerHTML=['w','h'].map(p=>{
@@ -504,7 +553,7 @@ function render(){
         ?`<select data-day="${i}" data-k="b">${opts(BREAKFASTS,d.b)}</select>`
         :m==='l'
         ?`<select data-day="${i}" data-k="s">${opts(SABZIS,d.s)}</select>`
-        :d.s==='S3'
+        :NO_EXTRA(d.s)
         ?`<select disabled><option>No extra protein</option></select>`
         :`<select data-day="${i}" data-k="p">${opts(PROTEINS,d.p)}</select>`;
       const nums=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
@@ -528,7 +577,7 @@ function render(){
   const W2=state.weeks===2?2:1;
   $('#dmartHead').textContent=W2===2?'DMart · 2 weeks (10–14 day run)':'DMart · 1 week';
   document.querySelectorAll('[data-weeks]').forEach(b=>b.classList.toggle('on',+b.dataset.weeks===state.weeks));
-  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,paneer:500,soy:200,curd:1000,milk:500,nuts:200,oil:1000};
+  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,soyabean:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soy:200,curd:1000,milk:500,nuts:200,oil:1000};
   const brands={moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Arhar dal · Tata',paneer:'Paneer · Heritage 500 g',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
   const ids=Object.keys(packets).concat(['egg','whey','spice']);
   $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use / week</th><th class="num">Buy${W2===2?' · 2 wks':''}</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
@@ -606,10 +655,26 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-presets]')){$('#dlgTitle').textContent='Plans vs maintenance';$('#dlgBody').innerHTML=presetCard();$('#dlg').showModal();return;}
   const wk=e.target.closest('[data-weeks]');
   if(wk){state.weeks=+wk.dataset.weeks===2?2:1;save();render();return;}
+  const ul=e.target.closest('[data-calunlink]');
+  if(ul){state.weekKey=null;save();render();if($('#dlg').open){$('#dlgBody').innerHTML=calCard();}return;}
+  const sv=e.target.closest('[data-calsave]');
+  if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
+    lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,savedAt:Date.now()};persistWeeks();
+    state.weekKey=mon;save();render();$('#dlgBody').innerHTML=calCard();return;}
+  const ld=e.target.closest('[data-calload]');
+  if(ld){const k=ld.dataset.calload,w=lockedWeeks[k];if(!w)return;
+    state.days=structuredClone(w.days);state.mode=w.mode||state.mode;state.weekKey=k;state.custom=true;save();render();
+    $('#dlg').close();return;}
+  const del=e.target.closest('[data-caldel]');
+  if(del){const k=del.dataset.caldel;delete lockedWeeks[k];persistWeeks();
+    if(state.weekKey===k){state.weekKey=null;save();render();}
+    $('#dlgBody').innerHTML=calCard();return;}
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
+$('#calBtn').onclick=openCal;
+$('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
-$('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.mode='medium';state.custom=false;render();};
+$('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.mode='medium';state.custom=false;state.weekKey=null;render();};
 $('#presetSelect').onchange=()=>{
   state.mode=$('#presetSelect').value;state.custom=false;render();
 };
