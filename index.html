@@ -227,7 +227,7 @@ const ACT=1.55;
 function tdee(pr){const b=10*pr.weight+6.25*pr.height-5*pr.age+(pr===PROFILE.h?5:-161);return Math.round(b*ACT);}
 function protRange(pr){return[Math.round(1.6*pr.weight),Math.round(2*pr.weight)];}
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha + chana',B5:'W: oats · H: egg poha'};
-const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya bean sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + aloo'};
+const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya bean sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
@@ -286,7 +286,7 @@ function sabzi(id){
    S8:[L('soyabean',100),L('onion',100),L('tomato',150)],
    S9:[L('kalachana',100),L('onion',100),L('tomato',150)],
    S10:[L('pasta',200),L('maida',30),L('milk',200),L('butter',15),L('onion',100),L('tomato',150)],
-   S11:[L('beans',300),L('potato',150),L('onion',100)]})[id];
+   S11:[L('beans',300),L('carrot',150),L('potato',150),L('onion',100)]})[id];
 }
 // Sabzis with protein already cooked in (no extra dinner protein).
 const NO_EXTRA=s=>['S3','S8','S9','S10'].includes(s);
@@ -508,6 +508,14 @@ function cookCard(i){
     ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
   return skipNote+banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
+function calWeekRange(iso){
+  const mon=mondayOf(iso);if(!mon)return'';
+  try{
+    const d=new Date(mon+'T12:00:00');d.setDate(d.getDate()+6);
+    const sun=d.toISOString().slice(0,10);
+    return`Meals will be set for <b>Mon ${fmtMon(mon)} – Sun ${fmtMon(sun)}</b>`;
+  }catch(e){return'';}
+}
 function calCard(){
   const today=new Date();const iso=today.toISOString().slice(0,10);
   const def=state.weekKey||mondayOf(iso)||iso;
@@ -515,9 +523,10 @@ function calCard(){
   const rows=keys.length?keys.map(k=>{
     const w=lockedWeeks[k],cur=k===state.weekKey;
     return`<div class="calrow"><span>📅 <b>${fmtMon(k)}</b>${cur?' · viewing':''}</span><span class="acts"><button data-calload="${k}">View</button><button data-caldel="${k}">Delete</button></span></div>`;
-  }).join(''):'<p class="hintline">No locked weeks yet. Pick a date above and lock this week to it.</p>';
-  return`<p class="hintline" style="margin:0 0 8px">Lock the current planner to a calendar week (Monday). Viewing a locked week shows its meals; editing any day overwrites that date automatically.</p>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="calDate" value="${def}"><button class="primary" data-calsave>Lock this week to date</button></div>
+  }).join(''):'<p class="hintline">No locked weeks yet. Pick a date below and press Set week.</p>';
+  return`<p class="hintline" style="margin:0 0 8px">Pick a date in the week you want, then press <b>Set week</b> — the current planner (all 7 days) is saved to that Mon–Sun week. Viewing a locked week shows its meals; editing any day overwrites that date automatically.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="calDate" value="${def}"><button class="primary" data-calsave>Set week ✓</button></div>
+  <p class="hintline" id="calWeekRange" style="margin:6px 0 0">${calWeekRange(def)}</p>
   <div class="callist">${rows}</div>
   ${state.weekKey?`<p class="hintline">Viewing week of <b>${fmtMon(state.weekKey)}</b>. <button data-calunlink>Back to live week</button></p>`:''}`;
 }
@@ -617,6 +626,11 @@ document.addEventListener('change',e=>{
     const id=t.dataset.lab,c=+t.dataset.c,v=+t.value;
     if(!Number.isFinite(v)||v<0){render();return;}
     state.labels[id]=[...nut(id)];state.labels[id][c]=v;render();return;
+  }
+  if(t.id==='calDate'){
+    const r=$('#calWeekRange');
+    if(r)r.innerHTML=calWeekRange(t.value);
+    return;
   }
   if(t.dataset&&t.dataset.ut){
     const v=parseFloat(t.value);
