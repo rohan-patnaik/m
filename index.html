@@ -94,6 +94,10 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .skipbtn.on{background:var(--tint);border-color:var(--accent);color:var(--accent)}
 .slot.skipped{opacity:.55}
 .infobtn{border:none;background:none;padding:0 2px;font-size:12px;color:var(--accent);font-weight:700;cursor:pointer;line-height:1}
+.shophead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.shophead h2{margin:0}
+.wkbtn{font-size:12px;font-weight:650;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--paper)}
+.wkbtn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .eatout-tag{font-size:12px;font-weight:700;color:var(--accent)}
 .splitrow [data-out]{font-weight:700;margin-top:6px}
 .splitrow .tare{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:500;margin:0}
@@ -147,14 +151,21 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
   </section>
 
   <section class="panel section" id="shopping">
-    <h2>Shopping</h2>
+    <div class="shophead">
+      <h2>Shopping</h2>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span class="hintline" style="margin:0">DMart for:</span>
+        <button class="wkbtn" data-weeks="1">1 week</button>
+        <button class="wkbtn" data-weeks="2">2 weeks</button>
+      </div>
+    </div>
     <div class="grid2">
       <div>
-        <h3 style="font-size:14px;margin:0 0 8px">Veggies</h3>
+        <h3 style="font-size:14px;margin:0 0 8px">Veggies · Sunday market (1 week)</h3>
         <div id="vegTable"></div>
       </div>
       <div>
-        <h3 style="font-size:14px;margin:0 0 8px">DMart</h3>
+        <h3 style="font-size:14px;margin:0 0 8px" id="dmartHead">DMart</h3>
         <div id="dmartTable"></div>
       </div>
     </div>
@@ -216,10 +227,11 @@ const DEFAULT_UTENSILS={kadhai:0,cooker:0,pan:0};
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
-  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false};
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false,weeks:1};
 }else{
   state.days=state.days.map(d=>({ ...d, off:!!d.off, skip:{b:false,l:false,d:false,...(d.skip||{})}, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
+  state.weeks=state.weeks===2?2:1;
 }
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}}
 const L=(id,q)=>({id,q});
@@ -267,7 +279,7 @@ function meal(day,which,person){
   // Rest day: no dinner roti for the person who skipped cardio.
   else if(cardio)a.push(L('atta',P().attaDinner));
   a.push(L(day.dal,h?40:35),...sc(sabzi(day.s)));
-  if(which==='l')a.push(L('curd',250));
+  if(which==='l')a.push(L('curd',200));
   else{a.push(...(day.s==='S3'?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
   return a;
 }
@@ -446,7 +458,7 @@ function cookRows(i){
     const extras=[];
     if(dinner)extras.push(d.s==='S3'?'Paneer already in sabzi — nothing extra'
       :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?`Soya chunks — ${R(q)} g dry`:`Paneer — ${R(q)} g`;})());
-    if(lunch)extras.push('Curd — 500 g (lunch)');
+    if(lunch)extras.push('Curd — 400 g (lunch)');
     if(dinner)extras.push('Cucumber — 250 g (dinner)');
     if(extras.length)groups.push([dinner&&lunch?'Dinner + lunch extras':dinner?'Dinner extras':'Lunch extras',extras]);
   }
@@ -513,12 +525,15 @@ function render(){
   // shopping
   $('#vegTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${vegList().map(x=>`<tr><td>${DB[x.id][0]}</td><td class="num">${R(x.used)} g</td><td class="num"><b>${R(x.buy)} g</b></td></tr>`).join('')}</tbody></table>`;
   const led=ledger();
+  const W2=state.weeks===2?2:1;
+  $('#dmartHead').textContent=W2===2?'DMart · 2 weeks (10–14 day run)':'DMart · 1 week';
+  document.querySelectorAll('[data-weeks]').forEach(b=>b.classList.toggle('on',+b.dataset.weeks===state.weeks));
   const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,paneer:500,soy:200,curd:1000,milk:500,nuts:200,oil:1000};
   const brands={moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Arhar dal · Tata',paneer:'Paneer · Heritage 500 g',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
   const ids=Object.keys(packets).concat(['egg','whey','spice']);
-  $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
+  $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use / week</th><th class="num">Buy${W2===2?' · 2 wks':''}</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
     const u=DB[id][3],q=led[id],size=packets[id];
-    const buy=size?Math.ceil((q-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q)+' servings':id==='egg'?R(q)+' eggs':'pantry';
+    const buy=size?Math.ceil((q*W2-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q*W2)+' servings':id==='egg'?R(q*W2)+' eggs':'pantry';
     return`<tr><td>${brands[id]||DB[id][0]}</td><td class="num">${F(q)} ${u}</td><td class="num">${buy}</td></tr>`;
   }).join('')}</tbody></table>`;
   // labels
@@ -589,6 +604,8 @@ document.addEventListener('click',e=>{
   const pi=e.target.closest('[data-info]');
   if(pi){const n=pi.dataset.info==='w'?'Wife':'Husband';$('#dlgTitle').textContent=n+' · profile & targets';$('#dlgBody').innerHTML=personCard(pi.dataset.info);$('#dlg').showModal();return;}
   if(e.target.closest('[data-presets]')){$('#dlgTitle').textContent='Plans vs maintenance';$('#dlgBody').innerHTML=presetCard();$('#dlg').showModal();return;}
+  const wk=e.target.closest('[data-weeks]');
+  if(wk){state.weeks=+wk.dataset.weeks===2?2:1;save();render();return;}
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
