@@ -109,7 +109,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .ut-card small{color:var(--muted);font-weight:400}
 @media(max-width:680px){.ut-grid{grid-template-columns:1fr}}
 .weekbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--tint);border:1px solid var(--accent);border-radius:11px;padding:9px 12px;font-size:13px;margin:14px 0 0}
+.weekbar[hidden]{display:none}
 .weekbar button{font-size:12px;padding:5px 11px;border-radius:999px}
+select option{background:var(--paper2);color:var(--ink)}
+#calDate{background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;color:var(--ink)}
+.ut-use{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.ut-use label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.ut-use select{font-size:13px}
 .callist{display:grid;gap:8px;margin-top:10px}
 .calrow{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--paper2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:13px}
 .calrow .acts{display:flex;gap:6px}
@@ -151,11 +157,18 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 
   <section class="panel section" id="utensils">
     <h2>Utensil weights</h2>
-    <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then in any lunch/dinner sharing-ratio popup you can enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts the vessel and splits only the food. Saved in this browser.</p>
+    <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then pick which vessel each dish is cooked in below (switch to Big / Medium pan when the main ones are dirty). In any lunch/dinner sharing-ratio popup, enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts that vessel and splits only the food. Saved in this browser.</p>
     <div class="ut-grid">
-      <div class="ut-card"><label>Kadhai · sabzi <input type="number" min="0" step="any" inputmode="decimal" data-ut="kadhai" placeholder="e.g. 850"> <small>grams (empty kadhai)</small></label></div>
-      <div class="ut-card"><label>Pressure cooker · dal <input type="number" min="0" step="any" inputmode="decimal" data-ut="cooker" placeholder="e.g. 2000"> <small>grams (empty cooker)</small></label></div>
-      <div class="ut-card"><label>Frying pan · paneer / soya <input type="number" min="0" step="any" inputmode="decimal" data-ut="pan" placeholder="e.g. 500"> <small>grams (empty pan)</small></label></div>
+      <div class="ut-card"><label>Kadhai <input type="number" min="0" step="any" inputmode="decimal" data-ut="kadhai" placeholder="e.g. 850"> <small>grams (empty)</small></label></div>
+      <div class="ut-card"><label>Pressure cooker <input type="number" min="0" step="any" inputmode="decimal" data-ut="cooker" placeholder="e.g. 2000"> <small>grams (empty)</small></label></div>
+      <div class="ut-card"><label>Frying pan <input type="number" min="0" step="any" inputmode="decimal" data-ut="pan" placeholder="e.g. 500"> <small>grams (empty)</small></label></div>
+      <div class="ut-card"><label>Big pan <input type="number" min="0" step="any" inputmode="decimal" data-ut="bigpan" placeholder="e.g. 650"> <small>grams (empty)</small></label></div>
+      <div class="ut-card"><label>Medium pan <input type="number" min="0" step="any" inputmode="decimal" data-ut="medpan" placeholder="e.g. 450"> <small>grams (empty)</small></label></div>
+    </div>
+    <div class="ut-use">
+      <label>Sabzi cooked in <select data-utsel="sabzi"></select></label>
+      <label>Dal cooked in <select data-utsel="dal"></select></label>
+      <label>Paneer / soya cooked in <select data-utsel="prot"></select></label>
     </div>
   </section>
 
@@ -226,7 +239,7 @@ const PROFILE={w:{name:'Wife',height:165,weight:64,age:29},h:{name:'Husband',hei
 const ACT=1.55;
 function tdee(pr){const b=10*pr.weight+6.25*pr.height-5*pr.age+(pr===PROFILE.h?5:-161);return Math.round(b*ACT);}
 function protRange(pr){return[Math.round(1.6*pr.weight),Math.round(2*pr.weight)];}
-const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha + chana',B5:'W: oats · H: egg poha'};
+const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha',B5:'W: oats · H: egg poha'};
 const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya bean sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -236,14 +249,17 @@ const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3',
  .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],off:false,skip:{b:false,l:false,d:false},wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
 
 const STORE='simple-meals-v1';
-const DEFAULT_UTENSILS={kadhai:0,cooker:0,pan:0};
+const DEFAULT_UTENSILS={kadhai:0,cooker:0,pan:0,bigpan:0,medpan:0};
+const UT_NAMES={kadhai:'Kadhai',cooker:'Pressure cooker',pan:'Frying pan',bigpan:'Big pan',medpan:'Medium pan'};
+const DEFAULT_UTSEL={sabzi:'kadhai',dal:'cooker',prot:'pan'};
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
-  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null};
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},utSel:{...DEFAULT_UTSEL},theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null};
 }else{
   state.days=state.days.map(d=>({ ...d, off:!!d.off, skip:{b:false,l:false,d:false,...(d.skip||{})}, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
+  state.utSel={...DEFAULT_UTSEL,...(state.utSel||{})};
   state.weeks=state.weeks===2?2:1;
   if(typeof state.weekKey!=='string')state.weekKey=null;
 }
@@ -269,7 +285,7 @@ function breakfast(id,person,day){
   if(id==='B1')a=[L('oats',15),L('besan',10),L('onion',12.5),L('carrot',12.5)];
   if(id==='B2')a=[L('besan',25),L('onion',12.5),L('carrot',12.5)];
   if(id==='B3')a=[L('moong',25),L('onion',12.5),L('carrot',12.5)];
-  if(id==='B4')a=[L('poha',h?50:40),L('chana',20),L('onion',h?27.78:22.22),L('carrot',h?27.78:22.22)];
+  if(id==='B4')a=[L('poha',h?50:40),L('onion',h?27.78:22.22),L('carrot',h?27.78:22.22)];
   if(id==='B5')a=h?[L('poha',50),L('onion',25),L('carrot',25)]:[L('oats',40)];
   if(h?(day.wheyH):(day.wheyW))a.push(L('whey',1));
   if(h&&day.eggH)a.push(L('egg',2));
@@ -336,6 +352,15 @@ function syncUtensils(){
     const v=(state.utensils||{})[inp.dataset.ut];
     inp.value=(v>0)?v:'';
   });
+  syncUtSel();
+}
+function syncUtSel(){
+  document.querySelectorAll('[data-utsel]').forEach(s=>{
+    const k=s.dataset.utsel;
+    s.innerHTML=Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}">${n}</option>`).join('');
+    const cur=(state.utSel&&UT_NAMES[state.utSel[k]])?state.utSel[k]:DEFAULT_UTSEL[k];
+    s.value=cur;
+  });
 }
 function opts(o,cur){return Object.entries(o).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${id} · ${n}</option>`).join('');}
 function mealTitle(d,m){
@@ -349,18 +374,17 @@ function splitRatio(d,m){
   if(m==='b'){
     if(d.b==='B4')return[
       ['Cooked poha','W : H = 4 : 5'],
-      ['Roasted chana','1 : 1 · own portion each'],
-      ['Whey','separate · per toggles'],
+      ['Whey','separate · 1 scoop'],
       ['Eggs (H)','separate · per toggle'],
     ];
     if(d.b==='B5')return[
       ['Oats (W) / Poha (H)','separate dishes'],
-      ['Whey','separate · per toggles'],
+      ['Whey','separate · 1 scoop'],
       ['Eggs (H)','separate · per toggle'],
     ];
     return[
       ['Chillas','1 each · W : H = 1 : 1'],
-      ['Whey','separate · per toggles'],
+      ['Whey','separate · 1 scoop'],
       ['Eggs (H)','separate · per toggle'],
     ];
   }
@@ -386,16 +410,17 @@ function splitCalc(d,m){
   if(m!=='l'&&m!=='d')return'';
   const palak=d.s==='S3';
   const u=state.utensils||DEFAULT_UTENSILS;
+  const sel=k=>(state.utSel&&UT_NAMES[state.utSel[k]])?state.utSel[k]:DEFAULT_UTSEL[k];
   const row=(label,wn,wd,hn,hd,ukey,uvessel)=>{
     const tare=Math.max(0,+u[ukey]||0);
     const checked=tare>0?' checked':'';
     const tareTxt=tare>0?`${tare} g`:'not set yet';
     return`<div class="splitrow"><div class="splithead">${label}</div><div class="splitin"><input type="number" min="0" step="any" inputmode="decimal" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> <span>g</span></div><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label><div data-out>W — · H —</div></div>`;
   };
-  let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,'kadhai','kadhai')}${row('Cooked dal batch',7,30,4,15,'cooker','cooker')}`;
+  let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,sel('sabzi'),UT_NAMES[sel('sabzi')])}${row('Cooked dal batch',7,30,4,15,sel('dal'),UT_NAMES[sel('dal')])}`;
   if(m==='d'&&!NO_EXTRA(d.s)){
     const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q,tot=qw+qh;
-    html+=row('Cooked '+PROTEINS[d.p].toLowerCase()+' batch',qw,tot,qh,tot,'pan','frying pan');
+    html+=row('Cooked '+PROTEINS[d.p].toLowerCase()+' batch',qw,tot,qh,tot,sel('prot'),UT_NAMES[sel('prot')]);
   }
   html+='</div>';
   return html;
@@ -636,6 +661,12 @@ document.addEventListener('change',e=>{
     const v=parseFloat(t.value);
     state.utensils[t.dataset.ut]=(!Number.isFinite(v)||v<0)?0:Math.round(v);
     save();return;
+  }
+  if(t.dataset&&t.dataset.utsel){
+    const k=t.dataset.utsel;
+    if(UT_NAMES[t.value]){state.utSel[k]=t.value;save();}
+    else syncUtSel();
+    return;
   }
   if(t.dataset&&t.dataset.tare!==undefined){
     const rowEl=t.closest('.splitrow');
