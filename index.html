@@ -130,7 +130,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:680px){.viewseg button{font-size:12px;padding:7px 10px}.viewseg .full{display:none}.viewseg .short{display:inline}}
 body[data-view=day] #planner{display:none}
 body[data-view=week] #dayview{display:none}
-body[data-view=day] #shopping,body[data-view=day] #labels,body[data-view=day] #utensils{display:none}
+body[data-view=day] #shopping,body[data-view=day] #labels{display:none}
+body[data-view=day] #utensils .ut-grid,body[data-view=day] #utensils .hintline{display:none}
+body[data-view=day] #utensils{margin-top:14px}
+body[data-view=day] #utensils h2{font-size:16px;margin:0 0 8px}
+body[data-view=day] .ut-use{margin-top:0}
 .daynav{display:flex;gap:8px;align-items:center;margin:14px 0 4px;flex-wrap:wrap}
 .daynav h2{margin:0;font-size:20px}
 .daynav button{border-radius:999px;font-size:12px}
@@ -198,7 +202,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
   <div id="dayview"></div>
 
   <section class="panel section" id="utensils">
-    <h2>Utensil weights</h2>
+    <h2>Utensils</h2>
     <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then pick which vessel each dish is cooked in below (switch to Big / Medium pan when the main ones are dirty). In any lunch/dinner sharing-ratio popup, enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts that vessel and splits only the food. Saved in this browser.</p>
     <div class="ut-grid">
       <div class="ut-card"><label>Kadhai <input type="number" min="0" step="any" inputmode="decimal" data-ut="kadhai" placeholder="e.g. 850"> <small>grams (empty)</small></label></div>
