@@ -423,6 +423,7 @@ function applyImport(data){
 // Security: the household ID is a random 128-bit token (shown masked); anyone holding it
 // can read/write that one copy — fine for meal plans, never put secrets in the plan.
 const SYNCSTORE='meal-sync-v1';
+const DEFAULT_DB_URL='https://meal-plan-sync-d5dbb-default-rtdb.firebaseio.com';
 let syncCfg=null;
 try{syncCfg=JSON.parse(localStorage.getItem(SYNCSTORE))||null;}catch(e){syncCfg=null;}
 function saveSync(){try{localStorage.setItem(SYNCSTORE,JSON.stringify(syncCfg));}catch(e){}}
@@ -488,16 +489,18 @@ async function pullCloud(){
   }catch(e){syncStatus('Load failed (offline?): '+e.message);}
 }
 function openSync(){
-  const c=syncCfg||{};
+  if(!syncCfg)syncCfg={};
+  if(!syncCfg.dbUrl){syncCfg.dbUrl=DEFAULT_DB_URL;saveSync();}
+  const c=syncCfg;
   $('#dlgTitle').textContent='Household sync';
   $('#dlgBody').innerHTML=`<div class="editform">
-    <p class="hintline" style="margin:0">One shared cloud copy (free Firebase database). This browser keeps working offline; sync when online. One-time setup: <a href="https://console.firebase.google.com" target="_blank" rel="noopener">create a free project</a> → Realtime Database → locked mode → paste the rules below → copy the database URL here.</p>
+    <p class="hintline" style="margin:0">One shared cloud copy (free Firebase database, project <b>meal-plan-sync</b>). This browser keeps working offline; sync when online. The database URL is prefilled — just generate a household ID (same on every device) and Sync now. Until the rules below are published the database stays locked and sync reports unreachable, which is expected.</p>
     <label>Database URL<input type="url" data-syncurl value="${c.dbUrl||''}" placeholder="https://xxx-default-rtdb.firebaseio.com"></label>
     <label>Household ID (treat like a password)<div style="display:flex;gap:6px"><input type="password" data-synchid value="${c.hid||''}" placeholder="paste or generate" style="flex:1;min-width:0"><button data-syncgen>New</button></div></label>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" data-syncauto${c.auto?' checked':''} style="accent-color:var(--accent)"> Auto-sync on every change</label>
     <div class="editbtns"><button data-syncpush>Sync now</button><button data-syncload>Load from cloud</button><button class="primary" data-syncdone>Done</button></div>
     <p class="hintline" data-syncstatus>${syncStatusText}</p>
-    <p class="hintline">Database rules to paste (locks everything except your household copy):<br><code>{ "rules": { "households": { "$hid": { ".read": true, ".write": true } } } }</code></p>
+    <p class="hintline">Database rules to paste (root stays locked and cannot be listed; only a holder of the full household ID can read/write that one copy — any known ID works, so keep yours private):<br><code>{ "rules": { "households": { "$hid": { ".read": true, ".write": true } } } }</code></p>
   </div>`;
   $('#dlg').showModal();
 }
