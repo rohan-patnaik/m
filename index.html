@@ -240,25 +240,13 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <div id="labelTable"></div>
     <p class="hintline" id="labelStatus"></p>
     <div id="soyaRow" style="margin:10px 0"></div>
+    <div id="densityRow" style="margin:10px 0"></div>
     <div id="oilRow" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
-    <details><summary style="font-size:13px;font-weight:650;cursor:pointer">Sources: verified panel vs estimated default</summary>
-    <div class="hintline">
-    <b>Verified against a matching panel (weigh your packet once to confirm):</b>
-    whey = AS-IT-IS ATOM Isolate Double Rich Chocolate side panel, 35 g: 136 kcal · 29 g protein (fibre undeclared — user scoop is levelled, panel says heaped; mass 35 g used);
-    Nutrela soya chunks hosted packet panel, per 100 g dry: 354.14 kcal · 53.19 g protein (fibre not in that panel);
-    Saffola chunks DMart back panel, per 100 g dry: 312 kcal · 53 g · 15.5 g fibre;
-    Milky Mist 1 kg <b>pouch</b> 61 kcal · 3.5 g (tub/bucket panel reads 61.8 — not used);
-    Saffola plain oats user panel 369 · 12.6 · 10.4;
-    Borges penne durum DMart panel 359.3 · 13 · 2.9;
-    Tata Sampann unpolished toor dal DMart panel 364 · 18.2 · 11.6 (replaces IFCT arhar mean);
-    Amul salted butter DMart panel 724 · 1.0 (retailer listings vary by batch — kept editable).<br>
-    <b>Provisional / reference defaults (editable — confirm from your packet):</b>
-    Pillsbury Chakki Fresh atta 364 · 12.3 · 10 per 100 g (official table; page also shows a stray 333 line);
-    Tata moong/masoor packets unconfirmed → ICMR-NIN IFCT 2017 means: moong 326/23.88/9.37, masoor 322/24.35/10.43.<br>
-    <b>Estimated household defaults (editable):</b> Heritage green toned milk, Heritage paneer, Milky Mist curd,
-    Tata mustard oil (828 kcal/100 ml from 0.92 g/ml × 9 kcal/g), Saffola plain oats, Borges durum pasta,
-    Amul salted butter, mixed nuts (proportions unknown), produce and spices. Carbs/fats beyond kcal + protein + fibre are not tracked.
-    </div></details>
+    <details><summary style="font-size:13px;font-weight:650;cursor:pointer">Sources: panel evidence, conversion estimates, open questions</summary>
+    <div class="hintline" style="margin:8px 0">Values below are per 100 g (or per serving) <b>as printed</b>; label calories kept, never recomputed from macros. Fibre <b>ND</b> = not declared (excluded from sums, not zero); <b>0*</b> = zero by composition inference, not a printed lab value. Weigh your packet once to confirm — your batch supersedes any web panel. Full transcriptions: audit <b>package-labels.json</b>.</div>
+    <div id="srcTable"></div>
+    <div class="hintline">Atta uses the DMart packet (11.3 g protein); the Pillsbury website table says 12.3 g — same energy, different formulation data. Ordinary Chakki Fresh assumed, not multigrain/Sharbati. Butter DMart 724/1.0 vs other retailers 722/0.5 — batch variation. Milk 100 ml values derive from the 100 g panel × density (editable above). Roasted chana is in the database but no current recipe uses it. Spice is an aggregate recipe estimate, not a packet. DigeZyme/amino acids are already inside whey's 136/29 — never added twice. Carbs/fats beyond kcal + protein + fibre are not tracked.</div>
+    </details>
   </section>
 
   <footer>Saved in this browser only. Export not needed — single file works offline.</footer>
@@ -268,14 +256,14 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 
 <script>
 const DB={
- atta:['Atta · Pillsbury Chakki Fresh',364,12.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
+ atta:['Atta · Pillsbury Chakki Fresh (DMart packet)',364,11.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
  oats:['Oats · Saffola plain',369,12.6,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
  masoor:['Masoor dal (dry)',322,24.35,'g'],arhar:['Toor dal · Tata Sampann unpolished',364,18.2,'g'],poha:['Poha (dry)',350,7,'g'],
  chana:['Roasted chana',380,20,'g'],whey:['Whey · ATOM Isolate DRC (35 g)',136,29,'serving'],
   egg:['Egg',72,6.3,'egg'],curd:['Curd · Milky Mist',61,3.5,'g'],
-  milk:['Milk · Heritage green toned',60,3.2,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
+  milk:['Milk · Heritage green toned',59.74,3.193,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
  soyN:['Soya chunks · Nutrela',354.14,53.19,'g'],soyS:['Soya chunks · Saffola',312,53,'g'],nuts:['Nuts (mixed)',600,20,'g'],
- oil:['Oil · Tata mustard cold-pressed',828,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
+ oil:['Oil · Tata Simply Better mustard',816.27,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
  carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
  bhindi:['Bhindi',33,1.9,'g'],palak:['Palak',23,2.9,'g'],
   arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
@@ -315,6 +303,38 @@ const DEFAULT_OILUSE={sabzi:14,dal:8,bf:6,prot:4,egg:2}; // editable recipe-oil 
 function oilUse(){return {...DEFAULT_OILUSE,...(state.oilUse||{})};}
 function ensureOilUse(){state.oilUse={...DEFAULT_OILUSE,...(state.oilUse||{})};for(const k of Object.keys(DEFAULT_OILUSE)){const v=+state.oilUse[k];state.oilUse[k]=Number.isFinite(v)&&v>=0?v:DEFAULT_OILUSE[k];}return state.oilUse;}
 const SOYA_OPTS={N:'Nutrela',S:'Saffola'};
+// Heritage green pouch panel is per 100 g (58 kcal / 3.1 g), NOT per 100 ml. Volumes stay in ml;
+// per-100 ml values derive from an editable density estimate (never silently relabelled).
+const MILK_LABEL={kcal:58,protein:3.1,basis:'100 g'};
+const DEFAULT_DENSITY=1.03;
+function milkDensity(){const d=+state.density;return Number.isFinite(d)&&d>0?d:DEFAULT_DENSITY;}
+function milkPer100ml(){const d=milkDensity();return [MILK_LABEL.kcal*d,MILK_LABEL.protein*d];}
+// Source metadata: the 12 transcribed package profiles + reference/generic rows.
+// Public panel URLs only — never local artifact paths. Compact by design; daily cards stay clean.
+const SRC=[
+ {id:'whey',name:'Whey · ATOM Isolate DRC',per:'35 g serving',k:136,p:29,f:null,st:'Panel ✓',url:'https://asitisnutrition.com/products/atomwheyproteinisolate?variant=41170886262835'},
+ {id:'soyN',name:'Soya chunks · Nutrela',per:'100 g dry',k:354.14,p:53.19,f:null,st:'Panels agree ✓',url:'https://www.dmart.in/product/nutrela-soya-chunks?selectedProd=46502'},
+ {id:'soyS',name:'Soya chunks · Saffola',per:'100 g dry',k:312,p:53,f:15.5,st:'Panel ✓',url:'https://www.dmart.in/product/saffola-mealmaker-soya-chunks--psoya0saff3xx40121?selectedProd=823503'},
+ {id:'atta',name:'Atta · Pillsbury Chakki Fresh',per:'100 g (DMart packet)',k:364,p:11.3,f:10,st:'Packet ✓ (website: 12.3)',url:'https://www.dmart.in/product/pillsbury-chakki-fresh-atta?selectedProd=11161'},
+ {id:'pasta',name:'Pasta · Borges penne durum',per:'100 g dry',k:359.3,p:13,f:2.9,st:'Panel ✓ (penne rep.)',url:'https://www.dmart.in/product/borges-penne-rigate-durum-wheat-pasta?selectedProd=11614'},
+ {id:'arhar',name:'Toor dal · Tata Sampann',per:'100 g dry',k:364,p:18.2,f:11.6,st:'Panel ✓',url:'https://www.dmart.in/product/tata-sampann-toor-dal?selectedProd=99529'},
+ {id:'curd',name:'Curd · Milky Mist 1 kg pouch',per:'100 g',k:61,p:3.5,f:null,st:'Panel ✓ (tub 61.8 unused)',url:'https://www.bigbasket.com/pd/40262046/milky-mist-curd-fresh-no-preservatives-creamy-1-kg/'},
+ {id:'paneer',name:'Paneer · Heritage 500 g',per:'100 g',k:274,p:16,f:null,st:'Panel ✓',url:'https://www.bigbasket.com/pd/214024/heritage-paneer-500-g-pouch/'},
+ {id:'milk',name:'Milk · Heritage green toned',per:'100 g panel → /100 ml',k:58,p:3.1,f:null,st:'Panel ✓ + density est.',url:'https://www.bigbasket.com/pd/40147597/heritage-daily-health-toned-milk-500-ml-pouch/'},
+ {id:'oil',name:'Oil · Tata Simply Better mustard',per:'100 g panel → /100 ml',k:897,p:0,f:null,st:'Panel ✓ + conv.',url:'https://www.tatasimplybetter.com/products/tata-simply-better-coldpressed-mustard-oil-1l?variant=50349740097856'},
+ {id:'butter',name:'Butter · Amul salted',per:'100 g',k:724,p:1,f:0,st:'Panel ✓ (alt 722/0.5)',url:'https://www.dmart.in/product/amul-butter?selectedProd=113502'},
+ {id:'oats',name:'Oats · Saffola plain',per:'100 g dry',k:369,p:12.6,f:10.4,st:'Panel ✓ (user)',url:'https://www.dmart.in/product/saffola-oats-poats0saff9xx90520?selectedProd=713312'},
+ {id:'moong',name:'Moong dal (IFCT generic)',per:'100 g dry',k:326,p:23.88,f:9.37,st:'Generic — NOT Tata',url:'https://www.nin.res.in/ebooks/IFCT2017.pdf'},
+ {id:'masoor',name:'Masoor dal (IFCT generic)',per:'100 g dry',k:322,p:24.35,f:10.43,st:'Generic — NOT Tata',url:'https://www.nin.res.in/ebooks/IFCT2017.pdf'},
+];
+const FIB_INF=new Set(['egg','curd','milk','paneer','butter','oil']); // 0 by composition inference, not printed
+function fibCell(id){const v=FIB[id];if(v===null||v===undefined)return'ND';if(v===0&&FIB_INF.has(id))return'0*';return v;}
+function srcTableHTML(){
+  const rows=SRC.map(r=>`<tr><td>${r.name}<div style="font-size:11px;color:var(--muted)">${r.per}</div></td><td class="num">${r.k} · ${r.p} · ${fibCell(r.id)}</td><td><a href="${r.url}" target="_blank" rel="noopener">${r.st}</a></td></tr>`).join('');
+  return `<table><thead><tr><th>Item</th><th class="num">kcal · prot · fibre /100</th><th>Panel</th></tr></thead><tbody>${rows}
+  <tr><td>Rice, besan, poha, rajma, chana, kala chana, maida, mixed nuts<div style="font-size:11px;color:var(--muted)">brand/mix varies per user</div></td><td class="num">generic estimates</td><td>Variable — editable</td></tr></tbody></table>
+  <p class="hintline">ND = panel silent (excluded); 0* = inferred zero, not measured. Milk 100 ml = 58/3.1 × density ${F(milkDensity())} → ${F(milkPer100ml()[0])}/${F(milkPer100ml()[1])}. Oil 100 ml = 897 × 0.91 (1 L = 910 g) = 816.27.</p>`;
+}
 function soyaId(){return state.soya==='S'?'soyS':'soyN';}
 // Single sharing basis: fraction of the FULL daily batch per meal-person. Cook quantities,
 // nutrition, shopping and split fractions all derive from these shares (fix A/E/F).
@@ -338,13 +358,14 @@ function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option valu
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
-  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},utSel:{...DEFAULT_UTSEL},utDay:DEFAULT_UTDAY(),oilUse:{...DEFAULT_OILUSE},soya:'N',theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null,view:'day',viewExplicit:false};
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},utSel:{...DEFAULT_UTSEL},utDay:DEFAULT_UTDAY(),oilUse:{...DEFAULT_OILUSE},soya:'N',density:DEFAULT_DENSITY,theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null,view:'day',viewExplicit:false};
 }else{
   state.days=state.days.map(d=>({ ...d, off:!!d.off, skip:{b:false,l:false,d:false,...(d.skip||{})}, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
   state.utSel={...DEFAULT_UTSEL,...(state.utSel||{})};
   if(!Array.isArray(state.utDay)||state.utDay.length!==7){const g=(state.utSel&&typeof state.utSel.sabzi==='string')?state.utSel:null;state.utDay=Array.from({length:7},()=>({sabzi:(g&&UT_NAMES[g.sabzi])?g.sabzi:'kadhai',dal:(g&&UT_NAMES[g.dal])?g.dal:'cooker',prot:(g&&UT_NAMES[g.prot])?g.prot:'pan'}));}
   if(state.soya!=='S'&&state.soya!=='N')state.soya='N';
+  if(!Number.isFinite(+state.density)||+state.density<=0)state.density=DEFAULT_DENSITY;
   ensureOilUse();
   if(state.labels&&(state.labels.soy||state.labels.soyabean)&&!(state.labels.soyN||state.labels.soyS)){const mv=[...(state.labels.soy||state.labels.soyabean)];state.labels.soyN=mv;state.labels.soyS=mv;}
   state.weeks=state.weeks===2?2:1;
@@ -368,7 +389,7 @@ function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){
   if(state.weekKey){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
 }
 const L=(id,q)=>({id,q});
-function nut(id){return state.labels[id]||DB[id].slice(1,3);}
+function nut(id){if(id==='milk'&&!state.labels.milk)return milkPer100ml();return state.labels[id]||DB[id].slice(1,3);}
 function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f,fb:(FIB[x.id]||0)*f};}
 function sum(a){return a.reduce((t,x)=>{const v=val(x);return{k:t.k+v.k,p:t.p+v.p,fb:t.fb+v.fb};},{k:0,p:0,fb:0});}
 const R=n=>Math.round(n), F=n=>+n.toFixed(1);
@@ -604,7 +625,8 @@ function inspect(i,m){
     note=`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — ${cuts.join(' · ')} vs a cardio day on this plan. Protein portions are unchanged (totals still carry less roti/nut protein). This is a plan difference, not measured exercise burn.</p>`;
   }
   const fibNote=(fibUnk(mlines.w)||fibUnk(mlines.h))?`<p class="hintline">Fibre excludes items with undeclared fibre (e.g. whey) — shown sums are incomplete, not zero.</p>`:'';
-  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${oilNote}${note}${fibNote}<p class="hintline">This meal (oil included): W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
+  const mixNote=`<p class="hintline">Portion method: batch nutrients × your weighed portion ÷ whole cooked batch (vessel off). Water only changes weight. Mix well and deal chunky paneer/soya pieces deliberately — weight alone doesn't prove equal pieces.</p>`;
+  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${oilNote}${note}${fibNote}${mixNote}<p class="hintline">This meal (oil included): W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
 function avgForMode(m,p){
   const keep=state.mode;state.mode=m;
@@ -849,7 +871,7 @@ function render(){
   // labels
   const keys=['whey','paneer','curd','milk'];
   $('#labelTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">kcal</th><th class="num">Protein g</th></tr></thead><tbody>${keys.map(id=>{
-    const n=nut(id),basis=DB[id][3]==='serving'?'serving':DB[id][3]==='egg'?'egg':'100 '+DB[id][3];
+    const n=nut(id),basis=id==='milk'?'100 ml (58/3.1 per 100 g × density)':DB[id][3]==='serving'?'serving':DB[id][3]==='egg'?'egg':'100 '+DB[id][3];
     return`<tr><td>${DB[id][0]}<div style="font-size:11px;color:var(--muted)">per ${basis}</div></td>
     <td class="num"><input type="number" step="0.1" min="0" value="${n[0]}" data-lab="${id}" data-c="0" style="width:84px"></td>
     <td class="num"><input type="number" step="0.1" min="0" value="${n[1]}" data-lab="${id}" data-c="1" style="width:84px"></td></tr>`;
@@ -858,8 +880,11 @@ function render(){
   ensureOilUse();
   const oU=oilUse();
   $('#soyaRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Soya chunks brand <select data-soya><option value="N"${state.soya!=='S'?' selected':''}>Nutrela (panel: 354 kcal · 53.2 g protein)</option><option value="S"${state.soya==='S'?' selected':''}>Saffola (panel: 312 kcal · 53 g)</option></select></label>`;
-  $('#oilRow').innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;flex:1 1 100%">Recipe-oil estimates (ml, editable). Full day ≈ ${F(oU.sabzi+oU.dal+oU.bf+oU.prot+oU.egg)} ml vs ~33.33 ml/day household calibration (1 L / 30 days); oil scales with cooked meals.</div>`+
+  $('#oilRow').innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;flex:1 1 100%">Recipe-oil estimates (ml, editable). Full day ≈ ${F(oU.sabzi+oU.dal+oU.bf+oU.prot+oU.egg)} ml vs ~33.33 ml/day household calibration (1 L / 30 days ≈ 272.09 kcal/day household — not per person, not an extra item); oil scales with cooked meals.</div>`+
     ['sabzi','dal','bf','prot','egg'].map(k=>`<label style="font-size:12px;display:grid;gap:4px">Oil · ${{sabzi:'sabzi batch',dal:'dal batch',bf:'breakfast',prot:'dinner protein',egg:'eggs (H)'}[k]}<input type="number" min="0" step="0.5" value="${oU[k]}" data-oiluse="${k}" style="width:84px"></label>`).join('');
+  const mp=state.labels.milk?null:milkPer100ml();
+  $('#densityRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">Milk density estimate <input type="number" min="0.5" max="2" step="0.01" value="${milkDensity()}" data-density style="width:84px"> g/ml <span style="font-weight:400;color:var(--muted)">→ 100 ml = ${F(milkPer100ml()[0])} kcal · ${F(milkPer100ml()[1])} g protein (panel per 100 g: 58/3.1)${mp?'':' · manual override active'}</span></label>`;
+  const st=$('#srcTable');if(st)st.innerHTML=srcTableHTML();
   save();
 }
 document.addEventListener('change',e=>{
@@ -892,6 +917,11 @@ document.addEventListener('change',e=>{
     ensureOilUse();
     if(!(k in DEFAULT_OILUSE)||!Number.isFinite(v)||v<0){render();return;}
     state.oilUse[k]=v;state.custom=true;save();render();return;
+  }
+  if(t.dataset&&t.dataset.density!==undefined){
+    const v=parseFloat(t.value);
+    if(!Number.isFinite(v)||v<=0){render();return;}
+    state.density=v;state.custom=true;save();render();return;
   }
   if(t.id==='calDate'){
     const r=$('#calWeekRange');
