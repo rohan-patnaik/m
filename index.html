@@ -239,6 +239,21 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <h2>Packet labels</h2>
     <div id="labelTable"></div>
     <p class="hintline" id="labelStatus"></p>
+    <div id="soyaRow" style="margin:10px 0"></div>
+    <div id="oilRow" style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0"></div>
+    <details><summary style="font-size:13px;font-weight:650;cursor:pointer">Sources: verified panel vs estimated default</summary>
+    <div class="hintline">
+    <b>Verified against a matching panel (weigh your packet once to confirm):</b>
+    whey = AS-IT-IS ATOM Isolate Double Rich Chocolate side panel, 35 g: 136 kcal · 29 g protein (fibre undeclared — user scoop is levelled, panel says heaped; mass 35 g used);
+    Nutrela soya chunks hosted packet panel, per 100 g dry: 354.14 kcal · 53.19 g protein (fibre not in that panel).<br>
+    <b>Provisional / reference defaults (editable — confirm from your packet):</b>
+    Saffola chunks 312 kcal · 53 g · 15.5 g fibre (retailer listings vary);
+    Pillsbury Chakki Fresh atta 364 · 12.3 · 10 per 100 g (official table; page also shows a stray 333 line);
+    Tata dals unconfirmed → ICMR-NIN IFCT 2017 means: moong 326/23.88/9.37, masoor 322/24.35/10.43, arhar 331/21.7/9.06.<br>
+    <b>Estimated household defaults (editable):</b> Heritage green toned milk, Heritage paneer, Milky Mist curd,
+    Tata mustard oil (828 kcal/100 ml from 0.92 g/ml × 9 kcal/g), Saffola plain oats, Borges durum pasta,
+    Amul salted butter, mixed nuts (proportions unknown), produce and spices. Carbs/fats beyond kcal + protein + fibre are not tracked.
+    </div></details>
   </section>
 
   <footer>Saved in this browser only. Export not needed — single file works offline.</footer>
@@ -248,27 +263,31 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 
 <script>
 const DB={
- atta:['Atta',350,12,'g'],rice:['Rice (uncooked)',360,7,'g'],
- oats:['Oats (dry)',389,13,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',350,24,'g'],
- masoor:['Masoor dal (dry)',350,24,'g'],arhar:['Arhar dal (dry)',350,22,'g'],poha:['Poha (dry)',350,7,'g'],
- chana:['Roasted chana',380,20,'g'],whey:['Whey (1 serving)',130,29,'serving'],
+ atta:['Atta · Pillsbury Chakki Fresh',364,12.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
+ oats:['Oats · Saffola plain',389,13,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
+ masoor:['Masoor dal (dry)',322,24.35,'g'],arhar:['Arhar dal (dry)',331,21.7,'g'],poha:['Poha (dry)',350,7,'g'],
+ chana:['Roasted chana',380,20,'g'],whey:['Whey · ATOM Isolate DRC (35 g)',136,29,'serving'],
   egg:['Egg',72,6.3,'egg'],curd:['Curd · Milky Mist',61,3.5,'g'],
-  milk:['Milk · Heritage green',60,3.2,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
- soy:['Soya chunks (dry)',345,52,'g'],nuts:['Nuts',600,20,'g'],
- oil:['Oil',828,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
+  milk:['Milk · Heritage green toned',60,3.2,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
+ soyN:['Soya chunks · Nutrela',354.14,53.19,'g'],soyS:['Soya chunks · Saffola',312,53,'g'],nuts:['Nuts (mixed)',600,20,'g'],
+ oil:['Oil · Tata mustard cold-pressed',828,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
  carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
  bhindi:['Bhindi',33,1.9,'g'],palak:['Palak',23,2.9,'g'],
   arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
    rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g'],
-  soyabean:['Soya bean (dry)',446,36,'g'],kalachana:['Kala chana (dry)',360,19,'g'],
-  pasta:['Pasta (dry)',350,12,'g'],maida:['Maida',364,10,'g'],butter:['Butter',717,0.9,'g'],
+  kalachana:['Kala chana (dry)',360,19,'g'],
+  pasta:['Pasta · Borges durum',350,12,'g'],maida:['Maida',364,10,'g'],butter:['Butter · Amul salted',717,0.9,'g'],
   beans:['Green beans',31,1.8,'g']
 };
-// Fibre g per 100 g (per serving / egg / ml where the DB unit says so). Approximate home-planner values.
-const FIB={atta:11,rice:1.3,oats:10,besan:11,moong:8,masoor:11,arhar:15,poha:1.5,chana:17,
-  whey:1,egg:0,curd:0,milk:0,paneer:0,soy:13,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
+// Fibre g per 100 g (per serving / egg / ml where the DB unit says so).
+// null = not declared on the matched panel: excluded from sums and flagged in the UI, NOT counted as zero.
+// Dals use ICMR-NIN IFCT 2017 reference means (kJ/4.184); atta uses the Pillsbury Chakki Fresh table
+// (its page shows a stray 333 kcal line beside the structured 364 kcal/100 g table — table value used).
+const FIB={atta:10,rice:1.3,oats:10,besan:11,moong:9.37,masoor:10.43,arhar:9.06,poha:1.5,chana:17,
+  whey:null,egg:0,curd:0,milk:0,paneer:0,soyN:null,soyS:15.5,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20,
-  soyabean:9.3,kalachana:17,pasta:3,maida:2.7,butter:0,beans:2.7};
+  kalachana:17,pasta:3,maida:2.7,butter:0,beans:2.7};
+function fibUnk(a){return a.some(x=>FIB[x.id]===null||FIB[x.id]===undefined);}
 // Portion levels: plans move carbs + milk/nuts; protein portions stay identical.
 const PORTIONS={
   easy:{rice:40,attaLunch:20,attaDinner:20,milk:200,nuts:0},
@@ -282,11 +301,24 @@ const ACT=1.55;
 function tdee(pr){const b=10*pr.weight+6.25*pr.height-5*pr.age+(pr===PROFILE.h?5:-161);return Math.round(b*ACT);}
 function protRange(pr){return[Math.round(1.6*pr.weight),Math.round(2*pr.weight)];}
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha',B5:'W: oats · H: egg poha'};
-const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya bean sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo'};
+const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
-const OIL=33.33;
+const OIL=33.33; // household calibration: ~1000 ml per 30 days on average (not measured per dish)
+const DEFAULT_OILUSE={sabzi:14,dal:8,bf:6,prot:4,egg:2}; // editable recipe-oil estimates, ml; a full day with eggs ≈ 34 ml
+function oilUse(){return {...DEFAULT_OILUSE,...(state.oilUse||{})};}
+function ensureOilUse(){state.oilUse={...DEFAULT_OILUSE,...(state.oilUse||{})};for(const k of Object.keys(DEFAULT_OILUSE)){const v=+state.oilUse[k];state.oilUse[k]=Number.isFinite(v)&&v>=0?v:DEFAULT_OILUSE[k];}return state.oilUse;}
+const SOYA_OPTS={N:'Nutrela',S:'Saffola'};
+function soyaId(){return state.soya==='S'?'soyS':'soyN';}
+// Single sharing basis: fraction of the FULL daily batch per meal-person. Cook quantities,
+// nutrition, shopping and split fractions all derive from these shares (fix A/E/F).
+function sabShare(d,p){return d.s==='S3'?(p==='w'?2/9:5/18):.25;}
+function dalShare(p){return p==='w'?7/30:4/15;}
+function protShare(d,p){const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q;return(p==='w'?qw:qh)/(qw+qh);}
+function batchScale(d,dish){const Lc=kept(d,'l')?1:0,Dc=kept(d,'d')?1:0;
+  if(dish==='sab'||dish==='dal')return(Lc+Dc)*.5;
+  if(dish==='prot')return Dc;return 0;}
 const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3','P','arhar'],['B2','S4','Y','moong'],['B5','S7','Y','masoor'],['B3','S5','Y','arhar'],['B2','S6','P','moong']]
  .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],off:false,skip:{b:false,l:false,d:false},wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
 
@@ -301,12 +333,15 @@ function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option valu
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
-  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},utSel:{...DEFAULT_UTSEL},utDay:DEFAULT_UTDAY(),theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null,view:'day',viewExplicit:false};
+  state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},utSel:{...DEFAULT_UTSEL},utDay:DEFAULT_UTDAY(),oilUse:{...DEFAULT_OILUSE},soya:'N',theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null,view:'day',viewExplicit:false};
 }else{
   state.days=state.days.map(d=>({ ...d, off:!!d.off, skip:{b:false,l:false,d:false,...(d.skip||{})}, wheyW:d.wheyW!==false, wheyH:d.wheyH!==false, eggH:d.eggH!==false, cardioW:d.cardioW!==false, cardioH:d.cardioH!==false }));
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
   state.utSel={...DEFAULT_UTSEL,...(state.utSel||{})};
   if(!Array.isArray(state.utDay)||state.utDay.length!==7){const g=(state.utSel&&typeof state.utSel.sabzi==='string')?state.utSel:null;state.utDay=Array.from({length:7},()=>({sabzi:(g&&UT_NAMES[g.sabzi])?g.sabzi:'kadhai',dal:(g&&UT_NAMES[g.dal])?g.dal:'cooker',prot:(g&&UT_NAMES[g.prot])?g.prot:'pan'}));}
+  if(state.soya!=='S'&&state.soya!=='N')state.soya='N';
+  ensureOilUse();
+  if(state.labels&&(state.labels.soy||state.labels.soyabean)&&!(state.labels.soyN||state.labels.soyS)){const mv=[...(state.labels.soy||state.labels.soyabean)];state.labels.soyN=mv;state.labels.soyS=mv;}
   state.weeks=state.weeks===2?2:1;
   if(typeof state.weekKey!=='string')state.weekKey=null;
   if(state.view!=='day'&&state.view!=='week')state.view='week';
@@ -324,7 +359,8 @@ function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(und
 function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
   // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
   ensureUtDay();
-  if(state.weekKey){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),savedAt:Date.now()};persistWeeks();}
+  ensureOilUse();
+  if(state.weekKey){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
 }
 const L=(id,q)=>({id,q});
 function nut(id){return state.labels[id]||DB[id].slice(1,3);}
@@ -333,17 +369,21 @@ function sum(a){return a.reduce((t,x)=>{const v=val(x);return{k:t.k+v.k,p:t.p+v.
 const R=n=>Math.round(n), F=n=>+n.toFixed(1);
 
 function breakfast(id,person,day){
-  const h=person==='h';let a=[];
+  const h=person==='h',oU=oilUse();let a=[];
   if(id==='B1')a=[L('oats',15),L('besan',10),L('onion',12.5),L('carrot',12.5)];
   if(id==='B2')a=[L('besan',25),L('onion',12.5),L('carrot',12.5)];
   if(id==='B3')a=[L('moong',25),L('onion',12.5),L('carrot',12.5)];
   if(id==='B4')a=[L('poha',h?50:40),L('onion',h?27.78:22.22),L('carrot',h?27.78:22.22)];
   if(id==='B5')a=h?[L('poha',50),L('onion',25),L('carrot',25)]:[L('oats',40)];
+  // Recipe oil for this person's breakfast: chillas/poha need pan/tempering oil; wife's B5 oats need none.
+  const bfOil=id==='B5'?(h?oU.bf:0):oU.bf/2;
+  if(bfOil>0)a.push(L('oil',bfOil));
   if(h?(day.wheyH):(day.wheyW))a.push(L('whey',1));
-  if(h&&day.eggH)a.push(L('egg',2));
+  if(h&&day.eggH){a.push(L('egg',2));if(id!=='B5'&&oU.egg>0)a.push(L('oil',oU.egg));} // B5 eggs cook in the poha itself
   return a;
 }
-function sabzi(id){
+function sabziBase(id){
+  // Household lunch+dinner batch (dry/raw). S8 is packaged chunks (Nutrela/Saffola brand profile), dry-weight basis.
   return({S1:[L('bhindi',YIELDS.bhindi),L('onion',100)],
    S2:[L('gobi',YIELDS.gobi),L('carrot',350),L('potato',150),L('onion',100)],
    S3:[L('palak',YIELDS.palak),L('onion',100),L('tomato',150),L('paneer',225)],
@@ -351,17 +391,22 @@ function sabzi(id){
    S5:[L('mushroom',400),L('onion',150),L('tomato',100)],
    S6:[L('rajma',100),L('onion',100),L('tomato',150)],
    S7:[L('chickpea',100),L('onion',100),L('tomato',150)],
-   S8:[L('soyabean',100),L('onion',100),L('tomato',150)],
+   S8:[L(soyaId(),100),L('onion',100),L('tomato',150)],
    S9:[L('kalachana',100),L('onion',100),L('tomato',150)],
    S10:[L('pasta',200),L('maida',30),L('milk',200),L('butter',15),L('onion',100),L('tomato',150)],
    S11:[L('beans',300),L('carrot',150),L('potato',150),L('onion',100)]})[id];
+}
+function sabzi(id){
+  // Full daily batch including its tadka oil (butter in S10 is additional, not a substitute).
+  const oU=oilUse();
+  return [...sabziBase(id),...(oU.sabzi>0?[L('oil',oU.sabzi)]:[])];
 }
 // Sabzis with protein already cooked in (no extra dinner protein).
 const NO_EXTRA=s=>['S3','S8','S9','S10'].includes(s);
 const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
-function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0;return id==='Y'?[L('soy',(h?60:50)+(boost?10:0))]:[L('paneer',(h?125:100)+(boost?25:0))];}
+function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0;return id==='Y'?[L(soyaId(),(h?60:50)+(boost?10:0))]:[L('paneer',(h?125:100)+(boost?25:0))];}
 function cardioDone(day,person){return person==='h'?day.cardioH!==false:day.cardioW!==false;}
 function meal(day,which,person){
   const h=person==='h';
@@ -371,28 +416,49 @@ function meal(day,which,person){
   if(which==='b')return breakfast(day.b,person,day);
   // Rest day (cardio skipped): no evening nuts — milk stays.
   if(which==='e')return cardio?[L('milk',P().milk),L('nuts',P().nuts)]:[L('milk',P().milk)];
-  const sc=n=>n.map(x=>L(x.id,x.q*(day.s==='S3'?(h?5/18:2/9):.25)));
+  const oU=oilUse();
+  const sc=n=>n.map(x=>L(x.id,x.q*sabShare(day,person)));
   const a=[];
   if(which==='l')a.push(L(h?'rice':'atta',h?P().rice:P().attaLunch));
   // Rest day: no dinner roti for the person who skipped cardio.
   else if(cardio)a.push(L('atta',P().attaDinner));
-  a.push(L(day.dal,h?40:35),...sc(sabzi(day.s)));
+  a.push(L(day.dal,150*dalShare(person)),L('oil',oU.dal*dalShare(person)),L('spice',1.5),...sc(sabzi(day.s)));
   if(which==='l')a.push(L('curd',200));
-  else{a.push(...(NO_EXTRA(day.s)?[]:protein(day.p,person,day)),L('cucumber',h?150:100));}
+  else{
+    if(!NO_EXTRA(day.s)){
+      const qw=protein(day.p,'w',day)[0].q,qh=protein(day.p,'h',day)[0].q,tot=qw+qh,myQ=person==='w'?qw:qh;
+      a.push(...protein(day.p,person,day));
+      if(oU.prot>0&&tot>0)a.push(L('oil',oU.prot*myQ/tot)); // separately cooked protein gets its own oil
+    }
+    a.push(L('cucumber',h?150:100));
+  }
   return a;
 }
 function daily(i,person){
+  // Per-meal cards already include recipe oil + spices, so the day total is just b+l+d+e — counted once.
   const d=state.days[i],m={};
   for(const k of['b','l','d','e'])m[k]=sum(meal(d,k,person));
-  const cooking=!d.off&&!(d.skip&&d.skip.b&&d.skip.l&&d.skip.d);
-  m.c=cooking?sum([L('oil',OIL/2),L('spice',3)]):{k:0,p:0,fb:0};
-  m.total={k:m.b.k+m.l.k+m.d.k+m.e.k+m.c.k,p:m.b.p+m.l.p+m.d.p+m.e.p+m.c.p,fb:m.b.fb+m.l.fb+m.d.fb+m.e.fb+m.c.fb};
+  m.total={k:m.b.k+m.l.k+m.d.k+m.e.k,p:m.b.p+m.l.p+m.d.p+m.e.p,fb:m.b.fb+m.l.fb+m.d.fb+m.e.fb};
   return m;
+}
+function dayUnknownFibre(i,person){
+  // True when a served meal contains an item whose fibre is undeclared (summed as unknown, not zero).
+  const d=state.days[i];
+  for(const k of['b','l','d','e'])if(fibUnk(meal(d,k,person)))return true;
+  return false;
 }
 function ledger(){
   const r={};const add=a=>{for(const x of a)r[x.id]=(r[x.id]||0)+x.q;};
-  state.days.forEach(d=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,p));if(!d.off&&!(d.skip&&d.skip.b&&d.skip.l&&d.skip.d))add([L('oil',OIL),L('spice',6)]);});
+  state.days.forEach(d=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,p));});
   return r;
+}
+function cookQty(i){
+  // Raw household quantities for day i, aggregated from the same meal() lines that drive
+  // nutrition and shopping — cook list, nutrition input and shopping use are one basis by construction.
+  const d=state.days[i],q={};const add=a=>{for(const x of a)q[x.id]=(q[x.id]||0)+x.q;};
+  if(d.off)return q;
+  for(const per of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,per));
+  return q;
 }
 function vegList(){
   const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1,beans:.9};
@@ -423,49 +489,64 @@ function opts(o,cur){return Object.entries(o).map(([id,n])=>`<option value="${id
 function mealTitle(d,m){
   if(m==='b')return`${d.b} · ${BREAKFASTS[d.b]}`;
   if(m==='l')return`${d.s} · ${SABZIS[d.s]}`;
-  return NO_EXTRA(d.s)?`${SABZIS[d.s]} (no extra)`:`${d.s}-${d.p} · ${SABZIS[d.s]} + ${PROTEINS[d.p]}`;
+  return NO_EXTRA(d.s)?`${SABZIS[d.s]} (protein in sabzi)`:`${d.s}-${d.p} · ${SABZIS[d.s]} + ${d.p==='Y'?SOYA_OPTS[state.soya]+' soya':PROTEINS[d.p]}`;
 }
 const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar'};
+function ratioText(wShare,hShare,cooked){
+  // Share pair rendered from the same fractions the splitter uses; cooked<1 names the smaller batch.
+  const W=Math.round(wShare*360),H=Math.round(hShare*360),g=gcd(W,H)||1;
+  return `W : H = ${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
+}
 function splitRatio(d,m){
-  const palak=d.s==='S3';
   if(m==='b'){
     if(d.b==='B4')return[
       ['Cooked poha','W : H = 4 : 5'],
-      ['Whey','separate · 1 scoop'],
+      ['Whey','separate · 1 scoop (35 g)'],
       ['Eggs (H)','separate · per toggle'],
     ];
     if(d.b==='B5')return[
       ['Oats (W) / Poha (H)','separate dishes'],
-      ['Whey','separate · 1 scoop'],
+      ['Whey','separate · 1 scoop (35 g)'],
       ['Eggs (H)','separate · per toggle'],
     ];
     return[
       ['Chillas','1 each · W : H = 1 : 1'],
-      ['Whey','separate · 1 scoop'],
+      ['Whey','separate · 1 scoop (35 g)'],
       ['Eggs (H)','separate · per toggle'],
     ];
   }
+  const cooked=(kept(d,'l')?1:0)+(kept(d,'d')?1:0)===2?1:.5; // one shared batch; half when a meal is skipped
   if(m==='l')return[
-    ['Sabzi · '+SABZIS[d.s],palak?'W : H = 4 : 5':'W : H = 1 : 1'],
-    ['Dal · '+DALNAMES[d.dal],'W : H = 7 : 8'],
+    ['Sabzi · '+SABZIS[d.s],ratioText(sabShare(d,'w'),sabShare(d,'h'),cooked)],
+    ['Dal · '+DALNAMES[d.dal],ratioText(dalShare('w'),dalShare('h'),cooked)],
     ['Starch','W roti ×1 · H rice · separate'],
     ['Curd','W : H = 1 : 1'],
   ];
   const rows=[
-    ['Sabzi · '+SABZIS[d.s],palak?'W : H = 4 : 5':'W : H = 1 : 1'],
-    ['Dal · '+DALNAMES[d.dal],'W : H = 7 : 8'],
+    ['Sabzi · '+SABZIS[d.s],ratioText(sabShare(d,'w'),sabShare(d,'h'),cooked)],
+    ['Dal · '+DALNAMES[d.dal],ratioText(dalShare('w'),dalShare('h'),cooked)],
   ];
-  if(palak)rows.push(['Protein','already in sabzi · no extra']);
-  else if(NO_EXTRA(d.s))rows.push(['Protein','already in sabzi · no extra']);
-  else{const pq=[protein(d.p,'w',d)[0].q,protein(d.p,'h',d)[0].q];rows.push(['Protein · '+PROTEINS[d.p],'W : H = '+qratio(pq[0],pq[1])]);}
+  if(NO_EXTRA(d.s))rows.push(['Protein in sabzi','fixed batch share · not a top-up']);
+  else{const pq=[protein(d.p,'w',d)[0].q,protein(d.p,'h',d)[0].q];rows.push(['Protein · '+(d.p==='Y'?SOYA_OPTS[state.soya]+' soya':'Paneer'),'W : H = '+qratio(pq[0],pq[1])]);}
   const cw=d.cardioW!==false,ch=d.cardioH!==false;
   rows.push(['Roti',cw&&ch?'1 each · 1 : 1':cw?'W only · H rest day':ch?'H only · W rest day':'none · rest day'],['Cucumber','W : H = 2 : 3']);
   return rows;
 }
+function restCut(i,p){
+  // Real plan-day cut for person p skipping cardio, from current preset + labels (not a fixed number,
+  // and not a measurement of exercise burn). Protein portions are unchanged by cardio toggles.
+  const d=state.days[i];
+  if(cardioDone(d,p))return{k:0,p:0};
+  const keep=state.days[i];
+  state.days[i]={...keep,cardioW:true,cardioH:true};
+  const full=daily(i,p).total;
+  state.days[i]=keep;
+  const cur=daily(i,p).total;
+  return{k:full.k-cur.k,p:full.p-cur.p};
+}
 function restWho(d){const w=d.cardioW===false,h=d.cardioH===false;return w&&h?'Wife + husband':w?'Wife':'Husband';}
 function splitCalc(d,m,di){
   if(m!=='l'&&m!=='d')return'';
-  const palak=d.s==='S3';
   const u=state.utensils||DEFAULT_UTENSILS;
   const perdi=(typeof di==='number')?utDayAt(di):null;
   const sel=k=>{if(perdi&&UT_NAMES[perdi[k]])return perdi[k];return (state.utSel&&UT_NAMES[state.utSel[k]])?state.utSel[k]:DEFAULT_UTSEL[k];};
@@ -475,10 +556,12 @@ function splitCalc(d,m,di){
     const tareTxt=tare>0?`${tare} g`:'not set yet';
     return`<div class="splitrow"><div class="splithead">${label}</div><div class="splitin"><span class="inwrap"><input type="number" min="0" step="any" inputmode="decimal" data-split data-wn="${wn}" data-wd="${wd}" data-hn="${hn}" data-hd="${hd}" data-ukey="${ukey}"> <span>g</span></span><span data-out>W — · H —</span></div><label class="tare"><input type="checkbox" data-tare="${ukey}"${checked}> includes ${uvessel} (${tareTxt})</label></div>`;
   };
-  let html=`<div class="splitcalc">${row('Cooked sabzi batch',palak?2:1,palak?9:4,palak?5:1,palak?18:4,sel('sabzi'),UT_NAMES[sel('sabzi')])}${row('Cooked dal batch',7,30,4,15,sel('dal'),UT_NAMES[sel('dal')])}`;
+  const cookedFrac=((kept(d,'l')?1:0)+(kept(d,'d')?1:0))===2?1:.5; // cooked batch vs full daily batch
+  const rowF=(label,wShare,hShare,cooked,ukey,uvessel)=>row(label,wShare/cooked,1,hShare/cooked,1,ukey,uvessel);
+  const protName=d.p==='Y'?SOYA_OPTS[state.soya]+' soya':PROTEINS[d.p].toLowerCase();
+  let html=`<div class="splitcalc">${rowF('Cooked sabzi batch',sabShare(d,'w'),sabShare(d,'h'),cookedFrac,sel('sabzi'),UT_NAMES[sel('sabzi')])}${rowF('Cooked dal batch',dalShare('w'),dalShare('h'),cookedFrac,sel('dal'),UT_NAMES[sel('dal')])}`;
   if(m==='d'&&!NO_EXTRA(d.s)){
-    const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q,tot=qw+qh;
-    html+=row('Cooked '+PROTEINS[d.p].toLowerCase()+' batch',qw,tot,qh,tot,sel('prot'),UT_NAMES[sel('prot')]);
+    html+=rowF('Cooked '+protName+' batch',protShare(d,'w'),protShare(d,'h'),1,sel('prot'),UT_NAMES[sel('prot')]);
   }
   html+='</div>';
   return html;
@@ -505,29 +588,44 @@ function inspect(i,m){
   const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
   const rows=splitRatio(d,m).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
   const calc=splitCalc(d,m,i);
-  const note=(m==='d'&&(d.cardioW===false||d.cardioH===false))
-    ?`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — about 165 kcal lighter. Protein portions are unchanged, so the protein ratio stays the same.</p>`
-    :'';
-  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${note}<p class="hintline">This meal: W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
+  const mlines={w:meal(d,m,'w'),h:meal(d,m,'h')};
+  const oilMl={w:0,h:0,sp:0};for(const p of['w','h'])for(const x of mlines[p]){if(x.id==='oil')oilMl[p]+=x.q;if(x.id==='spice')oilMl.sp+=x.q;}
+  const oilNote=(oilMl.w+oilMl.h>0)?`<p class="hintline">Recipe oil in this meal ≈ ${F(oilMl.w+oilMl.h)} ml (W ${F(oilMl.w)} · H ${F(oilMl.h)}) + spices ${F(oilMl.sp)} g — estimates, editable in Packet labels. Included in the kcal above.</p>`:'';
+  let note='';
+  if(m==='d'&&(d.cardioW===false||d.cardioH===false)){
+    const cuts=[];
+    if(d.cardioW===false){const c=restCut(i,'w');cuts.push(`Wife −${R(c.k)} kcal`);}
+    if(d.cardioH===false){const c=restCut(i,'h');cuts.push(`Husband −${R(c.k)} kcal`);}
+    note=`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — ${cuts.join(' · ')} vs a cardio day on this plan. Protein portions are unchanged (totals still carry less roti/nut protein). This is a plan difference, not measured exercise burn.</p>`;
+  }
+  const fibNote=(fibUnk(mlines.w)||fibUnk(mlines.h))?`<p class="hintline">Fibre excludes items with undeclared fibre (e.g. whey) — shown sums are incomplete, not zero.</p>`:'';
+  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${oilNote}${note}${fibNote}<p class="hintline">This meal (oil included): W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
 function avgForMode(m,p){
   const keep=state.mode;state.mode=m;
   const t=state.days.reduce((a,_,i)=>{const v=daily(i,p).total;return{k:a.k+v.k/7,p:a.p+v.p/7,fb:a.fb+v.fb/7};},{k:0,p:0,fb:0});
   state.mode=keep;return t;
 }
-function personBlurb(p){const pr=PROFILE[p];return`${pr.weight} kg · ${pr.height} cm · ${pr.age} y · maintenance ~${tdee(pr)} kcal/day`;}
+function personBlurb(p){const pr=PROFILE[p];return`${pr.weight} kg · ${pr.height} cm · ${pr.age} y · maintenance ~${tdee(pr)} kcal/day (estimate)`;}
 function personCard(p){
   const pr=PROFILE[p],[plo,phi]=protRange(pr);
   const a=avgForMode(state.mode,p);
   const modeName={easy:'Low',medium:'Medium',hard:'High'}[state.mode];
   return`<table><tbody>
     <tr><td>Profile</td><td class="num"><b>${pr.weight} kg · ${pr.height} cm · ${pr.age} y</b></td></tr>
-    <tr><td>Maintenance (Mifflin-St Jeor ×1.55, desk + daily cardio)</td><td class="num"><b>~${tdee(pr)} kcal</b></td></tr>
+    <tr><td>Maintenance (Mifflin-St Jeor ×1.55 estimate — check against weight trend)</td><td class="num"><b>~${tdee(pr)} kcal</b></td></tr>
     <tr><td>Protein target (1.6–2.0 g/kg)</td><td class="num"><b>${plo}–${phi} g</b></td></tr>
     <tr><td>Fibre target (ICMR-NIN 2024)</td><td class="num"><b>25–35 g</b></td></tr>
     <tr><td>Carbs guide (~45–55% of kcal)</td><td class="num"><b>~${Math.round(tdee(pr)*0.45/4)}–${Math.round(tdee(pr)*0.55/4)} g</b></td></tr>
   </tbody></table>
-  <p class="hintline">Current plan (${modeName}, with today's toggles): <b>${R(a.k)} kcal · ${R(a.p)} g protein · ${R(a.fb)} g fibre</b> — a ~${Math.max(0,R(tdee(pr)-a.k))} kcal deficit.</p>`;
+  <p class="hintline">Current plan (${modeName}, with today's toggles): <b>${R(a.k)} kcal · ${R(a.p)} g protein · ${R(a.fb)} g fibre</b> — a ~${Math.max(0,R(tdee(pr)-a.k))} kcal estimated deficit.</p>
+  <p class="hintline">${shortfallText(p)} Fibre excludes undeclared items (whey); eating-out days count as 0 home food, not restaurant intake.</p>`;
+}
+function shortfallText(p){
+  const[plo]=protRange(PROFILE[p]);
+  const low=state.days.map((d,i)=>({i,v:daily(i,p).total.p})).filter(x=>x.v<plo);
+  if(!low.length)return`Protein ${plo} g+ met on all 7 days (current toggles). `;
+  return`Below ${plo} g protein on: ${low.map(x=>DAYS[x.i].slice(0,3)+' '+F(x.v)+'g').join(', ')}. No quantities auto-raised — change the plan explicitly if you want more. `;
 }
 function presetCard(){
   const rows=['easy','medium','hard'].map(m=>{
@@ -539,20 +637,22 @@ function presetCard(){
   return`<table><thead><tr><th>Plan</th><th class="num">Wife kcal / protein</th><th class="num">Husband kcal / protein</th></tr></thead><tbody>${rows}
     <tr><td>Maintenance</td><td class="num"><b>~${tdee(PROFILE.w)} / ${wplo}–${wphi} g</b></td><td class="num"><b>~${tdee(PROFILE.h)} / ${hplo}–${hphi} g</b></td></tr>
   </tbody></table>
-  <p class="hintline">Plans move carbs + milk/nuts only — protein portions are identical across Low/Medium/High. Values use today's toggles. ● = active.</p>`;
+  <p class="hintline">Plans move carbs + milk/nuts only — protein portions are identical across Low/Medium/High. Values use today's toggles. Averages count eating-out days as 0 home food, not full intake. ● = active.</p>`;
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function cookRows(i){
+  // Every quantity below is read from cookQty() — the same aggregated meal() lines behind
+  // nutrition and shopping — so the cook list can never disagree with them. Skipping a meal
+  // cooks only the still-needed portion (default: no implicit leftovers).
   const d=state.days[i];
   if(d.off)return[['Note',['Eating out — nothing to cook at home today.']]];
-  const groups=[];
+  const q=cookQty(i),groups=[];
+  const bfMap={};
   if(kept(d,'b')){
-    const bw=breakfast(d.b,'w',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
-    const bh=breakfast(d.b,'h',d).filter(x=>x.id!=='whey'&&x.id!=='egg');
-    const merged={};for(const x of[...bw,...bh])merged[x.id]=(merged[x.id]||0)+x.q;
-    const bitems=Object.entries(merged).map(([id,q])=>`${DB[id][0]} — ${F(q)} ${DB[id][3]}`);
+    for(const per of['w','h'])for(const x of breakfast(d.b,per,d))if(x.id!=='whey'&&x.id!=='egg')bfMap[x.id]=(bfMap[x.id]||0)+x.q;
+    const bitems=Object.entries(bfMap).map(([id,v])=>`${DB[id][0]} — ${F(v)} ${DB[id][3]}`);
     const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
-    if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''}`);
+    if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''} (35 g each)`);
     if(d.eggH)bitems.push('Eggs — 2');
     groups.push(['Breakfast',bitems]);
   }
@@ -560,24 +660,34 @@ function cookRows(i){
   const cw=d.cardioW!==false,ch=d.cardioH!==false;
   const restTag=(!cw||!ch)?' · '+restWho(d)+' rest':'';
   if(lunch||dinner){
-    const attaG=(lunch?P().attaLunch:0)+(dinner?((cw?P().attaDinner:0)+(ch?P().attaDinner:0)):0);
+    const attaG=q.atta||0,riceG=q.rice||0;
     const rotis=(lunch?1:0)+(dinner?((cw?1:0)+(ch?1:0)):0);
-    const starch=[(lunch?`Rice — ${P().rice} g uncooked (husband lunch)`:null),`Atta — ${attaG} g (${rotis} roti${rotis>1?'s':''}${restTag})`].filter(Boolean);
-    groups.push(['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — 150 g (wash, for the day)',...starch]]);
-    groups.push(['Sabzi batch · '+SABZIS[d.s],sabzi(d.s).map(x=>`${DB[x.id][0]} — ${R(x.q)} g`)]);
+    const starch=[(lunch?`Rice — ${F(riceG)} g uncooked (husband lunch)`:null),`Atta — ${F(attaG)} g (${rotis} roti${rotis>1?'s':''}${restTag})`].filter(Boolean);
+    const dalBatchG=150*batchScale(d,'dal'); // dal-batch dry dal only (breakfast grain shown under Breakfast)
+    groups.push(['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — '+F(dalBatchG)+' g (wash, for the day)',...starch]]);
+    const half=!lunch||!dinner;
+    const sabTitle='Sabzi batch · '+SABZIS[d.s]+(d.s==='S8'?` (${SOYA_OPTS[state.soya]})`:'')+(half?` · half batch (${lunch?'dinner skipped':'lunch skipped'} — no leftovers planned)`:'');
+    groups.push([sabTitle,sabziBase(d.s).map(x=>{
+      const v=(q[x.id]||0)-(bfMap[x.id]||0); // onion/carrot/oil shared with breakfast: show the sabzi remainder
+      return`${DB[x.id][0]} — ${F(Math.max(0,v))} ${DB[x.id][3]}`;
+    })]);
   }
   if(dinner||lunch){
     const extras=[];
-    if(dinner)extras.push(NO_EXTRA(d.s)?`${SABZIS[d.s]} already in sabzi — nothing extra`
-      :(()=>{const q=protein(d.p,'w',d)[0].q+protein(d.p,'h',d)[0].q;return d.p==='Y'?`Soya chunks — ${R(q)} g dry`:`Paneer — ${R(q)} g`;})());
-    if(lunch)extras.push('Curd — 400 g (lunch)');
-    if(dinner)extras.push('Cucumber — 250 g (dinner)');
+    if(dinner){
+      const pid=d.p==='Y'?soyaId():'paneer',pv=q[pid]||0;
+      if(!NO_EXTRA(d.s)&&pv>0)extras.push(d.p==='Y'?`${SOYA_OPTS[state.soya]} soya chunks — ${F(pv)} g dry`:`Paneer — ${F(pv)} g`);
+      else if(NO_EXTRA(d.s))extras.push(`${SABZIS[d.s]} protein is in the sabzi batch (fixed share, not a top-up)`);
+    }
+    if(lunch)extras.push(`Curd — ${F(q.curd||0)} g (lunch)`);
+    if(dinner)extras.push(`Cucumber — ${F(q.cucumber||0)} g (dinner)`);
     if(extras.length)groups.push([dinner&&lunch?'Dinner + lunch extras':dinner?'Dinner extras':'Lunch extras',extras]);
   }
-  const nutsG=P().nuts*((cw?1:0)+(ch?1:0));
-  const nutsTxt=P().nuts===0?'Nuts — none (light plan)':nutsG?('Nuts — '+nutsG+' g'):'Nuts — none (rest day)';
-  groups.push(['Evening',[`Milk — ${P().milk} ml`,nutsTxt]]);
-  if(lunch||dinner||kept(d,'b'))groups.push(['Oil',['Oil — '+F(OIL)+' ml for the day']]);
+  const nutsG=q.nuts||0;
+  const nutsTxt=P().nuts===0?'Nuts — none (light plan)':nutsG?('Nuts — '+F(nutsG)+' g'):'Nuts — none (rest day)';
+  groups.push(['Evening',[`Milk — ${F(q.milk||0)} ml`,nutsTxt]]);
+  const oilG=q.oil||0,spiceG=q.spice||0;
+  if(oilG>0||spiceG>0||kept(d,'b'))groups.push(['Oil',['Oil — '+F(oilG)+' ml across dishes · spices '+F(spiceG)+' g (estimates, editable in Packet labels)']]);
   return groups;
 }
 function cookCard(i){
@@ -635,7 +745,7 @@ function collectEdit(){
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
-  if(iso){const mon=mondayOf(iso);if(mon&&lockedWeeks[mon]&&state.weekKey!==mon){const w=lockedWeeks[mon];state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();state.weekKey=mon;state.custom=true;save();render();}}
+  if(iso){const mon=mondayOf(iso);if(mon&&lockedWeeks[mon]&&state.weekKey!==mon){const w=lockedWeeks[mon];state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=mon;state.custom=true;save();render();}}
   editCtx={i,iso:iso||null};
   const v=editValsFromState(i);editSnap=JSON.stringify(v);
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
@@ -652,7 +762,7 @@ function saveEdit(){
   d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
   state.custom=true;
-  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
+  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
   save();render();$('#dlg').close();
 }
 function render(){
@@ -666,7 +776,7 @@ function render(){
   const w=avgForMode(state.mode,'w'),h=avgForMode(state.mode,'h');
   $('#stats').innerHTML=['w','h'].map(p=>{
     const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
-    return`<div class="stat"><div class="who">${n} · daily average <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
+    return`<div class="stat"><div class="who">${n} · home-food daily avg <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
   }).join('');
   $('#customStatus').textContent=state.custom?'Customised':'';
   $('#presetSelect').value=state.mode;
@@ -723,8 +833,8 @@ function render(){
   const W2=state.weeks===2?2:1;
   $('#dmartHead').textContent=W2===2?'DMart · 2 weeks (10–14 day run)':'DMart · 1 week';
   document.querySelectorAll('[data-weeks]').forEach(b=>b.classList.toggle('on',+b.dataset.weeks===state.weeks));
-  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,soyabean:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soy:200,curd:1000,milk:500,nuts:200,oil:1000};
-  const brands={moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Arhar dal · Tata',paneer:'Paneer · Heritage 500 g',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
+  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
+  const brands={atta:'Atta · Pillsbury Chakki Fresh',oats:'Oats · Saffola plain',moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Arhar dal · Tata',paneer:'Paneer · Heritage 500 g',soyN:'Soya chunks · Nutrela 200 g',soyS:'Soya chunks · Saffola 200 g',pasta:'Pasta · Borges durum',butter:'Butter · Amul salted',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
   const ids=Object.keys(packets).concat(['egg','whey','spice']);
   $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use / week</th><th class="num">Buy${W2===2?' · 2 wks':''}</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
     const u=DB[id][3],q=led[id],size=packets[id];
@@ -739,7 +849,12 @@ function render(){
     <td class="num"><input type="number" step="0.1" min="0" value="${n[0]}" data-lab="${id}" data-c="0" style="width:84px"></td>
     <td class="num"><input type="number" step="0.1" min="0" value="${n[1]}" data-lab="${id}" data-c="1" style="width:84px"></td></tr>`;
   }).join('')}</tbody></table>`;
-  $('#labelStatus').textContent='Per '+( 'serving / egg / 100 g' )+' as shown. Totals recalculate instantly.';
+  $('#labelStatus').textContent='Per serving / 100 g-ml as shown. Totals recalculate instantly. Fibre with — = undeclared on the matched panel (excluded, not zero).';
+  ensureOilUse();
+  const oU=oilUse();
+  $('#soyaRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Soya chunks brand <select data-soya><option value="N"${state.soya!=='S'?' selected':''}>Nutrela (panel: 354 kcal · 53.2 g protein)</option><option value="S"${state.soya==='S'?' selected':''}>Saffola (provisional: 312 kcal · 53 g)</option></select></label>`;
+  $('#oilRow').innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;flex:1 1 100%">Recipe-oil estimates (ml, editable). Full day ≈ ${F(oU.sabzi+oU.dal+oU.bf+oU.prot+oU.egg)} ml vs ~33.33 ml/day household calibration (1 L / 30 days); oil scales with cooked meals.</div>`+
+    ['sabzi','dal','bf','prot','egg'].map(k=>`<label style="font-size:12px;display:grid;gap:4px">Oil · ${{sabzi:'sabzi batch',dal:'dal batch',bf:'breakfast',prot:'dinner protein',egg:'eggs (H)'}[k]}<input type="number" min="0" step="0.5" value="${oU[k]}" data-oiluse="${k}" style="width:84px"></label>`).join('');
   save();
 }
 document.addEventListener('change',e=>{
@@ -763,6 +878,15 @@ document.addEventListener('change',e=>{
     const id=t.dataset.lab,c=+t.dataset.c,v=+t.value;
     if(!Number.isFinite(v)||v<0){render();return;}
     state.labels[id]=[...nut(id)];state.labels[id][c]=v;render();return;
+  }
+  if(t.dataset&&t.dataset.soya!==undefined){
+    state.soya=t.value==='S'?'S':'N';state.custom=true;save();render();return;
+  }
+  if(t.dataset&&t.dataset.oiluse){
+    const k=t.dataset.oiluse,v=parseFloat(t.value);
+    ensureOilUse();
+    if(!(k in DEFAULT_OILUSE)||!Number.isFinite(v)||v<0){render();return;}
+    state.oilUse[k]=v;state.custom=true;save();render();return;
   }
   if(t.id==='calDate'){
     const r=$('#calWeekRange');
@@ -838,21 +962,21 @@ document.addEventListener('click',e=>{
   const dn=e.target.closest('[data-daynav]');
   if(dn){dayOff=dn.dataset.daynav==='0'?0:dayOff+ +dn.dataset.daynav;render();return;}
   const dl=e.target.closest('[data-dayload]');
-  if(dl){const k=dl.dataset.payload,w=lockedWeeks[k];if(w){state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();state.weekKey=k;state.custom=true;save();render();}return;}
+  if(dl){const k=dl.dataset.payload,w=lockedWeeks[k];if(w){state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();}return;}
   const ul=e.target.closest('[data-calunlink]');
   if(ul){state.weekKey=null;save();render();if($('#dlg').open){$('#dlgBody').innerHTML=calCard();}return;}
   const wl=e.target.closest('[data-weeklock]');
   if(wl){const inp=$('#weekLockDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
-    ensureUtDay();
-    lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),savedAt:Date.now()};persistWeeks();
+    ensureUtDay();ensureOilUse();
+    lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.custom=true;save();render();return;}
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
-    ensureUtDay();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),savedAt:Date.now()};persistWeeks();
+    ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;save();render();$('#dlgBody').innerHTML=calCard();return;}
   const ld=e.target.closest('[data-calload]');
   if(ld){const k=ld.dataset.calload,w=lockedWeeks[k];if(!w)return;
-    state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();state.weekKey=k;state.custom=true;save();render();
+    state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();
     $('#dlg').close();return;}
   const del=e.target.closest('[data-caldel]');
   if(del){const k=del.dataset.caldel;delete lockedWeeks[k];persistWeeks();
