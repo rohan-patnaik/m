@@ -245,11 +245,16 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <div class="hintline">
     <b>Verified against a matching panel (weigh your packet once to confirm):</b>
     whey = AS-IT-IS ATOM Isolate Double Rich Chocolate side panel, 35 g: 136 kcal · 29 g protein (fibre undeclared — user scoop is levelled, panel says heaped; mass 35 g used);
-    Nutrela soya chunks hosted packet panel, per 100 g dry: 354.14 kcal · 53.19 g protein (fibre not in that panel).<br>
+    Nutrela soya chunks hosted packet panel, per 100 g dry: 354.14 kcal · 53.19 g protein (fibre not in that panel);
+    Saffola chunks DMart back panel, per 100 g dry: 312 kcal · 53 g · 15.5 g fibre;
+    Milky Mist 1 kg <b>pouch</b> 61 kcal · 3.5 g (tub/bucket panel reads 61.8 — not used);
+    Saffola plain oats user panel 369 · 12.6 · 10.4;
+    Borges penne durum DMart panel 359.3 · 13 · 2.9;
+    Tata Sampann unpolished toor dal DMart panel 364 · 18.2 · 11.6 (replaces IFCT arhar mean);
+    Amul salted butter DMart panel 724 · 1.0 (retailer listings vary by batch — kept editable).<br>
     <b>Provisional / reference defaults (editable — confirm from your packet):</b>
-    Saffola chunks 312 kcal · 53 g · 15.5 g fibre (retailer listings vary);
     Pillsbury Chakki Fresh atta 364 · 12.3 · 10 per 100 g (official table; page also shows a stray 333 line);
-    Tata dals unconfirmed → ICMR-NIN IFCT 2017 means: moong 326/23.88/9.37, masoor 322/24.35/10.43, arhar 331/21.7/9.06.<br>
+    Tata moong/masoor packets unconfirmed → ICMR-NIN IFCT 2017 means: moong 326/23.88/9.37, masoor 322/24.35/10.43.<br>
     <b>Estimated household defaults (editable):</b> Heritage green toned milk, Heritage paneer, Milky Mist curd,
     Tata mustard oil (828 kcal/100 ml from 0.92 g/ml × 9 kcal/g), Saffola plain oats, Borges durum pasta,
     Amul salted butter, mixed nuts (proportions unknown), produce and spices. Carbs/fats beyond kcal + protein + fibre are not tracked.
@@ -264,8 +269,8 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 <script>
 const DB={
  atta:['Atta · Pillsbury Chakki Fresh',364,12.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
- oats:['Oats · Saffola plain',389,13,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
- masoor:['Masoor dal (dry)',322,24.35,'g'],arhar:['Arhar dal (dry)',331,21.7,'g'],poha:['Poha (dry)',350,7,'g'],
+ oats:['Oats · Saffola plain',369,12.6,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
+ masoor:['Masoor dal (dry)',322,24.35,'g'],arhar:['Toor dal · Tata Sampann unpolished',364,18.2,'g'],poha:['Poha (dry)',350,7,'g'],
  chana:['Roasted chana',380,20,'g'],whey:['Whey · ATOM Isolate DRC (35 g)',136,29,'serving'],
   egg:['Egg',72,6.3,'egg'],curd:['Curd · Milky Mist',61,3.5,'g'],
   milk:['Milk · Heritage green toned',60,3.2,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
@@ -276,17 +281,17 @@ const DB={
   arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],
    rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g'],
   kalachana:['Kala chana (dry)',360,19,'g'],
-  pasta:['Pasta · Borges durum',350,12,'g'],maida:['Maida',364,10,'g'],butter:['Butter · Amul salted',717,0.9,'g'],
+  pasta:['Pasta · Borges penne durum',359.3,13,'g'],maida:['Maida',364,10,'g'],butter:['Butter · Amul salted (DMart panel)',724,1,'g'],
   beans:['Green beans',31,1.8,'g']
 };
 // Fibre g per 100 g (per serving / egg / ml where the DB unit says so).
 // null = not declared on the matched panel: excluded from sums and flagged in the UI, NOT counted as zero.
 // Dals use ICMR-NIN IFCT 2017 reference means (kJ/4.184); atta uses the Pillsbury Chakki Fresh table
 // (its page shows a stray 333 kcal line beside the structured 364 kcal/100 g table — table value used).
-const FIB={atta:10,rice:1.3,oats:10,besan:11,moong:9.37,masoor:10.43,arhar:9.06,poha:1.5,chana:17,
+const FIB={atta:10,rice:1.3,oats:10.4,besan:11,moong:9.37,masoor:10.43,arhar:11.6,poha:1.5,chana:17,
   whey:null,egg:0,curd:0,milk:0,paneer:0,soyN:null,soyS:15.5,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20,
-  kalachana:17,pasta:3,maida:2.7,butter:0,beans:2.7};
+  kalachana:17,pasta:2.9,maida:2.7,butter:0,beans:2.7};
 function fibUnk(a){return a.some(x=>FIB[x.id]===null||FIB[x.id]===undefined);}
 // Portion levels: plans move carbs + milk/nuts; protein portions stay identical.
 const PORTIONS={
@@ -834,7 +839,7 @@ function render(){
   $('#dmartHead').textContent=W2===2?'DMart · 2 weeks (10–14 day run)':'DMart · 1 week';
   document.querySelectorAll('[data-weeks]').forEach(b=>b.classList.toggle('on',+b.dataset.weeks===state.weeks));
   const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
-  const brands={atta:'Atta · Pillsbury Chakki Fresh',oats:'Oats · Saffola plain',moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Arhar dal · Tata',paneer:'Paneer · Heritage 500 g',soyN:'Soya chunks · Nutrela 200 g',soyS:'Soya chunks · Saffola 200 g',pasta:'Pasta · Borges durum',butter:'Butter · Amul salted',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
+  const brands={atta:'Atta · Pillsbury Chakki Fresh',oats:'Oats · Saffola plain',moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Toor dal · Tata Sampann unpolished',paneer:'Paneer · Heritage 500 g',soyN:'Soya chunks · Nutrela 200 g',soyS:'Soya chunks · Saffola 200 g',pasta:'Pasta · Borges penne durum',butter:'Butter · Amul salted',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
   const ids=Object.keys(packets).concat(['egg','whey','spice']);
   $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use / week</th><th class="num">Buy${W2===2?' · 2 wks':''}</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
     const u=DB[id][3],q=led[id],size=packets[id];
@@ -852,7 +857,7 @@ function render(){
   $('#labelStatus').textContent='Per serving / 100 g-ml as shown. Totals recalculate instantly. Fibre with — = undeclared on the matched panel (excluded, not zero).';
   ensureOilUse();
   const oU=oilUse();
-  $('#soyaRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Soya chunks brand <select data-soya><option value="N"${state.soya!=='S'?' selected':''}>Nutrela (panel: 354 kcal · 53.2 g protein)</option><option value="S"${state.soya==='S'?' selected':''}>Saffola (provisional: 312 kcal · 53 g)</option></select></label>`;
+  $('#soyaRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Soya chunks brand <select data-soya><option value="N"${state.soya!=='S'?' selected':''}>Nutrela (panel: 354 kcal · 53.2 g protein)</option><option value="S"${state.soya==='S'?' selected':''}>Saffola (panel: 312 kcal · 53 g)</option></select></label>`;
   $('#oilRow').innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;flex:1 1 100%">Recipe-oil estimates (ml, editable). Full day ≈ ${F(oU.sabzi+oU.dal+oU.bf+oU.prot+oU.egg)} ml vs ~33.33 ml/day household calibration (1 L / 30 days); oil scales with cooked meals.</div>`+
     ['sabzi','dal','bf','prot','egg'].map(k=>`<label style="font-size:12px;display:grid;gap:4px">Oil · ${{sabzi:'sabzi batch',dal:'dal batch',bf:'breakfast',prot:'dinner protein',egg:'eggs (H)'}[k]}<input type="number" min="0" step="0.5" value="${oU[k]}" data-oiluse="${k}" style="width:84px"></label>`).join('');
   save();
