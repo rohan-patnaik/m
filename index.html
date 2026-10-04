@@ -360,6 +360,7 @@ function ensureUtDay(){if(!Array.isArray(state.utDay)||state.utDay.length!==7){c
 function utDayAt(i){ensureUtDay();return state.utDay[i];}
 function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${n}</option>`).join('');}
 let lastSavedStr='';
+let loadingCloud=false;
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
@@ -414,7 +415,7 @@ function applyImport(data){
   const w=(data.lockedWeeks&&typeof data.lockedWeeks==='object')?data.lockedWeeks:{};
   lockedWeeks={};
   for(const k of Object.keys(w)){const e=w[k];if(e&&Array.isArray(e.days)&&e.days.length===7)lockedWeeks[k]={days:e.days,mode:e.mode,utDay:e.utDay,soya:e.soya,oilUse:e.oilUse,savedAt:e.savedAt||0};}
-  state.custom=true;save();persistWeeks();render();
+  if(!loadingCloud)state.custom=true;save();persistWeeks();render();
   return null;
 }
 // Live household sync via a shared Firebase Realtime Database copy (free Spark plan).
@@ -431,10 +432,20 @@ function syncReady(){return !!(syncCfg&&syncCfg.dbUrl&&syncCfg.hid);}
 function cloudUrl(){return String(syncCfg.dbUrl).replace(/\/+$/,'')+'/households/'+encodeURIComponent(syncCfg.hid)+'.json';}
 function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return(h>>>0).toString(36);}
 function genHid(){const b=new Uint8Array(16);crypto.getRandomValues(b);return btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
-function syncPayload(){ensureOilUse();ensureUtDay();const st=structuredClone(state);return{updatedAt:state.updatedAt||0,hash:hashStr(JSON.stringify(st)),state:st,lockedWeeks:structuredClone(lockedWeeks)};}
+// Firebase removes null/empty values and reorders keys. Hash the wire-equivalent
+// content, including saved weeks, rather than JSON insertion order or timestamps.
+function canonicalSync(value){
+  if(value===null||value===undefined)return null;
+  if(typeof value!=='object')return value;
+  const out={};
+  for(const key of Object.keys(value).sort()){const v=canonicalSync(value[key]);if(v!==null)out[key]=v;}
+  return Object.keys(out).length?out:null;
+}
+function syncHash(st,weeks){const copy={...st};delete copy.updatedAt;return hashStr(JSON.stringify(canonicalSync({state:copy,lockedWeeks:weeks||{}})));}
+function syncPayload(){ensureOilUse();ensureUtDay();const st=structuredClone(state);return{updatedAt:state.updatedAt||0,hash:syncHash(st,lockedWeeks),state:st,lockedWeeks:structuredClone(lockedWeeks)};}
 function decideSync(localUpdatedAt,localHash,remote){
   if(!remote||typeof remote!=='object'||!remote.state)return'empty';
-  if(remote.hash&&remote.hash===localHash)return'in-sync';
+  if(syncHash(remote.state,remote.lockedWeeks)===localHash)return'in-sync';
   if((remote.updatedAt||0)>(localUpdatedAt||0))return'prompt-load';
   return'push';
 }
@@ -453,13 +464,20 @@ function schedulePush(){if(!(syncCfg&&syncCfg.auto&&syncReady()))return;if(pushT
 async function pushNow(silent){
   if(!syncReady()){syncStatus('Enter the database URL + household ID first.');return;}
   try{
+    if(silent){
+      const remote=await fetchRemote();
+      if(remote&&remote.state&&syncHash(remote.state,remote.lockedWeeks)!==syncPayload().hash&&(remote.updatedAt||0)>(syncCfg.lastRemoteAt||0)){
+        pendingRemote=remote;renderSyncBar();syncStatus('Cloud changed on another device — choose Load it or Keep mine.');return;
+      }
+    }
+    if(!state.updatedAt){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);try{localStorage.setItem(STORE,lastSavedStr);}catch(e){}}
     const p=syncPayload();
     const r=await fetch(cloudUrl(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
     if(!r.ok)throw Error('HTTP '+r.status);
     syncCfg.lastSync=Date.now();syncCfg.lastRemoteAt=p.updatedAt;saveSync();
     syncStatus('Uploaded '+new Date().toLocaleTimeString()+' — other devices can Load it.');
     pendingRemote=null;renderSyncBar();
-  }catch(e){if(!silent)syncStatus('Upload failed (offline?): '+e.message);}
+  }catch(e){syncStatus('Upload failed (offline?): '+e.message);if(silent)renderSyncBar('Upload failed — local changes are saved on this device.');}
 }
 async function fetchRemote(){
   const r=await fetch(cloudUrl(),{cache:'no-store'});
@@ -474,16 +492,20 @@ async function checkCloud(){
     const local=syncPayload();
     const d=decideSync(local.updatedAt,local.hash,remote);
     if(d==='prompt-load'){pendingRemote=remote;renderSyncBar();}
-    else{pendingRemote=null;renderSyncBar(d==='empty'?'Cloud is empty — press Sync now to upload this plan.':d==='in-sync'?'Already in sync with the cloud.':'Cloud copy is older than this device.');}
+    else{if(d==='in-sync'){syncCfg.lastRemoteAt=remote.updatedAt||0;saveSync();}pendingRemote=null;renderSyncBar(d==='empty'?'Cloud is empty — press Sync now to upload this plan.':d==='in-sync'?'Already in sync with the cloud.':'Cloud copy is older than this device.');}
   }catch(e){renderSyncBar('Cloud unreachable (offline?). Local plan unaffected.');}
 }
 async function pullCloud(){
   try{
     const remote=pendingRemote||await fetchRemote();
     if(!remote||!remote.state){syncStatus('Nothing on the cloud yet.');return;}
-    const err=applyImport({app:'meal-planner',state:remote.state,lockedWeeks:remote.lockedWeeks||{}});
+    if(pushTimer){clearTimeout(pushTimer);pushTimer=null;}
+    loadingCloud=true;
+    let err;
+    try{err=applyImport({app:'meal-planner',state:{...remote.state,updatedAt:remote.updatedAt||0},lockedWeeks:remote.lockedWeeks||{}});}
+    finally{loadingCloud=false;}
     if(err){syncStatus('Load failed: '+err);return;}
-    state.updatedAt=remote.updatedAt||0;lastSavedStr=JSON.stringify(state);save();
+    lastSavedStr=JSON.stringify(state);
     syncCfg.lastSync=Date.now();syncCfg.lastRemoteAt=remote.updatedAt||0;saveSync();
     pendingRemote=null;renderSyncBar();syncStatus('Loaded the cloud copy.');
   }catch(e){syncStatus('Load failed (offline?): '+e.message);}
@@ -494,7 +516,7 @@ function openSync(){
   const c=syncCfg;
   $('#dlgTitle').textContent='Household sync';
   $('#dlgBody').innerHTML=`<div class="editform">
-    <p class="hintline" style="margin:0">One shared cloud copy (free Firebase database, project <b>meal-plan-sync</b>). This browser keeps working offline; sync when online. The database URL is prefilled — just generate a household ID (same on every device) and Sync now. Until the rules below are published the database stays locked and sync reports unreachable, which is expected.</p>
+    <p class="hintline" style="margin:0">One shared cloud copy (free Firebase database, project <b>meal-plan-sync</b>). This browser keeps working offline; sync when online. The database URL is prefilled — just generate a household ID (same on every device) and Sync now. The database is configured. Use Sync now to upload this browser’s plan, or Load from cloud to retrieve the shared copy.</p>
     <label>Database URL<input type="url" data-syncurl value="${c.dbUrl||''}" placeholder="https://xxx-default-rtdb.firebaseio.com"></label>
     <label>Household ID (treat like a password)<div style="display:flex;gap:6px"><input type="password" data-synchid value="${c.hid||''}" placeholder="paste or generate" style="flex:1;min-width:0"><button data-syncgen>New</button></div></label>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" data-syncauto${c.auto?' checked':''} style="accent-color:var(--accent)"> Auto-sync on every change</label>
@@ -507,6 +529,7 @@ function openSync(){
 function mondayOf(iso){const d=new Date(iso+'T12:00:00');if(isNaN(d))return null;const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return d.toISOString().slice(0,10);}
 function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});}catch(e){return iso;}}
 function save(){
+  if(loadingCloud){lastSavedStr=JSON.stringify(state);try{localStorage.setItem(STORE,lastSavedStr);}catch(e){}return;}
   // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
   ensureUtDay();
   ensureOilUse();
@@ -1139,7 +1162,7 @@ document.addEventListener('click',e=>{
   const sy=e.target.closest('[data-syncpush]');
   if(sy){pushNow(false);return;}
   if(e.target.closest('[data-syncload]')){pullCloud();return;}
-  if(e.target.closest('[data-synckeep]')){pendingRemote=null;renderSyncBar();pushNow(true);return;}
+  if(e.target.closest('[data-synckeep]')){pendingRemote=null;renderSyncBar();pushNow(false);return;}
   if(e.target.closest('[data-syncdismiss]')){renderSyncBar();return;}
   if(e.target.closest('[data-syncdone]')){$('#dlg').close();checkCloud();return;}
   if(e.target.closest('[data-syncgen]')){
