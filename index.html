@@ -186,6 +186,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
     <button id="exportBtn" class="navbtn" title="Download a backup file to move this plan to another device"><span class="full">Export</span><span class="short">Exp</span></button>
     <label id="importLbl" class="navbtn" title="Load a backup file from another device (replaces this browser's plan)" style="cursor:pointer">Import<input id="importFile" type="file" accept=".json,application/json" hidden></label>
+    <button id="syncBtn" class="navbtn" title="Live household sync via a shared cloud copy"><span class="full">Sync</span><span class="short">Sync</span></button>
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
 
@@ -197,6 +198,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
   </div>
 
   <div id="weekBar" class="weekbar" hidden></div>
+  <div id="syncBar" class="weekbar" hidden></div>
 
   <div class="stats" id="stats"></div>
 
@@ -251,7 +253,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     </details>
   </section>
 
-  <footer>Saved in this browser only — no account, no server. Household sync: Export here, Import the file on the other device (replaces that browser's plan).</footer>
+  <footer>Saved in this browser only — no account. Household sync: Export/Import a file, or set up live Sync.</footer>
 </div>
 
 <dialog id="dlg"><h2 id="dlgTitle" style="font-size:16px;margin:0 0 8px"></h2><div id="dlgBody"></div></dialog>
@@ -357,6 +359,7 @@ const DEFAULT_UTDAY=()=>Array.from({length:7},()=>({...DEFAULT_UTSEL}));
 function ensureUtDay(){if(!Array.isArray(state.utDay)||state.utDay.length!==7){const g=(state.utSel&&typeof state.utSel.sabzi==='string')?state.utSel:null;state.utDay=Array.from({length:7},()=>({sabzi:(g&&UT_NAMES[g.sabzi])?g.sabzi:'kadhai',dal:(g&&UT_NAMES[g.dal])?g.dal:'cooker',prot:(g&&UT_NAMES[g.prot])?g.prot:'pan'}));}else{state.utDay=state.utDay.map(u=>({sabzi:UT_NAMES[u.sabzi]?u.sabzi:'kadhai',dal:UT_NAMES[u.dal]?u.dal:'cooker',prot:UT_NAMES[u.prot]?u.prot:'pan'}));}return state.utDay;}
 function utDayAt(i){ensureUtDay();return state.utDay[i];}
 function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${n}</option>`).join('');}
+let lastSavedStr='';
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
@@ -389,6 +392,7 @@ if(!state){
 }else{
   normalizeState();
 }
+try{lastSavedStr=JSON.stringify(state);}catch(e){lastSavedStr='';}
 let dayOff=0;
 // Locked weeks: weekKey (Monday ISO) -> {days, mode, savedAt}
 const WEEKSTORE='simple-meals-weeks-v1';
@@ -397,7 +401,7 @@ try{lockedWeeks=JSON.parse(localStorage.getItem(WEEKSTORE))||{};}catch(e){locked
 function persistWeeks(){try{localStorage.setItem(WEEKSTORE,JSON.stringify(lockedWeeks));}catch(e){}}
 // Household sync: whole-household backup file (plan + labels + settings + locked weeks).
 // No server or account — export on one device, import on the other.
-function buildExport(){ensureOilUse();ensureUtDay();return{app:'meal-planner',v:1,exportedAt:new Date().toISOString(),state:structuredClone(state),lockedWeeks:structuredClone(lockedWeeks)};}
+function buildExport(){ensureOilUse();ensureUtDay();return{app:'meal-planner',v:1,exportedAt:new Date().toISOString(),state:structuredClone(state),lockedWeeks:structuredClone(lockedWeeks),sync:syncCfg?{dbUrl:syncCfg.dbUrl,hid:syncCfg.hid,auto:!!syncCfg.auto}:null};}
 function applyImport(data){
   if(!data||typeof data!=='object'||data.app!=='meal-planner')return'Not a meal-planner backup file.';
   const st=data.state;
@@ -406,19 +410,108 @@ function applyImport(data){
     if(!d||!BREAKFASTS[d.b]||!SABZIS[d.s]||!PROTEINS[d.p]||!DALNAMES[d.dal])return'Backup has an unknown meal code.';
   }
   state=st;normalizeState();
+  if(data.sync&&data.sync.dbUrl&&data.sync.hid){syncCfg={dbUrl:String(data.sync.dbUrl),hid:String(data.sync.hid),auto:!!data.sync.auto};saveSync();}
   const w=(data.lockedWeeks&&typeof data.lockedWeeks==='object')?data.lockedWeeks:{};
   lockedWeeks={};
   for(const k of Object.keys(w)){const e=w[k];if(e&&Array.isArray(e.days)&&e.days.length===7)lockedWeeks[k]={days:e.days,mode:e.mode,utDay:e.utDay,soya:e.soya,oilUse:e.oilUse,savedAt:e.savedAt||0};}
   state.custom=true;save();persistWeeks();render();
   return null;
 }
+// Live household sync via a shared Firebase Realtime Database copy (free Spark plan).
+// Offline-first: this browser always works; the cloud is a shared mailbox, not the source
+// of truth. Same plan as the backup file, so export/import stays as the offline fallback.
+// Security: the household ID is a random 128-bit token (shown masked); anyone holding it
+// can read/write that one copy — fine for meal plans, never put secrets in the plan.
+const SYNCSTORE='meal-sync-v1';
+let syncCfg=null;
+try{syncCfg=JSON.parse(localStorage.getItem(SYNCSTORE))||null;}catch(e){syncCfg=null;}
+function saveSync(){try{localStorage.setItem(SYNCSTORE,JSON.stringify(syncCfg));}catch(e){}}
+function syncReady(){return !!(syncCfg&&syncCfg.dbUrl&&syncCfg.hid);}
+function cloudUrl(){return String(syncCfg.dbUrl).replace(/\/+$/,'')+'/households/'+encodeURIComponent(syncCfg.hid)+'.json';}
+function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return(h>>>0).toString(36);}
+function genHid(){const b=new Uint8Array(16);crypto.getRandomValues(b);return btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function syncPayload(){ensureOilUse();ensureUtDay();const st=structuredClone(state);return{updatedAt:state.updatedAt||0,hash:hashStr(JSON.stringify(st)),state:st,lockedWeeks:structuredClone(lockedWeeks)};}
+function decideSync(localUpdatedAt,localHash,remote){
+  if(!remote||typeof remote!=='object'||!remote.state)return'empty';
+  if(remote.hash&&remote.hash===localHash)return'in-sync';
+  if((remote.updatedAt||0)>(localUpdatedAt||0))return'prompt-load';
+  return'push';
+}
+let pushTimer=null,pendingRemote=null,syncStatusText='Not connected.';
+function syncStatus(t){syncStatusText=t;const el=document.querySelector('[data-syncstatus]');if(el)el.textContent=t;}
+function renderSyncBar(msg){
+  const bar=document.querySelector('#syncBar');if(!bar)return;
+  if(pendingRemote){
+    const when=pendingRemote.updatedAt?new Date(pendingRemote.updatedAt).toLocaleString():'unknown time';
+    bar.hidden=false;
+    bar.innerHTML=`<span>☁ Newer plan on the cloud (${when}). Loading replaces unsynced edits here.</span><button data-syncload>Load it</button><button data-synckeep>Keep mine (upload)</button>`;
+  }else if(msg){bar.hidden=false;bar.innerHTML=`<span>${msg}</span><button data-syncdismiss>×</button>`;}
+  else{bar.hidden=true;bar.innerHTML='';}
+}
+function schedulePush(){if(!(syncCfg&&syncCfg.auto&&syncReady()))return;if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushNow(true);},2000);}
+async function pushNow(silent){
+  if(!syncReady()){syncStatus('Enter the database URL + household ID first.');return;}
+  try{
+    const p=syncPayload();
+    const r=await fetch(cloudUrl(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    if(!r.ok)throw Error('HTTP '+r.status);
+    syncCfg.lastSync=Date.now();syncCfg.lastRemoteAt=p.updatedAt;saveSync();
+    syncStatus('Uploaded '+new Date().toLocaleTimeString()+' — other devices can Load it.');
+    pendingRemote=null;renderSyncBar();
+  }catch(e){if(!silent)syncStatus('Upload failed (offline?): '+e.message);}
+}
+async function fetchRemote(){
+  const r=await fetch(cloudUrl(),{cache:'no-store'});
+  if(!r.ok)throw Error('HTTP '+r.status);
+  return r.json();
+}
+async function checkCloud(){
+  if(!syncReady())return;
+  try{if(typeof navigator!=='undefined'&&!navigator.onLine){renderSyncBar('Offline — local plan unaffected.');return;}}catch(e){}
+  try{
+    const remote=await fetchRemote();
+    const local=syncPayload();
+    const d=decideSync(local.updatedAt,local.hash,remote);
+    if(d==='prompt-load'){pendingRemote=remote;renderSyncBar();}
+    else{pendingRemote=null;renderSyncBar(d==='empty'?'Cloud is empty — press Sync now to upload this plan.':d==='in-sync'?'Already in sync with the cloud.':'Cloud copy is older than this device.');}
+  }catch(e){renderSyncBar('Cloud unreachable (offline?). Local plan unaffected.');}
+}
+async function pullCloud(){
+  try{
+    const remote=pendingRemote||await fetchRemote();
+    if(!remote||!remote.state){syncStatus('Nothing on the cloud yet.');return;}
+    const err=applyImport({app:'meal-planner',state:remote.state,lockedWeeks:remote.lockedWeeks||{}});
+    if(err){syncStatus('Load failed: '+err);return;}
+    state.updatedAt=remote.updatedAt||0;lastSavedStr=JSON.stringify(state);save();
+    syncCfg.lastSync=Date.now();syncCfg.lastRemoteAt=remote.updatedAt||0;saveSync();
+    pendingRemote=null;renderSyncBar();syncStatus('Loaded the cloud copy.');
+  }catch(e){syncStatus('Load failed (offline?): '+e.message);}
+}
+function openSync(){
+  const c=syncCfg||{};
+  $('#dlgTitle').textContent='Household sync';
+  $('#dlgBody').innerHTML=`<div class="editform">
+    <p class="hintline" style="margin:0">One shared cloud copy (free Firebase database). This browser keeps working offline; sync when online. One-time setup: <a href="https://console.firebase.google.com" target="_blank" rel="noopener">create a free project</a> → Realtime Database → locked mode → paste the rules below → copy the database URL here.</p>
+    <label>Database URL<input type="url" data-syncurl value="${c.dbUrl||''}" placeholder="https://xxx-default-rtdb.firebaseio.com"></label>
+    <label>Household ID (treat like a password)<div style="display:flex;gap:6px"><input type="password" data-synchid value="${c.hid||''}" placeholder="paste or generate" style="flex:1;min-width:0"><button data-syncgen>New</button></div></label>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" data-syncauto${c.auto?' checked':''} style="accent-color:var(--accent)"> Auto-sync on every change</label>
+    <div class="editbtns"><button data-syncpush>Sync now</button><button data-syncload>Load from cloud</button><button class="primary" data-syncdone>Done</button></div>
+    <p class="hintline" data-syncstatus>${syncStatusText}</p>
+    <p class="hintline">Database rules to paste (locks everything except your household copy):<br><code>{ "rules": { "households": { "$hid": { ".read": true, ".write": true } } } }</code></p>
+  </div>`;
+  $('#dlg').showModal();
+}
 function mondayOf(iso){const d=new Date(iso+'T12:00:00');if(isNaN(d))return null;const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return d.toISOString().slice(0,10);}
 function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});}catch(e){return iso;}}
-function save(){try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
+function save(){
   // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
   ensureUtDay();
   ensureOilUse();
   if(state.weekKey){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
+  const ser=JSON.stringify(state);
+  if(ser!==lastSavedStr){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);}
+  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
+  schedulePush();
 }
 const L=(id,q)=>({id,q});
 function nut(id){if(id==='milk'&&!state.labels.milk)return milkPer100ml();return state.labels[id]||DB[id].slice(1,3);}
@@ -955,6 +1048,9 @@ document.addEventListener('change',e=>{
     if(!Number.isFinite(v)||v<=0){render();return;}
     state.density=v;state.custom=true;save();render();return;
   }
+  if(t.dataset&&t.dataset.syncurl!==undefined){syncCfg={...(syncCfg||{}),dbUrl:t.value.trim()};saveSync();syncStatus('URL saved. Press Sync now to test.');return;}
+  if(t.dataset&&t.dataset.synchid!==undefined){syncCfg={...(syncCfg||{}),hid:t.value.trim()};saveSync();syncStatus('Household ID saved.');return;}
+  if(t.dataset&&t.dataset.syncauto!==undefined){syncCfg={...(syncCfg||{}),auto:t.checked};saveSync();syncStatus(t.checked?'Auto-sync on — every change uploads.':'Auto-sync off.');return;}
   if(t.id==='calDate'){
     const r=$('#calWeekRange');
     if(r)r.innerHTML=calWeekRange(t.value);
@@ -1037,6 +1133,19 @@ document.addEventListener('click',e=>{
     ensureUtDay();ensureOilUse();
     lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.custom=true;save();render();return;}
+  const sy=e.target.closest('[data-syncpush]');
+  if(sy){pushNow(false);return;}
+  if(e.target.closest('[data-syncload]')){pullCloud();return;}
+  if(e.target.closest('[data-synckeep]')){pendingRemote=null;renderSyncBar();pushNow(true);return;}
+  if(e.target.closest('[data-syncdismiss]')){renderSyncBar();return;}
+  if(e.target.closest('[data-syncdone]')){$('#dlg').close();checkCloud();return;}
+  if(e.target.closest('[data-syncgen]')){
+    try{
+      const id=genHid();syncCfg={...(syncCfg||{}),hid:id};saveSync();
+      const inp=document.querySelector('[data-synchid]');if(inp)inp.value=id;
+      syncStatus('New household ID created — same ID must be on every device (it rides along in Export files).');
+    }catch(e){syncStatus('Could not generate: '+e.message);}
+    return;}
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
@@ -1052,6 +1161,7 @@ document.addEventListener('click',e=>{
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#calBtn').onclick=openCal;
+$('#syncBtn').onclick=()=>{openSync();setTimeout(checkCloud,100);};
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.custom=false;state.weekKey=null;save();render();};
@@ -1083,6 +1193,7 @@ document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
 }));
 render();
 syncUtensils();
+setTimeout(checkCloud,1500);
 </script>
 </body>
 </html>
