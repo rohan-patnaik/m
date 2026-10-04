@@ -253,7 +253,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     </details>
   </section>
 
-  <footer>Saved in this browser only — no account. Household sync: Export/Import a file, or set up live Sync.</footer>
+  <footer>Shared household plan · syncs automatically · works offline.</footer>
 </div>
 
 <dialog id="dlg"><h2 id="dlgTitle" style="font-size:16px;margin:0 0 8px"></h2><div id="dlgBody"></div></dialog>
@@ -411,27 +411,26 @@ function applyImport(data){
     if(!d||!BREAKFASTS[d.b]||!SABZIS[d.s]||!PROTEINS[d.p]||!DALNAMES[d.dal])return'Backup has an unknown meal code.';
   }
   state=st;normalizeState();
-  if(data.sync&&data.sync.dbUrl&&data.sync.hid){syncCfg={dbUrl:String(data.sync.dbUrl),hid:String(data.sync.hid),auto:!!data.sync.auto};saveSync();}
   const w=(data.lockedWeeks&&typeof data.lockedWeeks==='object')?data.lockedWeeks:{};
   lockedWeeks={};
   for(const k of Object.keys(w)){const e=w[k];if(e&&Array.isArray(e.days)&&e.days.length===7)lockedWeeks[k]={days:e.days,mode:e.mode,utDay:e.utDay,soya:e.soya,oilUse:e.oilUse,savedAt:e.savedAt||0};}
   if(!loadingCloud)state.custom=true;save();persistWeeks();render();
   return null;
 }
-// Live household sync via a shared Firebase Realtime Database copy (free Spark plan).
-// Offline-first: this browser always works; the cloud is a shared mailbox, not the source
-// of truth. Same plan as the backup file, so export/import stays as the offline fallback.
-// Security: the household ID is a random 128-bit token (shown masked); anyone holding it
-// can read/write that one copy — fine for meal plans, never put secrets in the plan.
+// This deployment is one shared household. The app link grants access to its plan.
 const SYNCSTORE='meal-sync-v1';
+const RECOVERYSTORE='meal-before-household-sync-v1';
 const DEFAULT_DB_URL='https://meal-plan-sync-d5dbb-default-rtdb.firebaseio.com';
-let syncCfg=null;
-try{syncCfg=JSON.parse(localStorage.getItem(SYNCSTORE))||null;}catch(e){syncCfg=null;}
+const HOUSEHOLD_ID='C4WIEVafxoy1rNW9_6A5dg';
+let syncCfg={};
+try{syncCfg=JSON.parse(localStorage.getItem(SYNCSTORE))||{};}catch(e){}
+if(syncCfg.hid!==HOUSEHOLD_ID||syncCfg.dbUrl!==DEFAULT_DB_URL)syncCfg={};
+syncCfg={...syncCfg,dbUrl:DEFAULT_DB_URL,hid:HOUSEHOLD_ID,auto:true};
 function saveSync(){try{localStorage.setItem(SYNCSTORE,JSON.stringify(syncCfg));}catch(e){}}
-function syncReady(){return !!(syncCfg&&syncCfg.dbUrl&&syncCfg.hid);}
-function cloudUrl(){return String(syncCfg.dbUrl).replace(/\/+$/,'')+'/households/'+encodeURIComponent(syncCfg.hid)+'.json';}
+saveSync();
+function syncReady(){return true;}
+function cloudUrl(){return DEFAULT_DB_URL+'/households/'+HOUSEHOLD_ID+'.json';}
 function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return(h>>>0).toString(36);}
-function genHid(){const b=new Uint8Array(16);crypto.getRandomValues(b);return btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
 // Firebase removes null/empty values and reorders keys. Hash the wire-equivalent
 // content, including saved weeks, rather than JSON insertion order or timestamps.
 function canonicalSync(value){
@@ -443,88 +442,86 @@ function canonicalSync(value){
 }
 function syncHash(st,weeks){const copy={...st};delete copy.updatedAt;return hashStr(JSON.stringify(canonicalSync({state:copy,lockedWeeks:weeks||{}})));}
 function syncPayload(){ensureOilUse();ensureUtDay();const st=structuredClone(state);return{updatedAt:state.updatedAt||0,hash:syncHash(st,lockedWeeks),state:st,lockedWeeks:structuredClone(lockedWeeks)};}
-function decideSync(localUpdatedAt,localHash,remote){
-  if(!remote||typeof remote!=='object'||!remote.state)return'empty';
-  if(syncHash(remote.state,remote.lockedWeeks)===localHash)return'in-sync';
-  if((remote.updatedAt||0)>(localUpdatedAt||0))return'prompt-load';
-  return'push';
-}
-let pushTimer=null,pendingRemote=null,syncStatusText='Not connected.';
-function syncStatus(t){syncStatusText=t;const el=document.querySelector('[data-syncstatus]');if(el)el.textContent=t;}
+let pushTimer=null,pendingRemote=null,syncBusy=false,syncInitialized=false,syncStatusText='Connecting to your household…';
+function syncStatus(t){syncStatusText=t;const el=document.querySelector('[data-syncstatus]');if(el)el.textContent=t;const btn=document.querySelector('#syncBtn');if(btn)btn.title=t;}
 function renderSyncBar(msg){
   const bar=document.querySelector('#syncBar');if(!bar)return;
-  if(pendingRemote){
-    const when=pendingRemote.updatedAt?new Date(pendingRemote.updatedAt).toLocaleString():'unknown time';
-    bar.hidden=false;
-    bar.innerHTML=`<span>☁ Newer plan on the cloud (${when}). Loading replaces unsynced edits here.</span><button data-syncload>Load it</button><button data-synckeep>Keep mine (upload)</button>`;
-  }else if(msg){bar.hidden=false;bar.innerHTML=`<span>${msg}</span><button data-syncdismiss>×</button>`;}
+  if(pendingRemote){bar.hidden=false;bar.innerHTML='<span>Both this device and the shared plan have changes. Which copy should we keep?</span><button data-syncload>Use shared plan</button><button data-synckeep>Keep this device’s plan</button>';}
+  else if(msg){bar.hidden=false;bar.textContent=msg;}
   else{bar.hidden=true;bar.innerHTML='';}
 }
-function schedulePush(){if(!(syncCfg&&syncCfg.auto&&syncReady()))return;if(pushTimer)return;pushTimer=setTimeout(()=>{pushTimer=null;pushNow(true);},2000);}
-async function pushNow(silent){
-  if(!syncReady()){syncStatus('Enter the database URL + household ID first.');return;}
-  try{
-    if(silent){
-      const remote=await fetchRemote();
-      if(remote&&remote.state&&syncHash(remote.state,remote.lockedWeeks)!==syncPayload().hash&&(remote.updatedAt||0)>(syncCfg.lastRemoteAt||0)){
-        pendingRemote=remote;renderSyncBar();syncStatus('Cloud changed on another device — choose Load it or Keep mine.');return;
-      }
-    }
-    if(!state.updatedAt){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);try{localStorage.setItem(STORE,lastSavedStr);}catch(e){}}
-    const p=syncPayload();
-    const r=await fetch(cloudUrl(),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
-    if(!r.ok)throw Error('HTTP '+r.status);
-    syncCfg.lastSync=Date.now();syncCfg.lastRemoteAt=p.updatedAt;saveSync();
-    syncStatus('Uploaded '+new Date().toLocaleTimeString()+' — other devices can Load it.');
-    pendingRemote=null;renderSyncBar();
-  }catch(e){syncStatus('Upload failed (offline?): '+e.message);if(silent)renderSyncBar('Upload failed — local changes are saved on this device.');}
+function schedulePush(){
+  if(!syncInitialized||loadingCloud||pendingRemote||pushTimer||syncPayload().hash===syncCfg.lastHash)return;
+  syncStatus('Saving changes…');
+  pushTimer=setTimeout(()=>{pushTimer=null;checkCloud();},1200);
 }
-async function fetchRemote(){
-  const r=await fetch(cloudUrl(),{cache:'no-store'});
+async function fetchRemoteVersion(){
+  const r=await fetch(cloudUrl(),{cache:'no-store',headers:{'X-Firebase-ETag':'true'}});
   if(!r.ok)throw Error('HTTP '+r.status);
-  return r.json();
+  return{remote:await r.json(),etag:r.headers.get('ETag')};
 }
-async function checkCloud(){
-  if(!syncReady())return;
-  try{if(typeof navigator!=='undefined'&&!navigator.onLine){renderSyncBar('Offline — local plan unaffected.');return;}}catch(e){}
+async function fetchRemote(){return(await fetchRemoteVersion()).remote;}
+function markSynced(remote){
+  syncCfg.lastHash=syncHash(remote.state,remote.lockedWeeks);syncCfg.lastRemoteAt=remote.updatedAt||0;syncCfg.lastSync=Date.now();saveSync();
+  syncInitialized=true;pendingRemote=null;renderSyncBar();syncStatus('Synced with your household.');
+}
+function loadShared(remote){
+  if(!remote||!remote.state)throw Error('The shared plan is empty.');
+  // Retain the previous device copy when first joining, or resolving a conflict.
+  if((!syncCfg.lastHash||syncPayload().hash!==syncCfg.lastHash)&&syncPayload().hash!==syncHash(remote.state,remote.lockedWeeks)){
+    try{localStorage.setItem(RECOVERYSTORE,JSON.stringify(buildExport()));}catch(e){}
+  }
+  if(pushTimer){clearTimeout(pushTimer);pushTimer=null;}
+  loadingCloud=true;
+  let err;
+  try{err=applyImport({app:'meal-planner',state:{...remote.state,updatedAt:remote.updatedAt||0},lockedWeeks:remote.lockedWeeks||{}});}
+  finally{loadingCloud=false;}
+  if(err)throw Error(err);
+  lastSavedStr=JSON.stringify(state);markSynced(remote);
+}
+async function syncHousehold(forceUpload=false){
+  if(syncBusy)return;
+  if(!navigator.onLine){syncStatus('Offline — changes saved on this device.');renderSyncBar('Offline — changes will sync when you reconnect.');return;}
+  syncBusy=true;
   try{
-    const remote=await fetchRemote();
-    const local=syncPayload();
-    const d=decideSync(local.updatedAt,local.hash,remote);
-    if(d==='prompt-load'){pendingRemote=remote;renderSyncBar();}
-    else{if(d==='in-sync'){syncCfg.lastRemoteAt=remote.updatedAt||0;saveSync();}pendingRemote=null;renderSyncBar(d==='empty'?'Cloud is empty — press Sync now to upload this plan.':d==='in-sync'?'Already in sync with the cloud.':'Cloud copy is older than this device.');}
-  }catch(e){renderSyncBar('Cloud unreachable (offline?). Local plan unaffected.');}
+    const {remote,etag}=await fetchRemoteVersion();
+    const local=syncPayload(),remoteHash=remote&&remote.state?syncHash(remote.state,remote.lockedWeeks):null;
+    if(remoteHash===local.hash){markSynced(remote);return;}
+    if(!forceUpload&&remoteHash){
+      if(!syncCfg.lastHash||local.hash===syncCfg.lastHash){loadShared(remote);return;}
+      if(remoteHash!==syncCfg.lastHash){pendingRemote=remote;syncInitialized=true;renderSyncBar();syncStatus('Choose which plan to keep.');return;}
+    }
+    if(!etag)throw Error('Could not check the shared plan version. Please retry.');
+    if(!state.updatedAt){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);try{localStorage.setItem(STORE,lastSavedStr);}catch(e){}}
+    const payload=syncPayload();
+    // A concurrent device edit must not be silently overwritten between GET and PUT.
+    const r=await fetch(cloudUrl(),{method:'PUT',headers:{'Content-Type':'application/json','if-match':etag},body:JSON.stringify(payload)});
+    if(r.status===412){pendingRemote=await fetchRemote();renderSyncBar();syncStatus('Another device just saved. Choose which plan to keep.');return;}
+    if(!r.ok)throw Error('HTTP '+r.status);
+    markSynced(payload);
+  }catch(e){syncStatus('Sync unavailable — local plan saved. '+e.message);renderSyncBar('Sync unavailable — your changes are saved on this device. We will retry automatically.');}
+  finally{syncBusy=false;}
 }
+function checkCloud(){return syncHousehold(false);}
+function pushNow(silent){return syncHousehold(!silent);}
 async function pullCloud(){
-  try{
-    const remote=pendingRemote||await fetchRemote();
-    if(!remote||!remote.state){syncStatus('Nothing on the cloud yet.');return;}
-    if(pushTimer){clearTimeout(pushTimer);pushTimer=null;}
-    loadingCloud=true;
-    let err;
-    try{err=applyImport({app:'meal-planner',state:{...remote.state,updatedAt:remote.updatedAt||0},lockedWeeks:remote.lockedWeeks||{}});}
-    finally{loadingCloud=false;}
-    if(err){syncStatus('Load failed: '+err);return;}
-    lastSavedStr=JSON.stringify(state);
-    syncCfg.lastSync=Date.now();syncCfg.lastRemoteAt=remote.updatedAt||0;saveSync();
-    pendingRemote=null;renderSyncBar();syncStatus('Loaded the cloud copy.');
-  }catch(e){syncStatus('Load failed (offline?): '+e.message);}
+  if(syncBusy)return;
+  syncBusy=true;
+  try{loadShared(await fetchRemote());}
+  catch(e){syncStatus('Could not load the shared plan: '+e.message);}
+  finally{syncBusy=false;}
 }
 function openSync(){
-  if(!syncCfg)syncCfg={};
-  if(!syncCfg.dbUrl){syncCfg.dbUrl=DEFAULT_DB_URL;saveSync();}
-  const c=syncCfg;
   $('#dlgTitle').textContent='Household sync';
+  let recovery=false;try{recovery=!!localStorage.getItem(RECOVERYSTORE);}catch(e){}
   $('#dlgBody').innerHTML=`<div class="editform">
-    <p class="hintline" style="margin:0">One shared cloud copy (free Firebase database, project <b>meal-plan-sync</b>). This browser keeps working offline; sync when online. The database URL is prefilled — just generate a household ID (same on every device) and Sync now. The database is configured. Use Sync now to upload this browser’s plan, or Load from cloud to retrieve the shared copy.</p>
-    <label>Database URL<input type="url" data-syncurl value="${c.dbUrl||''}" placeholder="https://xxx-default-rtdb.firebaseio.com"></label>
-    <label>Household ID (treat like a password)<div style="display:flex;gap:6px"><input type="password" data-synchid value="${c.hid||''}" placeholder="paste or generate" style="flex:1;min-width:0"><button data-syncgen>New</button></div></label>
-    <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600"><input type="checkbox" data-syncauto${c.auto?' checked':''} style="accent-color:var(--accent)"> Auto-sync on every change</label>
-    <div class="editbtns"><button data-syncpush>Sync now</button><button data-syncload>Load from cloud</button><button class="primary" data-syncdone>Done</button></div>
-    <p class="hintline" data-syncstatus>${syncStatusText}</p>
-    <p class="hintline">Database rules to paste (root stays locked and cannot be listed; only a holder of the full household ID can read/write that one copy — any known ID works, so keep yours private):<br><code>{ "rules": { "households": { "$hid": { ".read": true, ".write": true } } } }</code></p>
+    <p>All your devices use the same household plan automatically. Changes save online; other open devices check for updates every 15 seconds and when you return to the app.</p>
+    <p class="hintline" data-syncstatus></p>
+    <div class="editbtns"><button data-syncpush>Sync now</button><button class="primary" data-syncdone>Done</button></div>
+    ${recovery?'<button data-syncrecover>Restore previous device copy</button>':''}
+    <p class="hintline">No account or code needed. Anyone with this app’s link can view and change the shared plan.</p>
   </div>`;
-  $('#dlg').showModal();
+  syncStatus(syncStatusText);$('#dlg').showModal();
 }
 function mondayOf(iso){const d=new Date(iso+'T12:00:00');if(isNaN(d))return null;const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return d.toISOString().slice(0,10);}
 function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});}catch(e){return iso;}}
@@ -533,7 +530,7 @@ function save(){
   // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
   ensureUtDay();
   ensureOilUse();
-  if(state.weekKey){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
+  if(state.weekKey&&JSON.stringify(state)!==lastSavedStr){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
   const ser=JSON.stringify(state);
   if(ser!==lastSavedStr){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);}
   try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
@@ -1074,9 +1071,6 @@ document.addEventListener('change',e=>{
     if(!Number.isFinite(v)||v<=0){render();return;}
     state.density=v;state.custom=true;save();render();return;
   }
-  if(t.dataset&&t.dataset.syncurl!==undefined){syncCfg={...(syncCfg||{}),dbUrl:t.value.trim()};saveSync();syncStatus('URL saved. Press Sync now to test.');return;}
-  if(t.dataset&&t.dataset.synchid!==undefined){syncCfg={...(syncCfg||{}),hid:t.value.trim()};saveSync();syncStatus('Household ID saved.');return;}
-  if(t.dataset&&t.dataset.syncauto!==undefined){syncCfg={...(syncCfg||{}),auto:t.checked};saveSync();syncStatus(t.checked?'Auto-sync on — every change uploads.':'Auto-sync off.');return;}
   if(t.id==='calDate'){
     const r=$('#calWeekRange');
     if(r)r.innerHTML=calWeekRange(t.value);
@@ -1160,17 +1154,13 @@ document.addEventListener('click',e=>{
     lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.custom=true;save();render();return;}
   const sy=e.target.closest('[data-syncpush]');
-  if(sy){pushNow(false);return;}
+  if(sy){checkCloud();return;}
   if(e.target.closest('[data-syncload]')){pullCloud();return;}
   if(e.target.closest('[data-synckeep]')){pendingRemote=null;renderSyncBar();pushNow(false);return;}
   if(e.target.closest('[data-syncdismiss]')){renderSyncBar();return;}
   if(e.target.closest('[data-syncdone]')){$('#dlg').close();checkCloud();return;}
-  if(e.target.closest('[data-syncgen]')){
-    try{
-      const id=genHid();syncCfg={...(syncCfg||{}),hid:id};saveSync();
-      const inp=document.querySelector('[data-synchid]');if(inp)inp.value=id;
-      syncStatus('New household ID created — same ID must be on every device (it rides along in Export files).');
-    }catch(e){syncStatus('Could not generate: '+e.message);}
+  if(e.target.closest('[data-syncrecover]')){
+    try{const data=JSON.parse(localStorage.getItem(RECOVERYSTORE));if(data){const err=applyImport(data);if(err)syncStatus(err);else{syncStatus('Previous device copy restored. Sync to choose which plan to keep.');checkCloud();}}}catch(err){syncStatus('Could not restore the device copy.');}
     return;}
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
@@ -1219,7 +1209,11 @@ document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
 }));
 render();
 syncUtensils();
-setTimeout(checkCloud,1500);
+setTimeout(checkCloud,0);
+setInterval(()=>{if(!document.hidden)checkCloud();},15000);
+window.addEventListener('online',checkCloud);
+window.addEventListener('focus',checkCloud);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkCloud();});
 </script>
 </body>
 </html>
