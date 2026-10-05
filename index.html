@@ -163,15 +163,86 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 body:not(.cloud-ready) .wrap{display:none}
 #syncBar{position:sticky;top:0;z-index:30;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:10px 0;background:var(--paper);border:1px solid var(--line);border-radius:11px;font-size:13px}
 #syncBar span{flex:1 1 210px}
+
+/* Keep navigation, household controls and meal actions in distinct rows. */
+header.top{justify-content:flex-start;text-align:left;margin-bottom:20px}
+.tabs{position:relative;backdrop-filter:none;background:none;flex-wrap:nowrap;margin-bottom:14px;padding:0;overflow:visible}
+.tabs .theme-toggle{margin-left:0;flex-shrink:0}
+.more-menu{position:relative;margin-left:auto}
+.more-menu summary{cursor:pointer;list-style:none;border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600}
+.more-menu summary::after{content:' ▾'}
+.more-menu summary::-webkit-details-marker{display:none}
+.more-items{position:absolute;right:0;top:calc(100% + 8px);min-width:180px;display:grid;gap:4px;padding:8px;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:40}
+.tabs .more-items .navbtn{display:block;border:0;border-radius:6px;text-align:left;padding:10px 12px;background:transparent}
+.tabs .more-items .navbtn:hover{background:var(--paper2)}
+.planner-controls{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:16px}
+.portion-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.portion-field{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.portion-field select{min-width:96px;font-size:13px}
+.compare-btn{background:none;border:0;padding:8px 0;color:var(--accent)}
+.planner-controls .viewbar{margin:0}
+.viewseg{white-space:nowrap}
+#weekBar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 18px;font-size:14px}
+#weekBar[hidden],#syncBar[hidden]{display:none}
+.stats{margin:18px 0 24px}
+.stat .who{text-transform:none;letter-spacing:0}
+.day{padding:20px}
+.dayhead{margin-bottom:16px;flex-wrap:nowrap}
+.day-actions{display:flex;align-items:center;gap:8px}
+.day-totals{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 0 16px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.day-totals>div{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.day-totals span{font-size:12px;color:var(--muted)}
+.day-totals strong{font-size:17px;font-variant-numeric:tabular-nums}
+.day-totals small{font-size:12px;font-weight:500}
+.ut-use{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:8px 0 10px}
+.ut-use label{display:flex;flex-direction:column;align-items:stretch;gap:6px;font-size:12px}
+.ut-use select{width:100%;max-width:none}
+.meals{gap:16px}
+.slot{padding:16px;gap:12px}
+.nums{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:12px}
+.slot .lbl{text-transform:none;letter-spacing:0;font-size:12px}
+dialog{max-width:560px;width:calc(100vw - 32px);padding:24px}
+dialog:has(.comparison){max-width:620px}
+.dialog-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px}
+.dialog-head h2{font-size:20px;margin:0;line-height:1.3}
+.dialog-close{flex-shrink:0;width:36px;height:36px;padding:0;font-size:24px;font-weight:400;background:var(--paper2)}
+.comparison table{table-layout:fixed}
+.comparison th{font-size:13px;text-transform:none;letter-spacing:0}
+.comparison td,.comparison th{padding:16px 12px;vertical-align:middle}
+.comparison td{vertical-align:top}
+.comparison td strong{display:block;font-size:19px;white-space:nowrap}
+.comparison small{font-size:12px;font-weight:400;color:var(--muted)}
+.comparison td>span,.comparison th>span{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:4px}
+.selected-plan{display:inline-block;margin-top:6px;font-size:11px;font-style:normal;padding:2px 7px;border-radius:5px;background:var(--tint);color:var(--accent)}
+.comparison .maintenance{background:var(--paper2)}
+.explanation{margin-top:18px;font-size:13px;color:var(--muted)}
+.explanation summary{cursor:pointer;color:var(--ink);font-weight:600}
+.explanation p{line-height:1.6}
+button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:680px){
+.wrap{padding:20px 16px 40px}h1{font-size:24px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr) auto auto;gap:5px;overflow:visible}
+.tabs a,.tabs .navbtn,.more-menu summary{padding:8px 7px;text-align:center;font-size:12px}
+.more-menu{margin-left:0}.tabs .more-items .full{display:inline}.tabs .more-items .short{display:none}
+.planner-controls{align-items:stretch;flex-direction:column;gap:16px}
+.portion-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.portion-field{justify-content:space-between}.compare-btn{grid-column:1/-1;text-align:left;padding:0;font-size:12px}
+.planner-controls .viewbar{justify-content:flex-start}
+#weekBar{align-items:flex-start;font-size:13px}
+.day{padding:16px}.dayhead{gap:8px}.day-actions .cook-tx{display:inline}.cookbtn{font-size:12px;padding:8px}
+.day-totals{gap:14px}.day-totals>div{display:grid;gap:3px}.day-totals strong{font-size:18px}
+.ut-use{gap:8px}.ut-use select{font-size:12px;padding:8px 4px;min-width:0}
+dialog{padding:18px}.dialog-head h2{font-size:18px}.comparison td,.comparison th{padding:12px 6px}.comparison td strong{font-size:16px}.comparison th{font-size:12px}
+}
 </style>
 </head>
 <body>
-<div id="cloudLoading" role="status" style="padding:40px;text-align:center"><h2>Loading your household</h2><p id="cloudLoadingText">Connecting to Convex…</p><button onclick="location.reload()">Retry</button></div>
+<div id="cloudLoading" role="status" style="padding:40px;text-align:center"><h2>Loading your household</h2><p id="cloudLoadingText">Loading your meals…</p><button onclick="location.reload()">Retry</button></div>
 <div class="wrap">
   <header class="top">
     <div>
       <h1>Weekly Meal Planner</h1>
-      <p class="sub">Plan the week · shopping updates automatically</p>
+
     </div>
   </header>
 
@@ -180,17 +251,18 @@ body:not(.cloud-ready) .wrap{display:none}
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
     <button id="calBtn" class="navbtn" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅 Cal</span></button>
-    <label style="display:flex;gap:5px;align-items:center">Wife<select id="presetW" class="navsel" aria-label="Wife portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
-    <label style="display:flex;gap:5px;align-items:center">Husband<select id="presetH" class="navsel" aria-label="Husband portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
-    <button class="infobtn" data-presets title="Compare plans vs maintenance" aria-label="Compare plans">ⓘ</button>
-    <span class="customflag" id="customStatus"></span>
-    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
+    <details class="more-menu"><summary>More</summary><div class="more-items">    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
     <button id="exportBtn" class="navbtn" title="Download an optional backup of the current plan"><span class="full">Export</span><span class="short">Exp</span></button>
     <label id="importLbl" class="navbtn" title="Load a backup draft for review before saving" style="cursor:pointer">Import<input id="importFile" type="file" accept=".json,application/json" hidden></label>
     <button id="syncBtn" class="navbtn" title="Live household sync via a shared cloud copy"><span class="full">Sync</span><span class="short">Sync</span></button>
+</div></details>
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
 
+  <div class="planner-controls"><div class="portion-controls">    <label class="portion-field">Wife<select id="presetW" class="navsel" aria-label="Wife portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
+    <label class="portion-field">Husband<select id="presetH" class="navsel" aria-label="Husband portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
+    <button class="compare-btn" data-presets title="Compare plans vs maintenance" aria-label="Compare plans">Compare plans</button>
+</div>
   <div class="viewbar">
     <div class="viewseg" role="group" aria-label="Planner view">
       <button data-view="week" title="Plan the whole week (usually Saturday/Sunday)"><span class="full">Week-set</span><span class="short">Week</span></button>
@@ -198,6 +270,8 @@ body:not(.cloud-ready) .wrap{display:none}
     </div>
   </div>
 
+  </div>
+  <span id="customStatus" hidden></span>
   <div id="weekBar" class="weekbar" hidden></div>
   <div id="syncBar" class="weekbar" hidden></div>
 
@@ -208,7 +282,7 @@ body:not(.cloud-ready) .wrap{display:none}
 
   <section class="panel section" id="utensils">
     <h2>Utensils</h2>
-    <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then pick which vessel each dish is cooked in below (switch to Big / Medium pan when the main ones are dirty). In any lunch/dinner sharing-ratio popup, enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts that vessel and splits only the food. Saved once for your household, across days, weeks and devices.</p>
+    <p class="hintline" style="margin:0 0 10px">Enter each empty vessel’s weight. These weights apply to every day.</p>
     <div class="ut-grid">
       <div class="ut-card"><label>Kadhai <input type="number" min="0" step="any" inputmode="decimal" data-ut="kadhai" placeholder="e.g. 850"> <small>grams (empty)</small></label></div>
       <div class="ut-card"><label>Pressure cooker <input type="number" min="0" step="any" inputmode="decimal" data-ut="cooker" placeholder="e.g. 2000"> <small>grams (empty)</small></label></div>
@@ -216,7 +290,7 @@ body:not(.cloud-ready) .wrap{display:none}
       <div class="ut-card"><label>Big pan <input type="number" min="0" step="any" inputmode="decimal" data-ut="bigpan" placeholder="e.g. 650"> <small>grams (empty)</small></label></div>
       <div class="ut-card"><label>Medium pan <input type="number" min="0" step="any" inputmode="decimal" data-ut="medpan" placeholder="e.g. 450"> <small>grams (empty)</small></label></div>
     </div>
-    <p class="hintline" style="margin:10px 0 0">Vessel per day: use the Sabzi / Dal / Paneer-soya dropdowns on each day card. Defaults: sabzi &rarr; Kadhai, dal &rarr; Pressure cooker, paneer/soya &rarr; Frying pan.</p>
+
   </section>
 
   <section class="panel section" id="shopping">
@@ -254,10 +328,10 @@ body:not(.cloud-ready) .wrap{display:none}
     </details>
   </section>
 
-  <footer>Shared household plan · saved in Convex · internet required.</footer>
+
 </div>
 
-<dialog id="dlg"><h2 id="dlgTitle" style="font-size:16px;margin:0 0 8px"></h2><div id="dlgBody"></div></dialog>
+<dialog id="dlg" aria-labelledby="dlgTitle"><div class="dialog-head"><h2 id="dlgTitle"></h2><button type="button" class="dialog-close" aria-label="Close dialog" onclick="this.closest('dialog').close()">×</button></div><div id="dlgBody"></div></dialog>
 
 <script src="cloud-config.js"></script>
 <script src="convex-browser.js"></script>
@@ -696,16 +770,11 @@ function shortfallText(p){
   return`Below ${plo} g protein on: ${low.map(x=>DAYS[x.i].slice(0,3)+' '+F(x.v)+'g').join(', ')}. No quantities auto-raised — change the plan explicitly if you want more. `;
 }
 function presetCard(){
-  const rows=['easy','medium','hard'].map(m=>{
-    const w=avgForMode(m,'w'),h=avgForMode(m,'h');
-    const n={easy:'Low',medium:'Medium',hard:'High'}[m];
-    return`<tr><td>${n}${m===personMode('w')?' · W':''}${m===personMode('h')?' · H':''}</td><td class="num">${R(w.k)} / ${R(w.p)} g</td><td class="num">${R(h.k)} / ${R(h.p)} g</td></tr>`;
-  }).join('');
-  const[wplo,wphi]=protRange(PROFILE.w),[hplo,hphi]=protRange(PROFILE.h);
-  return`<table><thead><tr><th>Plan</th><th class="num">Wife kcal / protein</th><th class="num">Husband kcal / protein</th></tr></thead><tbody>${rows}
-    <tr><td>Maintenance</td><td class="num"><b>~${tdee(PROFILE.w)} / ${wplo}–${wphi} g</b></td><td class="num"><b>~${tdee(PROFILE.h)} / ${hplo}–${hphi} g</b></td></tr>
-  </tbody></table>
-  <p class="hintline">Each person has their own plan. Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged. Values use today's toggles. Averages count eating-out days as 0 home food, not full intake. W/H = selected plan.</p>`;
+  const cell=(m,p)=>{const a=avgForMode(m,p);return `<td class="num"><strong>${R(a.k)} <small>kcal</small></strong><span>${R(a.p)} g protein</span>${m===personMode(p)?'<em class="selected-plan">Selected</em>':''}</td>`;};
+  const rows=['easy','medium','hard'].map(m=>`<tr><th scope="row">${{easy:'Low',medium:'Medium',hard:'High'}[m]}</th>${cell(m,'w')}${cell(m,'h')}</tr>`).join('');
+  const maintenance=p=>{const[lo,hi]=protRange(PROFILE[p]);return `<td class="num"><strong>~${tdee(PROFILE[p])} <small>kcal</small></strong><span>${lo}–${hi} g protein</span></td>`;};
+  return `<div class="comparison"><table><thead><tr><th>Plan</th><th class="num">Wife</th><th class="num">Husband</th></tr></thead><tbody>${rows}<tr class="maintenance"><th scope="row">Maintenance<span>Estimated</span></th>${maintenance('w')}${maintenance('h')}</tr></tbody></table>
+  <details class="explanation"><summary>How the plans differ</summary><p>Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged.</p><p>Values reflect your current meal choices and toggles. Eating-out meals count as zero home food, not zero total intake.</p></details></div>`;
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function cookRows(i){
@@ -783,7 +852,7 @@ function calCard(){
     const w=lockedWeeks[k],cur=k===state.weekKey;
     return`<div class="calrow"><span>📅 <b>${fmtMon(k)}</b>${cur?' · viewing':''}</span><span class="acts"><button data-calload="${k}">View</button><button data-caldel="${k}">Delete</button></span></div>`;
   }).join(''):'<p class="hintline">No locked weeks yet. Pick a date below and press Set week.</p>';
-  return`<p class="hintline" style="margin:0 0 8px">Pick a date in the week you want, then press <b>Set week</b> — the current planner (all 7 days) is saved to that Mon–Sun week. Viewing a locked week shows its meals; editing any day overwrites that date automatically.</p>
+  return`<p class="hintline" style="margin:0 0 8px">Choose a date to save the current seven-day plan to that week.</p>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="calDate" value="${def}"><button class="primary" data-calsave>Set week ✓</button></div>
   <p class="hintline" id="calWeekRange" style="margin:6px 0 0">${calWeekRange(def)}</p>
   <div class="callist">${rows}</div>
@@ -838,7 +907,7 @@ function render(){
   const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
   // locked-week banner
   const wb=$('#weekBar');
-  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b> · saved week — use Save changes after editing.</span><button data-calunlink>Edit week template</button>`;}
+  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b></span><button data-calunlink>Edit week template</button>`;}
   else{wb.hidden=true;wb.innerHTML='';}
   // stats
   const w=avgForMode(personMode('w'),'w'),h=avgForMode(personMode('h'),'h');
@@ -860,7 +929,7 @@ function render(){
       const nums=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
       const skipped=d.off||(d.skip&&d.skip[m]);
       const numsHtml=skipped?`<div class="nums"><div>Skipped · eating out</div></div>`
-        :`<div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g</div></div>`;
+        :`<div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g protein</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g protein</div></div>`;
       const ratioBtn=skipped?'':`<button class="ing" data-ing="${i},${m}">Sharing ratio →</button>`;
       const skipTag=skipped?`<span class="skiptag">Skipped</span>`:'';
       return`<div class="slot${skipped?' skipped':''}"><div class="slothead"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div>${skipTag}</div><h3>${mealTitle(d,m)}</h3>${extra}
@@ -871,8 +940,9 @@ function render(){
     const offTag=d.off?` · ⛔ Eating out`:'';
     const ud=utDayAt(i);
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button>
-      ${d.off?'<span class="eatout-tag">Eating out — excluded from shopping</span>':`<span class="tot">W <b>${R(dw.total.k)}</b> kcal · ${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre · H <b>${R(dh.total.k)}</b> kcal · ${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span>`}</div></div>
+      <div class="day-actions"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button>
+      </div></div>
+      ${d.off?'<p class="eatout-tag">Eating out — excluded from shopping</p>':`<div class="day-totals"><div><span>Wife</span><strong>${R(dw.total.k)} <small>kcal</small></strong><span>${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre</span></div><div><span>Husband</span><strong>${R(dh.total.k)} <small>kcal</small></strong><span>${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>`}
       <div class="daysub">Dal: ${DALNAMES[d.dal]} · Cardio: W ${d.cardioW!==false?'✓':'✗'} · H ${d.cardioH!==false?'✓':'✗'}${restTag}${offTag}</div>
       <div class="ut-use" style="margin:0 0 10px"><label>Sabzi <select data-utday="${i}" data-uk="sabzi">${utOpts(ud.sabzi)}</select></label><label>Dal <select data-utday="${i}" data-uk="dal">${utOpts(ud.dal)}</select></label><label>Paneer/soya <select data-utday="${i}" data-uk="prot">${utOpts(ud.prot)}</select></label></div>
       <div class="meals">${slots}</div></article>`;
@@ -1057,6 +1127,8 @@ document.addEventListener('click',e=>{
   if(del){const k=del.dataset.caldel;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
+document.addEventListener('click',e=>{const menu=document.querySelector('.more-menu');if(menu.open&&(!menu.contains(e.target)||e.target.closest('.more-items button')))menu.open=false;});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('.more-menu').open=false;});
 $('#calBtn').onclick=openCal;
 $('#syncBtn').onclick=openSync;
 $('#dlg').addEventListener('close',()=>{if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
