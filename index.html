@@ -160,9 +160,13 @@ select option{background-color:var(--paper2);color:var(--ink)}
 .calrow button{font-size:12px;padding:4px 10px}
 footer{color:var(--muted);font-size:12px;margin-top:22px}
 @media(max-width:860px){.meals{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.stats{grid-template-columns:1fr}header.top{flex-direction:column;align-items:center}}
+body:not(.cloud-ready) .wrap{display:none}
+#syncBar{position:sticky;top:0;z-index:30;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;margin:10px 0;background:var(--paper);border:1px solid var(--line);border-radius:11px;font-size:13px}
+#syncBar span{flex:1 1 210px}
 </style>
 </head>
 <body>
+<div id="cloudLoading" role="status" style="padding:40px;text-align:center"><h2>Loading your household</h2><p id="cloudLoadingText">Connecting to Convex…</p><button onclick="location.reload()">Retry</button></div>
 <div class="wrap">
   <header class="top">
     <div>
@@ -181,8 +185,8 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <button class="infobtn" data-presets title="Compare plans vs maintenance" aria-label="Compare plans">ⓘ</button>
     <span class="customflag" id="customStatus"></span>
     <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
-    <button id="exportBtn" class="navbtn" title="Download a backup file to move this plan to another device"><span class="full">Export</span><span class="short">Exp</span></button>
-    <label id="importLbl" class="navbtn" title="Load a backup file from another device (replaces this browser's plan)" style="cursor:pointer">Import<input id="importFile" type="file" accept=".json,application/json" hidden></label>
+    <button id="exportBtn" class="navbtn" title="Download an optional backup of the current plan"><span class="full">Export</span><span class="short">Exp</span></button>
+    <label id="importLbl" class="navbtn" title="Load a backup draft for review before saving" style="cursor:pointer">Import<input id="importFile" type="file" accept=".json,application/json" hidden></label>
     <button id="syncBtn" class="navbtn" title="Live household sync via a shared cloud copy"><span class="full">Sync</span><span class="short">Sync</span></button>
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
@@ -250,11 +254,14 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     </details>
   </section>
 
-  <footer>Shared household plan · syncs automatically · works offline.</footer>
+  <footer>Shared household plan · saved in Convex · internet required.</footer>
 </div>
 
 <dialog id="dlg"><h2 id="dlgTitle" style="font-size:16px;margin:0 0 8px"></h2><div id="dlgBody"></div></dialog>
 
+<script src="cloud-config.js"></script>
+<script src="convex-browser.js"></script>
+<script src="cloud-runtime.js"></script>
 <script>
 const DB={
  atta:['Atta · Pillsbury Chakki Fresh (DMart packet)',364,11.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
@@ -291,7 +298,7 @@ const PORTIONS={
 const personMode=p=>(state.personModes||{w:'easy',h:'medium'})[p];
 const P=p=>PORTIONS[personMode(p)]||PORTIONS.medium;
 const dinnerScale=p=>personMode(p)==='easy'?.8:1;
-function restoreModes(w){state.personModes=w.personModes?{...w.personModes}:{w:'easy',h:w.mode||'medium'};}
+function restoreModes(w){} // Portions are household settings, never restored from a week.
 // Household profiles (maintenance via Mifflin-St Jeor; desk job + daily cardio ≈ ×1.55)
 const PROFILE={w:{name:'Wife',height:165,weight:64,age:29},h:{name:'Husband',height:173,weight:76,age:29}};
 const ACT=1.55;
@@ -362,12 +369,8 @@ function utDayAt(i){ensureUtDay();return state.utDay[i];}
 function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${n}</option>`).join('');}
 let lastSavedStr='';
 let loadingCloud=false;
-const UTSTORE='meal-household-utensils-v1';
-let globalUtensils={};
-try{globalUtensils=JSON.parse(localStorage.getItem(UTSTORE))||{};}catch(e){}
-function persistUtensils(){globalUtensils={...state.utensils,_updatedAt:{...(state.utensilUpdatedAt||{})}};try{localStorage.setItem(UTSTORE,JSON.stringify(globalUtensils));}catch(e){}}
-let state;
-try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
+function persistUtensils(){}
+let state=null;
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
   state={days:structuredClone(DEFAULT_DAYS),labels:{},utensils:{...DEFAULT_UTENSILS},utSel:{...DEFAULT_UTSEL},utDay:DEFAULT_UTDAY(),oilUse:{...DEFAULT_OILUSE},soya:'N',density:DEFAULT_DENSITY,theme:'light',mode:'medium',custom:false,weeks:1,weekKey:null,view:'day',viewExplicit:false};
 }
@@ -378,8 +381,6 @@ function normalizeState(){
   if(!state.labels||typeof state.labels!=='object')state.labels={};
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
   state.utensilUpdatedAt={...(state.utensilUpdatedAt||{})};
-  for(const k of Object.keys(DEFAULT_UTENSILS)){const savedAt=+(globalUtensils._updatedAt||{})[k]||0,incomingAt=+state.utensilUpdatedAt[k]||0;if(savedAt>incomingAt||(!incomingAt&&globalUtensils[k]>0)){state.utensils[k]=globalUtensils[k];state.utensilUpdatedAt[k]=savedAt;}}
-  persistUtensils();
   if(!state.personModes)state.personModes={w:'easy',h:state.mode||'medium'};
   for(const p of ['w','h'])if(!PORTIONS[state.personModes[p]])state.personModes[p]=p==='w'?'easy':'medium';
   state.utSel={...DEFAULT_UTSEL,...(state.utSel||{})};
@@ -407,13 +408,11 @@ normalizeState();
 try{lastSavedStr=JSON.stringify(state);}catch(e){lastSavedStr='';}
 let dayOff=0;
 // Locked weeks: weekKey (Monday ISO) -> {days, mode, savedAt}
-const WEEKSTORE='simple-meals-weeks-v1';
 let lockedWeeks={};
-try{lockedWeeks=JSON.parse(localStorage.getItem(WEEKSTORE))||{};}catch(e){lockedWeeks={};}
-function persistWeeks(){try{localStorage.setItem(WEEKSTORE,JSON.stringify(lockedWeeks));}catch(e){}}
+function persistWeeks(){}
 // Household sync: whole-household backup file (plan + labels + settings + locked weeks).
 // No server or account — export on one device, import on the other.
-function buildExport(){ensureOilUse();ensureUtDay();return{app:'meal-planner',v:1,exportedAt:new Date().toISOString(),state:structuredClone(state),lockedWeeks:structuredClone(lockedWeeks),sync:syncCfg?{dbUrl:syncCfg.dbUrl,hid:syncCfg.hid,auto:!!syncCfg.auto}:null};}
+function buildExport(){return{app:'meal-planner',v:2,exportedAt:new Date().toISOString(),state:structuredClone(state),lockedWeeks:structuredClone(lockedWeeks)};}
 function applyImport(data){
   if(!data||typeof data!=='object'||data.app!=='meal-planner')return'Not a meal-planner backup file.';
   const st=data.state;
@@ -428,125 +427,8 @@ function applyImport(data){
   if(!loadingCloud)state.custom=true;save();persistWeeks();render();
   return null;
 }
-// This deployment is one shared household. The app link grants access to its plan.
-const SYNCSTORE='meal-sync-v1';
-const RECOVERYSTORE='meal-before-household-sync-v1';
-const DEFAULT_DB_URL='https://meal-plan-sync-d5dbb-default-rtdb.firebaseio.com';
-const HOUSEHOLD_ID='C4WIEVafxoy1rNW9_6A5dg';
-let syncCfg={};
-try{syncCfg=JSON.parse(localStorage.getItem(SYNCSTORE))||{};}catch(e){}
-if(syncCfg.hid!==HOUSEHOLD_ID||syncCfg.dbUrl!==DEFAULT_DB_URL)syncCfg={};
-syncCfg={...syncCfg,dbUrl:DEFAULT_DB_URL,hid:HOUSEHOLD_ID,auto:true};
-function saveSync(){try{localStorage.setItem(SYNCSTORE,JSON.stringify(syncCfg));}catch(e){}}
-saveSync();
-function syncReady(){return true;}
-function cloudUrl(){return DEFAULT_DB_URL+'/households/'+HOUSEHOLD_ID+'.json';}
-function hashStr(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return(h>>>0).toString(36);}
-// Firebase removes null/empty values and reorders keys. Hash the wire-equivalent
-// content, including saved weeks, rather than JSON insertion order or timestamps.
-function canonicalSync(value){
-  if(value===null||value===undefined)return null;
-  if(typeof value!=='object')return value;
-  const out={};
-  for(const key of Object.keys(value).sort()){const v=canonicalSync(value[key]);if(v!==null)out[key]=v;}
-  return Object.keys(out).length?out:null;
-}
-function syncHash(st,weeks){const copy={...st};delete copy.updatedAt;return hashStr(JSON.stringify(canonicalSync({state:copy,lockedWeeks:weeks||{}})));}
-function syncPayload(){ensureOilUse();ensureUtDay();const st=structuredClone(state);return{updatedAt:state.updatedAt||0,hash:syncHash(st,lockedWeeks),state:st,lockedWeeks:structuredClone(lockedWeeks)};}
-let pushTimer=null,pendingRemote=null,syncBusy=false,syncInitialized=false,syncStatusText='Connecting to your household…';
-function syncStatus(t){syncStatusText=t;const el=document.querySelector('[data-syncstatus]');if(el)el.textContent=t;const btn=document.querySelector('#syncBtn');if(btn)btn.title=t;}
-function renderSyncBar(msg){
-  const bar=document.querySelector('#syncBar');if(!bar)return;
-  if(pendingRemote){bar.hidden=false;bar.innerHTML='<span>Both this device and the shared plan have changes. Which copy should we keep?</span><button data-syncload>Use shared plan</button><button data-synckeep>Keep this device’s plan</button>';}
-  else if(msg){bar.hidden=false;bar.textContent=msg;}
-  else{bar.hidden=true;bar.innerHTML='';}
-}
-function schedulePush(){
-  if(!syncInitialized||loadingCloud||pendingRemote||pushTimer||syncPayload().hash===syncCfg.lastHash)return;
-  syncStatus('Saving changes…');
-  pushTimer=setTimeout(()=>{pushTimer=null;checkCloud();},1200);
-}
-async function fetchRemoteVersion(){
-  const r=await fetch(cloudUrl(),{cache:'no-store',headers:{'X-Firebase-ETag':'true'}});
-  if(!r.ok)throw Error('HTTP '+r.status);
-  return{remote:await r.json(),etag:r.headers.get('ETag')};
-}
-async function fetchRemote(){return(await fetchRemoteVersion()).remote;}
-function markSynced(remote){
-  syncCfg.lastHash=syncHash(remote.state,remote.lockedWeeks);syncCfg.lastRemoteAt=remote.updatedAt||0;syncCfg.lastSync=Date.now();saveSync();
-  syncInitialized=true;pendingRemote=null;renderSyncBar();syncStatus('Synced with your household.');
-}
-function loadShared(remote){
-  if(!remote||!remote.state)throw Error('The shared plan is empty.');
-  // Retain the previous device copy when first joining, or resolving a conflict.
-  if((!syncCfg.lastHash||syncPayload().hash!==syncCfg.lastHash)&&syncPayload().hash!==syncHash(remote.state,remote.lockedWeeks)){
-    try{localStorage.setItem(RECOVERYSTORE,JSON.stringify(buildExport()));}catch(e){}
-  }
-  if(pushTimer){clearTimeout(pushTimer);pushTimer=null;}
-  loadingCloud=true;
-  let err;
-  try{err=applyImport({app:'meal-planner',state:{...remote.state,updatedAt:remote.updatedAt||0},lockedWeeks:remote.lockedWeeks||{}});}
-  finally{loadingCloud=false;}
-  if(err)throw Error(err);
-  lastSavedStr=JSON.stringify(state);markSynced(remote);
-}
-async function syncHousehold(forceUpload=false){
-  if(syncBusy)return;
-  if(!navigator.onLine){syncStatus('Offline — changes saved on this device.');renderSyncBar('Offline — changes will sync when you reconnect.');return;}
-  syncBusy=true;
-  try{
-    const {remote,etag}=await fetchRemoteVersion();
-    const local=syncPayload(),remoteHash=remote&&remote.state?syncHash(remote.state,remote.lockedWeeks):null;
-    if(remoteHash===local.hash){markSynced(remote);return;}
-    if(!forceUpload&&remoteHash){
-      if(!syncCfg.lastHash||local.hash===syncCfg.lastHash){loadShared(remote);return;}
-      if(remoteHash!==syncCfg.lastHash){pendingRemote=remote;syncInitialized=true;renderSyncBar();syncStatus('Choose which plan to keep.');return;}
-    }
-    if(!etag)throw Error('Could not check the shared plan version. Please retry.');
-    if(!state.updatedAt){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);try{localStorage.setItem(STORE,lastSavedStr);}catch(e){}}
-    const payload=syncPayload();
-    // A concurrent device edit must not be silently overwritten between GET and PUT.
-    const r=await fetch(cloudUrl(),{method:'PUT',headers:{'Content-Type':'application/json','if-match':etag},body:JSON.stringify(payload)});
-    if(r.status===412){pendingRemote=await fetchRemote();renderSyncBar();syncStatus('Another device just saved. Choose which plan to keep.');return;}
-    if(!r.ok)throw Error('HTTP '+r.status);
-    markSynced(payload);
-  }catch(e){syncStatus('Sync unavailable — local plan saved. '+e.message);renderSyncBar('Sync unavailable — your changes are saved on this device. We will retry automatically.');}
-  finally{syncBusy=false;}
-}
-function checkCloud(){return syncHousehold(false);}
-function pushNow(silent){return syncHousehold(!silent);}
-async function pullCloud(){
-  if(syncBusy)return;
-  syncBusy=true;
-  try{loadShared(await fetchRemote());}
-  catch(e){syncStatus('Could not load the shared plan: '+e.message);}
-  finally{syncBusy=false;}
-}
-function openSync(){
-  $('#dlgTitle').textContent='Household sync';
-  let recovery=false;try{recovery=!!localStorage.getItem(RECOVERYSTORE);}catch(e){}
-  $('#dlgBody').innerHTML=`<div class="editform">
-    <p>All your devices use the same household plan automatically. Changes save online; other open devices check for updates every 15 seconds and when you return to the app.</p>
-    <p class="hintline" data-syncstatus></p>
-    <div class="editbtns"><button data-syncpush>Sync now</button><button class="primary" data-syncdone>Done</button></div>
-    ${recovery?'<button data-syncrecover>Restore previous device copy</button>':''}
-    <p class="hintline">No account or code needed. Anyone with this app’s link can view and change the shared plan.</p>
-  </div>`;
-  syncStatus(syncStatusText);$('#dlg').showModal();
-}
 function mondayOf(iso){const d=new Date(iso+'T12:00:00');if(isNaN(d))return null;const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return d.toISOString().slice(0,10);}
 function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});}catch(e){return iso;}}
-function save(){
-  if(loadingCloud){lastSavedStr=JSON.stringify(state);try{localStorage.setItem(STORE,lastSavedStr);}catch(e){}return;}
-  // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
-  ensureUtDay();
-  ensureOilUse();
-  if(state.weekKey&&JSON.stringify(state)!==lastSavedStr){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
-  const ser=JSON.stringify(state);
-  if(ser!==lastSavedStr){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);}
-  try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
-  schedulePush();
-}
 const L=(id,q)=>({id,q});
 function nut(id){if(id==='milk'&&!state.labels.milk)return milkPer100ml();return state.labels[id]||DB[id].slice(1,3);}
 function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f,fb:(FIB[x.id]||0)*f};}
@@ -905,7 +787,7 @@ function calCard(){
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="calDate" value="${def}"><button class="primary" data-calsave>Set week ✓</button></div>
   <p class="hintline" id="calWeekRange" style="margin:6px 0 0">${calWeekRange(def)}</p>
   <div class="callist">${rows}</div>
-  ${state.weekKey?`<p class="hintline">Viewing week of <b>${fmtMon(state.weekKey)}</b>. <button data-calunlink>Back to live week</button></p>`:''}`;
+  ${state.weekKey?`<p class="hintline">Viewing week of <b>${fmtMon(state.weekKey)}</b>. <button data-calunlink>Edit week template</button></p>`:''}`;
 }
 function openCal(){$('#dlgTitle').textContent='Calendar · locked weeks';$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
 function dayViewISO(){const vd=new Date();vd.setDate(vd.getDate()+dayOff);return vd.getFullYear()+'-'+String(vd.getMonth()+1).padStart(2,'0')+'-'+String(vd.getDate()).padStart(2,'0');}
@@ -931,17 +813,17 @@ function collectEdit(){
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
-  if(iso){const mon=mondayOf(iso);if(mon&&lockedWeeks[mon]&&state.weekKey!==mon){const w=lockedWeeks[mon];state.days=structuredClone(w.days);restoreModes(w);if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=mon;state.custom=true;save();render();}}
+  if(iso){selectWeek(mondayOf(iso));render();}
   editCtx={i,iso:iso||null};
   const v=editValsFromState(i);editSnap=JSON.stringify(v);
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
   $('#dlgBody').innerHTML=editFormHTML(v);
   $('#dlg').showModal();
 }
-function saveEdit(){
+async function saveEdit(){
   if(!editCtx)return;
   const v=collectEdit(),d=state.days[editCtx.i];
-  if(v.s&&v.s!==d.s){const other=state.days.findIndex((x,j)=>j!==editCtx.i&&x.s===v.s);if(other>=0){const old=d.s;state.days[other].s=old;}d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}
+  if(v.s&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}
   if(v.b)d.b=v.b;
   if(v.dal)d.dal=v.dal;
   if(v.p&&!NO_EXTRA(d.s))d.p=v.p;
@@ -949,14 +831,14 @@ function saveEdit(){
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
   state.custom=true;
   if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
-  save();render();$('#dlg').close();
+  save();render();if(await saveChanges())$('#dlg').close();else{let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';$('#dlgBody').append(msg);}msg.textContent=syncStatusText+' Close this editor to review your unsaved changes.';const cancel=$('#dlgBody [data-editcancel]');if(cancel)cancel.textContent='Close editor';}
 }
 function render(){
   document.documentElement.dataset.theme=state.theme;
   const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
   // locked-week banner
   const wb=$('#weekBar');
-  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b> · locked ✓ — edits to any day overwrite this date.</span><button data-calunlink>Back to live week</button>`;}
+  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b> · saved week — use Save changes after editing.</span><button data-calunlink>Edit week template</button>`;}
   else{wb.hidden=true;wb.innerHTML='';}
   // stats
   const w=avgForMode(personMode('w'),'w'),h=avgForMode(personMode('h'),'h');
@@ -998,7 +880,7 @@ function render(){
   // planner (week-set mode: all 7 days) + Set-week lock button after Sunday
   const _todayIso=new Date().toISOString().slice(0,10);
   const _defLock=state.weekKey||mondayOf(_todayIso)||_todayIso;
-  const _lockCard=`<section class="panel section" id="weeklock"><h2>Week ready? Lock it</h2><p class="hintline" style="margin:0 0 8px">Saves all 7 days above into the calendar week. Day mode then prefills from it.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="weekLockDate" value="${_defLock}"><button class="primary" data-weeklock>Set week meals \u2713</button></div><p class="hintline" id="weekLockRange" style="margin:6px 0 0">${calWeekRange(_defLock)}</p>${state.weekKey?`<p class="hintline">Locked to week of <b>${fmtMon(state.weekKey)}</b> \u2713 — edits to any day overwrite that date.</p>`:`<p class="hintline">Not locked to a calendar week yet.</p>`}</section>`;
+  const _lockCard=`<section class="panel section" id="weeklock"><h2>Week ready? Save it</h2><p class="hintline" style="margin:0 0 8px">Saves all 7 days above into the calendar week. Day mode then prefills from it.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="weekLockDate" value="${_defLock}"><button class="primary" data-weeklock>Set week meals \u2713</button></div><p class="hintline" id="weekLockRange" style="margin:6px 0 0">${calWeekRange(_defLock)}</p>${state.weekKey?`<p class="hintline">Locked to week of <b>${fmtMon(state.weekKey)}</b> \u2713 — use Save changes after editing.</p>`:`<p class="hintline">Template only — choose a date and Set week meals to save a calendar week.</p>`}</section>`;
   $('#planner').innerHTML=state.days.map((d,i)=>dayHTML(d,i)).join('')+_lockCard;
   // day-plan mode: only one day (today by default), prefilled from the week plan
   document.body.dataset.view=state.view==='day'?'day':'week';
@@ -1011,7 +893,7 @@ function render(){
     const title=dayOff===0?`Today · ${DAYS[vi]}, ${datestr}`:`${DAYS[vi]}, ${datestr}`;
     const mon=mondayOf(iso);
     const loadBanner=(mon&&lockedWeeks[mon]&&state.weekKey!==mon)
-      ?`<div class="payload"><span>📅 Locked plan exists for week of <b>${fmtMon(mon)}</b>.</span><button data-dayload="${mon}">Load it</button></div>`:'';
+      ?`<div class="payload">Select the saved week in Calendar.</div>`:(!lockedWeeks[mon]?'<p class="hintline">No saved week for this date. Showing your week template; saving a day creates this week.</p>':'');
     $('#dayview').innerHTML=`<div class="daynav"><button data-daynav="-1" aria-label="Previous day">‹</button><h2>${title}</h2><button data-daynav="1" aria-label="Next day">›</button>${dayOff!==0?'<button data-daynav="0">Today</button>':''}</div>${loadBanner}${dayHTML(state.days[vi],vi)}`;
   }else{$('#dayview').innerHTML='';}
   // shopping
@@ -1154,43 +1036,30 @@ document.addEventListener('click',e=>{
   const wk=e.target.closest('[data-weeks]');
   if(wk){state.weeks=+wk.dataset.weeks===2?2:1;save();render();return;}
   const vw=e.target.closest('.viewseg [data-view]');
-  if(vw){state.view=vw.dataset.view==='day'?'day':'week';state.viewExplicit=true;dayOff=0;save();render();return;}
+  if(vw){save();state.view=vw.dataset.view==='day'?'day':'week';state.viewExplicit=true;dayOff=0;if(state.view==='day')selectDayWeek();render();return;}
   const dn=e.target.closest('[data-daynav]');
-  if(dn){dayOff=dn.dataset.daynav==='0'?0:dayOff+ +dn.dataset.daynav;render();return;}
-  const dl=e.target.closest('[data-dayload]');
-  if(dl){const k=dl.dataset.payload,w=lockedWeeks[k];if(w){state.days=structuredClone(w.days);restoreModes(w);if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();}return;}
+  if(dn){save();dayOff=dn.dataset.daynav==='0'?0:dayOff+ +dn.dataset.daynav;selectDayWeek();render();return;}
   const ul=e.target.closest('[data-calunlink]');
-  if(ul){state.weekKey=null;save();render();if($('#dlg').open){$('#dlgBody').innerHTML=calCard();}return;}
+  if(ul){selectWeek(null);state.view='week';render();if($('#dlg').open)$('#dlgBody').innerHTML=calCard();return;}
   const wl=e.target.closest('[data-weeklock]');
   if(wl){const inp=$('#weekLockDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     ensureUtDay();ensureOilUse();
     lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
-    state.weekKey=mon;state.custom=true;save();render();return;}
-  const sy=e.target.closest('[data-syncpush]');
-  if(sy){checkCloud();return;}
-  if(e.target.closest('[data-syncload]')){pullCloud();return;}
-  if(e.target.closest('[data-synckeep]')){pendingRemote=null;renderSyncBar();pushNow(false);return;}
-  if(e.target.closest('[data-syncdismiss]')){renderSyncBar();return;}
-  if(e.target.closest('[data-syncdone]')){$('#dlg').close();checkCloud();return;}
-  if(e.target.closest('[data-syncrecover]')){
-    try{const data=JSON.parse(localStorage.getItem(RECOVERYSTORE));if(data){const err=applyImport(data);if(err)syncStatus(err);else{syncStatus('Previous device copy restored. Sync to choose which plan to keep.');checkCloud();}}}catch(err){syncStatus('Could not restore the device copy.');}
-    return;}
+    state.weekKey=mon;state.custom=true;save();render();saveChanges();return;}
+  if(e.target.closest('[data-syncdone]')){$('#dlg').close();return;}
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
-    state.weekKey=mon;save();render();$('#dlgBody').innerHTML=calCard();return;}
+    state.weekKey=mon;save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
   const ld=e.target.closest('[data-calload]');
-  if(ld){const k=ld.dataset.calload,w=lockedWeeks[k];if(!w)return;
-    state.days=structuredClone(w.days);restoreModes(w);if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();
-    $('#dlg').close();return;}
+  if(ld){selectWeek(ld.dataset.calload);state.view='week';render();$('#dlg').close();return;}
   const del=e.target.closest('[data-caldel]');
-  if(del){const k=del.dataset.caldel;delete lockedWeeks[k];persistWeeks();
-    if(state.weekKey===k){state.weekKey=null;save();render();}
-    $('#dlgBody').innerHTML=calCard();return;}
+  if(del){const k=del.dataset.caldel;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#calBtn').onclick=openCal;
-$('#syncBtn').onclick=()=>{openSync();setTimeout(checkCloud,100);};
+$('#syncBtn').onclick=openSync;
+$('#dlg').addEventListener('close',()=>{if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.personModes={w:'easy',h:'medium'};state.custom=false;state.weekKey=null;save();render();};
@@ -1208,7 +1077,7 @@ $('#importFile').onchange=e=>{
   const r=new FileReader();
   r.onload=()=>{try{
     const data=JSON.parse(r.result);
-    if(!confirm('Replace this browser\u2019s whole plan with the backup file?'))return;
+    if(!confirm('Load this backup as a draft? Review it, then Save changes to update your household.'))return;
     const err=applyImport(data);
     if(err)alert('Import failed: '+err);
   }catch(ex){alert('Import failed: not a readable backup file.');}};
@@ -1220,11 +1089,7 @@ document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
 }));
 render();
 syncUtensils();
-setTimeout(checkCloud,0);
-setInterval(()=>{if(!document.hidden)checkCloud();},15000);
-window.addEventListener('online',checkCloud);
-window.addEventListener('focus',checkCloud);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkCloud();});
+startCloud();
 </script>
 </body>
 </html>
