@@ -131,7 +131,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 body[data-view=day] #planner{display:none}
 body[data-view=week] #dayview{display:none}
 body[data-view=day] #shopping,body[data-view=day] #labels{display:none}
-body[data-view=day] #utensils .ut-grid,body[data-view=day] #utensils .hintline{display:none}
+
 body[data-view=day] #utensils{margin-top:14px}
 body[data-view=day] #utensils h2{font-size:16px;margin:0 0 8px}
 body[data-view=day] .ut-use{margin-top:0}
@@ -176,11 +176,8 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
     <button id="calBtn" class="navbtn" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅 Cal</span></button>
-    <select id="presetSelect" class="navsel" aria-label="Preset" title="Calorie plan: Low, Medium or High portions">
-      <option value="easy">Low</option>
-      <option value="medium" selected>Medium</option>
-      <option value="hard">High</option>
-    </select>
+    <label style="display:flex;gap:5px;align-items:center">Wife<select id="presetW" class="navsel" aria-label="Wife portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
+    <label style="display:flex;gap:5px;align-items:center">Husband<select id="presetH" class="navsel" aria-label="Husband portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
     <button class="infobtn" data-presets title="Compare plans vs maintenance" aria-label="Compare plans">ⓘ</button>
     <span class="customflag" id="customStatus"></span>
     <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
@@ -207,7 +204,7 @@ footer{color:var(--muted);font-size:12px;margin-top:22px}
 
   <section class="panel section" id="utensils">
     <h2>Utensils</h2>
-    <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then pick which vessel each dish is cooked in below (switch to Big / Medium pan when the main ones are dirty). In any lunch/dinner sharing-ratio popup, enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts that vessel and splits only the food. Saved in this browser.</p>
+    <p class="hintline" style="margin:0 0 10px">Weigh each empty vessel once on your kitchen scale and save it here. Then pick which vessel each dish is cooked in below (switch to Big / Medium pan when the main ones are dirty). In any lunch/dinner sharing-ratio popup, enter the <b>scale reading with the vessel on it</b> and tick “includes …” — the app subtracts that vessel and splits only the food. Saved once for your household, across days, weeks and devices.</p>
     <div class="ut-grid">
       <div class="ut-card"><label>Kadhai <input type="number" min="0" step="any" inputmode="decimal" data-ut="kadhai" placeholder="e.g. 850"> <small>grams (empty)</small></label></div>
       <div class="ut-card"><label>Pressure cooker <input type="number" min="0" step="any" inputmode="decimal" data-ut="cooker" placeholder="e.g. 2000"> <small>grams (empty)</small></label></div>
@@ -285,13 +282,16 @@ const FIB={atta:10,rice:1.3,oats:10.4,besan:11,moong:9.37,masoor:10.43,arhar:11.
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20,
   kalachana:17,pasta:2.9,maida:2.7,butter:0,beans:2.7};
 function fibUnk(a){return a.some(x=>FIB[x.id]===null||FIB[x.id]===undefined);}
-// Portion levels: plans move carbs + milk/nuts; protein portions stay identical.
+// Independent portion levels; Low also scales dinner sabzi and separate protein to 80%.
 const PORTIONS={
   easy:{rice:40,attaLunch:20,attaDinner:20,milk:200,nuts:0},
   medium:{rice:50,attaLunch:30,attaDinner:30,milk:250,nuts:10},
   hard:{rice:60,attaLunch:40,attaDinner:40,milk:300,nuts:20}
 };
-const P=()=>PORTIONS[state.mode]||PORTIONS.medium;
+const personMode=p=>(state.personModes||{w:'easy',h:'medium'})[p];
+const P=p=>PORTIONS[personMode(p)]||PORTIONS.medium;
+const dinnerScale=p=>personMode(p)==='easy'?.8:1;
+function restoreModes(w){state.personModes=w.personModes?{...w.personModes}:{w:'easy',h:w.mode||'medium'};}
 // Household profiles (maintenance via Mifflin-St Jeor; desk job + daily cardio ≈ ×1.55)
 const PROFILE={w:{name:'Wife',height:165,weight:64,age:29},h:{name:'Husband',height:173,weight:76,age:29}};
 const ACT=1.55;
@@ -342,11 +342,12 @@ function srcTableHTML(){
 function soyaId(){return state.soya==='S'?'soyS':'soyN';}
 // Single sharing basis: fraction of the FULL daily batch per meal-person. Cook quantities,
 // nutrition, shopping and split fractions all derive from these shares (fix A/E/F).
-function sabShare(d,p){return d.s==='S3'?(p==='w'?2/9:5/18):.25;}
+function sabShare(d,p,m){return (d.s==='S3'?(p==='w'?2/9:5/18):.25)*(m==='d'?dinnerScale(p):1);}
+function sabBatch(d){return ['l','d'].reduce((n,m)=>n+(kept(d,m)?sabShare(d,'w',m)+sabShare(d,'h',m):0),0);}
 function dalShare(p){return p==='w'?7/30:4/15;}
 function protShare(d,p){const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q;return(p==='w'?qw:qh)/(qw+qh);}
 function batchScale(d,dish){const Lc=kept(d,'l')?1:0,Dc=kept(d,'d')?1:0;
-  if(dish==='sab'||dish==='dal')return(Lc+Dc)*.5;
+  if(dish==='sab')return sabBatch(d);if(dish==='dal')return(Lc+Dc)*.5;
   if(dish==='prot')return Dc;return 0;}
 const DEFAULT_DAYS=[['B3','S1','P','moong'],['B4','S2','P','masoor'],['B1','S3','P','arhar'],['B2','S4','Y','moong'],['B5','S7','Y','masoor'],['B3','S5','Y','arhar'],['B2','S6','P','moong']]
  .map(x=>({b:x[0],s:x[1],p:x[2],dal:x[3],off:false,skip:{b:false,l:false,d:false},wheyW:true,wheyH:true,eggH:true,cardioW:true,cardioH:true}));
@@ -361,6 +362,10 @@ function utDayAt(i){ensureUtDay();return state.utDay[i];}
 function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${n}</option>`).join('');}
 let lastSavedStr='';
 let loadingCloud=false;
+const UTSTORE='meal-household-utensils-v1';
+let globalUtensils={};
+try{globalUtensils=JSON.parse(localStorage.getItem(UTSTORE))||{};}catch(e){}
+function persistUtensils(){globalUtensils={...state.utensils,_updatedAt:{...(state.utensilUpdatedAt||{})}};try{localStorage.setItem(UTSTORE,JSON.stringify(globalUtensils));}catch(e){}}
 let state;
 try{state=JSON.parse(localStorage.getItem(STORE))||null;}catch(e){state=null;}
 if(!state||!Array.isArray(state.days)||state.days.length!==7){
@@ -372,6 +377,11 @@ function normalizeState(){
   state.days=state.days.map(d=>({b:d.b,s:d.s,p:d.p,dal:d.dal,off:!!d.off,skip:{b:false,l:false,d:false,...(d.skip||{})},wheyW:d.wheyW!==false,wheyH:d.wheyH!==false,eggH:d.eggH!==false,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false}));
   if(!state.labels||typeof state.labels!=='object')state.labels={};
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
+  state.utensilUpdatedAt={...(state.utensilUpdatedAt||{})};
+  for(const k of Object.keys(DEFAULT_UTENSILS)){const savedAt=+(globalUtensils._updatedAt||{})[k]||0,incomingAt=+state.utensilUpdatedAt[k]||0;if(savedAt>incomingAt||(!incomingAt&&globalUtensils[k]>0)){state.utensils[k]=globalUtensils[k];state.utensilUpdatedAt[k]=savedAt;}}
+  persistUtensils();
+  if(!state.personModes)state.personModes={w:'easy',h:state.mode||'medium'};
+  for(const p of ['w','h'])if(!PORTIONS[state.personModes[p]])state.personModes[p]=p==='w'?'easy':'medium';
   state.utSel={...DEFAULT_UTSEL,...(state.utSel||{})};
   if(!Array.isArray(state.utDay)||state.utDay.length!==7){const g=(state.utSel&&typeof state.utSel.sabzi==='string')?state.utSel:null;state.utDay=Array.from({length:7},()=>({sabzi:(g&&UT_NAMES[g.sabzi])?g.sabzi:'kadhai',dal:(g&&UT_NAMES[g.dal])?g.dal:'cooker',prot:(g&&UT_NAMES[g.prot])?g.prot:'pan'}));}
   if(state.soya!=='S'&&state.soya!=='N')state.soya='N';
@@ -393,6 +403,7 @@ if(!state){
 }else{
   normalizeState();
 }
+normalizeState();
 try{lastSavedStr=JSON.stringify(state);}catch(e){lastSavedStr='';}
 let dayOff=0;
 // Locked weeks: weekKey (Monday ISO) -> {days, mode, savedAt}
@@ -413,7 +424,7 @@ function applyImport(data){
   state=st;normalizeState();
   const w=(data.lockedWeeks&&typeof data.lockedWeeks==='object')?data.lockedWeeks:{};
   lockedWeeks={};
-  for(const k of Object.keys(w)){const e=w[k];if(e&&Array.isArray(e.days)&&e.days.length===7)lockedWeeks[k]={days:e.days,mode:e.mode,utDay:e.utDay,soya:e.soya,oilUse:e.oilUse,savedAt:e.savedAt||0};}
+  for(const k of Object.keys(w)){const e=w[k];if(e&&Array.isArray(e.days)&&e.days.length===7)lockedWeeks[k]={days:e.days,mode:e.mode,personModes:e.personModes,utDay:e.utDay,soya:e.soya,oilUse:e.oilUse,savedAt:e.savedAt||0};}
   if(!loadingCloud)state.custom=true;save();persistWeeks();render();
   return null;
 }
@@ -530,7 +541,7 @@ function save(){
   // Overwrite the locked week when viewing one: any day/meal edit lands in that date.
   ensureUtDay();
   ensureOilUse();
-  if(state.weekKey&&JSON.stringify(state)!==lastSavedStr){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
+  if(state.weekKey&&JSON.stringify(state)!==lastSavedStr){lockedWeeks[state.weekKey]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
   const ser=JSON.stringify(state);
   if(ser!==lastSavedStr){state.updatedAt=Date.now();lastSavedStr=JSON.stringify(state);}
   try{localStorage.setItem(STORE,JSON.stringify(state));}catch(e){}
@@ -580,7 +591,7 @@ const NO_EXTRA=s=>['S3','S8','S9','S10'].includes(s);
 const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
-function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0;return id==='Y'?[L(soyaId(),(h?60:50)+(boost?10:0))]:[L('paneer',(h?125:100)+(boost?25:0))];}
+function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0,scale=dinnerScale(person);return id==='Y'?[L(soyaId(),((h?60:50)+(boost?10:0))*scale)]:[L('paneer',((h?125:100)+(boost?25:0))*scale)];}
 function cardioDone(day,person){return person==='h'?day.cardioH!==false:day.cardioW!==false;}
 function meal(day,which,person){
   const h=person==='h';
@@ -589,18 +600,18 @@ function meal(day,which,person){
   if(which!=='e'&&day.skip&&day.skip[which])return[];
   if(which==='b')return breakfast(day.b,person,day);
   // Rest day (cardio skipped): no evening nuts — milk stays.
-  if(which==='e')return cardio?[L('milk',P().milk),L('nuts',P().nuts)]:[L('milk',P().milk)];
+  if(which==='e')return cardio?[L('milk',P(person).milk),L('nuts',P(person).nuts)]:[L('milk',P(person).milk)];
   const oU=oilUse();
-  const sc=n=>n.map(x=>L(x.id,x.q*sabShare(day,person)));
+  const sc=n=>n.map(x=>L(x.id,x.q*sabShare(day,person,which)));
   const a=[];
-  if(which==='l')a.push(L(h?'rice':'atta',h?P().rice:P().attaLunch));
+  if(which==='l')a.push(L(h?'rice':'atta',h?P(person).rice:P(person).attaLunch));
   // Rest day: no dinner roti for the person who skipped cardio.
-  else if(cardio)a.push(L('atta',P().attaDinner));
+  else if(cardio)a.push(L('atta',P(person).attaDinner));
   a.push(L(day.dal,150*dalShare(person)),L('oil',oU.dal*dalShare(person)),L('spice',1.5),...sc(sabzi(day.s)));
   if(which==='l')a.push(L('curd',200));
   else{
     if(!NO_EXTRA(day.s)){
-      const qw=protein(day.p,'w',day)[0].q,qh=protein(day.p,'h',day)[0].q,tot=qw+qh,myQ=person==='w'?qw:qh;
+      const qw=protein(day.p,'w',day)[0].q,qh=protein(day.p,'h',day)[0].q,tot=qw/dinnerScale('w')+qh/dinnerScale('h'),myQ=person==='w'?qw:qh;
       a.push(...protein(day.p,person,day));
       if(oU.prot>0&&tot>0)a.push(L('oil',oU.prot*myQ/tot)); // separately cooked protein gets its own oil
     }
@@ -691,19 +702,19 @@ function splitRatio(d,m){
   }
   const cooked=(kept(d,'l')?1:0)+(kept(d,'d')?1:0)===2?1:.5; // one shared batch; half when a meal is skipped
   if(m==='l')return[
-    ['Sabzi · '+SABZIS[d.s],ratioText(sabShare(d,'w'),sabShare(d,'h'),cooked)],
+    ['Sabzi · '+SABZIS[d.s],ratioText(sabShare(d,'w',m),sabShare(d,'h',m),sabBatch(d))],
     ['Dal · '+DALNAMES[d.dal],ratioText(dalShare('w'),dalShare('h'),cooked)],
     ['Starch','W roti ×1 · H rice · separate'],
     ['Curd','W : H = 1 : 1'],
   ];
   const rows=[
-    ['Sabzi · '+SABZIS[d.s],ratioText(sabShare(d,'w'),sabShare(d,'h'),cooked)],
+    ['Sabzi · '+SABZIS[d.s],ratioText(sabShare(d,'w',m),sabShare(d,'h',m),sabBatch(d))],
     ['Dal · '+DALNAMES[d.dal],ratioText(dalShare('w'),dalShare('h'),cooked)],
   ];
   if(NO_EXTRA(d.s))rows.push(['Protein in sabzi','fixed batch share · not a top-up']);
   else{const pq=[protein(d.p,'w',d)[0].q,protein(d.p,'h',d)[0].q];rows.push(['Protein · '+(d.p==='Y'?SOYA_OPTS[state.soya]+' soya':'Paneer'),'W : H = '+qratio(pq[0],pq[1])]);}
   const cw=d.cardioW!==false,ch=d.cardioH!==false;
-  rows.push(['Roti',cw&&ch?'1 each · 1 : 1':cw?'W only · H rest day':ch?'H only · W rest day':'none · rest day'],['Cucumber','W : H = 2 : 3']);
+  rows.push(['Roti',cw&&ch?'1 each · flour W : H = '+qratio(P('w').attaDinner,P('h').attaDinner):cw?'W only · H rest day':ch?'H only · W rest day':'none · rest day'],['Cucumber','W : H = 2 : 3']);
   return rows;
 }
 function restCut(i,p){
@@ -733,7 +744,7 @@ function splitCalc(d,m,di){
   const cookedFrac=((kept(d,'l')?1:0)+(kept(d,'d')?1:0))===2?1:.5; // cooked batch vs full daily batch
   const rowF=(label,wShare,hShare,cooked,ukey,uvessel)=>row(label,wShare/cooked,1,hShare/cooked,1,ukey,uvessel);
   const protName=d.p==='Y'?SOYA_OPTS[state.soya]+' soya':PROTEINS[d.p].toLowerCase();
-  let html=`<div class="splitcalc">${rowF('Cooked sabzi batch',sabShare(d,'w'),sabShare(d,'h'),cookedFrac,sel('sabzi'),UT_NAMES[sel('sabzi')])}${rowF('Cooked dal batch',dalShare('w'),dalShare('h'),cookedFrac,sel('dal'),UT_NAMES[sel('dal')])}`;
+  let html=`<div class="splitcalc">${rowF('Cooked sabzi batch',sabShare(d,'w',m),sabShare(d,'h',m),sabBatch(d),sel('sabzi'),UT_NAMES[sel('sabzi')])}${rowF('Cooked dal batch',dalShare('w'),dalShare('h'),cookedFrac,sel('dal'),UT_NAMES[sel('dal')])}`;
   if(m==='d'&&!NO_EXTRA(d.s)){
     html+=rowF('Cooked '+protName+' batch',protShare(d,'w'),protShare(d,'h'),1,sel('prot'),UT_NAMES[sel('prot')]);
   }
@@ -777,15 +788,15 @@ function inspect(i,m){
   return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${oilNote}${note}${fibNote}${mixNote}<p class="hintline">This meal (oil included): W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
 }
 function avgForMode(m,p){
-  const keep=state.mode;state.mode=m;
+  const keep=state.personModes[p];state.personModes[p]=m;
   const t=state.days.reduce((a,_,i)=>{const v=daily(i,p).total;return{k:a.k+v.k/7,p:a.p+v.p/7,fb:a.fb+v.fb/7};},{k:0,p:0,fb:0});
-  state.mode=keep;return t;
+  state.personModes[p]=keep;return t;
 }
 function personBlurb(p){const pr=PROFILE[p];return`${pr.weight} kg · ${pr.height} cm · ${pr.age} y · maintenance ~${tdee(pr)} kcal/day (estimate)`;}
 function personCard(p){
   const pr=PROFILE[p],[plo,phi]=protRange(pr);
-  const a=avgForMode(state.mode,p);
-  const modeName={easy:'Low',medium:'Medium',hard:'High'}[state.mode];
+  const a=avgForMode(personMode(p),p);
+  const modeName={easy:'Low',medium:'Medium',hard:'High'}[personMode(p)];
   return`<table><tbody>
     <tr><td>Profile</td><td class="num"><b>${pr.weight} kg · ${pr.height} cm · ${pr.age} y</b></td></tr>
     <tr><td>Maintenance (Mifflin-St Jeor ×1.55 estimate — check against weight trend)</td><td class="num"><b>~${tdee(pr)} kcal</b></td></tr>
@@ -806,13 +817,13 @@ function presetCard(){
   const rows=['easy','medium','hard'].map(m=>{
     const w=avgForMode(m,'w'),h=avgForMode(m,'h');
     const n={easy:'Low',medium:'Medium',hard:'High'}[m];
-    return`<tr><td>${n}${m===state.mode?' ●':''}</td><td class="num">${R(w.k)} / ${R(w.p)} g</td><td class="num">${R(h.k)} / ${R(h.p)} g</td></tr>`;
+    return`<tr><td>${n}${m===personMode('w')?' · W':''}${m===personMode('h')?' · H':''}</td><td class="num">${R(w.k)} / ${R(w.p)} g</td><td class="num">${R(h.k)} / ${R(h.p)} g</td></tr>`;
   }).join('');
   const[wplo,wphi]=protRange(PROFILE.w),[hplo,hphi]=protRange(PROFILE.h);
   return`<table><thead><tr><th>Plan</th><th class="num">Wife kcal / protein</th><th class="num">Husband kcal / protein</th></tr></thead><tbody>${rows}
     <tr><td>Maintenance</td><td class="num"><b>~${tdee(PROFILE.w)} / ${wplo}–${wphi} g</b></td><td class="num"><b>~${tdee(PROFILE.h)} / ${hplo}–${hphi} g</b></td></tr>
   </tbody></table>
-  <p class="hintline">Plans move carbs + milk/nuts only — protein portions are identical across Low/Medium/High. Values use today's toggles. Averages count eating-out days as 0 home food, not full intake. ● = active.</p>`;
+  <p class="hintline">Each person has their own plan. Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged. Values use today's toggles. Averages count eating-out days as 0 home food, not full intake. W/H = selected plan.</p>`;
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function cookRows(i){
@@ -841,7 +852,7 @@ function cookRows(i){
     const dalBatchG=150*batchScale(d,'dal'); // dal-batch dry dal only (breakfast grain shown under Breakfast)
     groups.push(['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — '+F(dalBatchG)+' g (wash, for the day)',...starch]]);
     const half=!lunch||!dinner;
-    const sabTitle='Sabzi batch · '+SABZIS[d.s]+(d.s==='S8'?` (${SOYA_OPTS[state.soya]})`:'')+(half?` · half batch (${lunch?'dinner skipped':'lunch skipped'} — no leftovers planned)`:'');
+    const sabTitle='Sabzi batch · '+SABZIS[d.s]+(d.s==='S8'?` (${SOYA_OPTS[state.soya]})`:'')+(half?` · ${lunch?'lunch only':'dinner only'} (no leftovers planned)`:'');
     groups.push([sabTitle,sabziBase(d.s).map(x=>{
       const v=(q[x.id]||0)-(bfMap[x.id]||0); // onion/carrot/oil shared with breakfast: show the sabzi remainder
       return`${DB[x.id][0]} — ${F(Math.max(0,v))} ${DB[x.id][3]}`;
@@ -859,7 +870,7 @@ function cookRows(i){
     if(extras.length)groups.push([dinner&&lunch?'Dinner + lunch extras':dinner?'Dinner extras':'Lunch extras',extras]);
   }
   const nutsG=q.nuts||0;
-  const nutsTxt=P().nuts===0?'Nuts — none (light plan)':nutsG?('Nuts — '+F(nutsG)+' g'):'Nuts — none (rest day)';
+  const nutsTxt=(P('w').nuts+P('h').nuts)===0?'Nuts — none (low plans)':nutsG?('Nuts — '+F(nutsG)+' g'):'Nuts — none (rest day)';
   groups.push(['Evening',[`Milk — ${F(q.milk||0)} ml`,nutsTxt]]);
   const oilG=q.oil||0,spiceG=q.spice||0;
   if(oilG>0||spiceG>0||kept(d,'b'))groups.push(['Oil',['Oil — '+F(oilG)+' ml across dishes · spices '+F(spiceG)+' g (estimates, editable in Packet labels)']]);
@@ -920,7 +931,7 @@ function collectEdit(){
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
-  if(iso){const mon=mondayOf(iso);if(mon&&lockedWeeks[mon]&&state.weekKey!==mon){const w=lockedWeeks[mon];state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=mon;state.custom=true;save();render();}}
+  if(iso){const mon=mondayOf(iso);if(mon&&lockedWeeks[mon]&&state.weekKey!==mon){const w=lockedWeeks[mon];state.days=structuredClone(w.days);restoreModes(w);if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=mon;state.custom=true;save();render();}}
   editCtx={i,iso:iso||null};
   const v=editValsFromState(i);editSnap=JSON.stringify(v);
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
@@ -937,7 +948,7 @@ function saveEdit(){
   d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
   state.custom=true;
-  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
+  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
   save();render();$('#dlg').close();
 }
 function render(){
@@ -948,13 +959,14 @@ function render(){
   if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b> · locked ✓ — edits to any day overwrite this date.</span><button data-calunlink>Back to live week</button>`;}
   else{wb.hidden=true;wb.innerHTML='';}
   // stats
-  const w=avgForMode(state.mode,'w'),h=avgForMode(state.mode,'h');
+  const w=avgForMode(personMode('w'),'w'),h=avgForMode(personMode('h'),'h');
   $('#stats').innerHTML=['w','h'].map(p=>{
     const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
     return`<div class="stat"><div class="who">${n} · home-food daily avg <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
   }).join('');
   $('#customStatus').textContent=state.custom?'Customised':'';
-  $('#presetSelect').value=state.mode;
+  $('#presetW').value=personMode('w');$('#presetH').value=personMode('h');
+  syncUtensils();
   function dayHTML(d,i){
     const dw=daily(i,'w'),dh=daily(i,'h');
     const slots=['b','l','d'].map(m=>{
@@ -1035,6 +1047,7 @@ function render(){
   const st=$('#srcTable');if(st)st.innerHTML=srcTableHTML();
   save();
 }
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.ut){const v=parseFloat(t.value);state.utensils[t.dataset.ut]=Number.isFinite(v)&&v>=0?Math.round(v):0;state.utensilUpdatedAt[t.dataset.ut]=Date.now();persistUtensils();save();}});
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.day!==undefined&&t.dataset.k){
@@ -1096,7 +1109,7 @@ document.addEventListener('change',e=>{
   if(t.dataset&&t.dataset.ut){
     const v=parseFloat(t.value);
     state.utensils[t.dataset.ut]=(!Number.isFinite(v)||v<0)?0:Math.round(v);
-    save();return;
+    state.utensilUpdatedAt[t.dataset.ut]=Date.now();persistUtensils();save();return;
   }
   if(t.dataset&&t.dataset.utsel){
     const k=t.dataset.utsel;
@@ -1145,13 +1158,13 @@ document.addEventListener('click',e=>{
   const dn=e.target.closest('[data-daynav]');
   if(dn){dayOff=dn.dataset.daynav==='0'?0:dayOff+ +dn.dataset.daynav;render();return;}
   const dl=e.target.closest('[data-dayload]');
-  if(dl){const k=dl.dataset.payload,w=lockedWeeks[k];if(w){state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();}return;}
+  if(dl){const k=dl.dataset.payload,w=lockedWeeks[k];if(w){state.days=structuredClone(w.days);restoreModes(w);if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();}return;}
   const ul=e.target.closest('[data-calunlink]');
   if(ul){state.weekKey=null;save();render();if($('#dlg').open){$('#dlgBody').innerHTML=calCard();}return;}
   const wl=e.target.closest('[data-weeklock]');
   if(wl){const inp=$('#weekLockDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     ensureUtDay();ensureOilUse();
-    lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
+    lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.custom=true;save();render();return;}
   const sy=e.target.closest('[data-syncpush]');
   if(sy){checkCloud();return;}
@@ -1164,11 +1177,11 @@ document.addEventListener('click',e=>{
     return;}
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
-    ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
+    ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;save();render();$('#dlgBody').innerHTML=calCard();return;}
   const ld=e.target.closest('[data-calload]');
   if(ld){const k=ld.dataset.calload,w=lockedWeeks[k];if(!w)return;
-    state.days=structuredClone(w.days);state.mode=w.mode||state.mode;if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();
+    state.days=structuredClone(w.days);restoreModes(w);if(Array.isArray(w.utDay)&&w.utDay.length===7)state.utDay=structuredClone(w.utDay);ensureUtDay();if(w.soya==='S'||w.soya==='N')state.soya=w.soya;if(w.oilUse)state.oilUse={...w.oilUse};ensureOilUse();state.weekKey=k;state.custom=true;save();render();
     $('#dlg').close();return;}
   const del=e.target.closest('[data-caldel]');
   if(del){const k=del.dataset.caldel;delete lockedWeeks[k];persistWeeks();
@@ -1180,7 +1193,7 @@ $('#calBtn').onclick=openCal;
 $('#syncBtn').onclick=()=>{openSync();setTimeout(checkCloud,100);};
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
-$('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.custom=false;state.weekKey=null;save();render();};
+$('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.personModes={w:'easy',h:'medium'};state.custom=false;state.weekKey=null;save();render();};
 $('#exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify(buildExport())],{type:'application/json'});
   const a=document.createElement('a');
@@ -1201,9 +1214,7 @@ $('#importFile').onchange=e=>{
   }catch(ex){alert('Import failed: not a readable backup file.');}};
   r.readAsText(f);
 };
-$('#presetSelect').onchange=()=>{
-  state.mode=$('#presetSelect').value;state.custom=false;render();
-};
+for(const [p,id]of [['w','presetW'],['h','presetH']])$( '#'+id).onchange=()=>{state.personModes[p]=$('#'+id).value;state.custom=true;save();render();};
 document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
   document.querySelectorAll('.tabs a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
 }));
