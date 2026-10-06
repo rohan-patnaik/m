@@ -1,8 +1,10 @@
 import {queryGeneric as query,mutationGeneric as mutation,internalMutationGeneric as internalMutation} from 'convex/server';
 import {v,ConvexError} from 'convex/values';
 import {validateRecord} from '../records.js';
+import {validateBatchAssignments} from '../batch-math.js';
 export const read=query({args:{},handler:async ctx=>(await ctx.db.query('records').collect()).map(({key,value,revision})=>({key,value,revision}))});
-export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),value:v.any(),expectedRevision:v.number()}))},handler:async(ctx,{changes})=>{
+export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),value:v.any(),expectedRevision:v.number()})),formatVersion:v.optional(v.number())},handler:async(ctx,{changes,formatVersion})=>{
+ if(changes.some(c=>c.key.startsWith('batch/'))&&formatVersion!==2)throw new ConvexError('Reload the app before editing batch meals.');
  if(changes.length>500)throw new ConvexError('Too many changes');
  const seen=new Set();
  for(const c of changes){if(seen.has(c.key))throw new ConvexError('Duplicate key');seen.add(c.key);validateRecord(c.key,c.value);
@@ -11,6 +13,7 @@ export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),val
  if(old)await ctx.db.patch(old._id,{value:c.value,revision:old.revision+1});
  else await ctx.db.insert('records',{key:c.key,value:c.value,revision:1});
  }
+ const batches=(await ctx.db.query('records').collect()).filter(r=>r.key.startsWith('batch/')&&r.value).map(r=>r.value);validateBatchAssignments(batches);
  return {savedAt:Date.now()};
 }});
 // Admin-only one-time import. Never callable by the public app and never overwrites data.

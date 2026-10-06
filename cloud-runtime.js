@@ -18,6 +18,7 @@ function snapshotDraft(){
  next['week/'+date]={savedAt:w.savedAt||Date.now()};
  for(let i=0;i<7;i++)next['week/'+date+'/day/'+i]={meal:w.days[i],utensils:w.utDay?.[i]||{...DEFAULT_UTSEL}};
  }
+ for(const [id,batch]of Object.entries(savedBatches))next['batch/'+id]=structuredClone(batch);
  cloudDraft=next;
 }
 function cloudChanges(){return MealCloud.changesBetween(cloudBase,cloudDraft);}
@@ -28,6 +29,7 @@ function hydrateDraft(){
  for(const k of Object.keys(DEFAULT_UTENSILS))state.utensils[k]=cloudDraft['setting/utensils/'+k]||0;
  templateDays=Array.from({length:7},(_,i)=>structuredClone(cloudDraft['template/day/'+i]?.meal||DEFAULT_DAYS[i]));
  templateUtensils=Array.from({length:7},(_,i)=>structuredClone(cloudDraft['template/day/'+i]?.utensils||DEFAULT_UTSEL));
+ savedBatches=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('batch/')&&v).map(([k,v])=>[k.slice(6),structuredClone(v)]));
  lockedWeeks={};
  for(const [key,value]of Object.entries(cloudDraft))if(/^week\/\d{4}-\d{2}-\d{2}$/.test(key)&&value){
  const date=key.slice(5),days=[],utDay=[];
@@ -73,7 +75,7 @@ async function saveChanges(){
  const changes=cloudChanges();if(!changes.length)return true;
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:2});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;

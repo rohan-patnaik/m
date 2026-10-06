@@ -234,6 +234,40 @@ button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible{
 .ut-use{gap:8px}.ut-use select{font-size:12px;padding:8px 4px;min-width:0}
 dialog{padding:18px}.dialog-head h2{font-size:18px}.comparison td,.comparison th{padding:12px 6px}.comparison td strong{font-size:16px}.comparison th{font-size:12px}
 }
+
+.batch-add{color:var(--accent)}
+.batch-list{margin:20px 0}.batch-list h2{font-size:18px;margin:0 0 10px}
+.batch-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;margin:8px 0;text-align:left;background:var(--paper)}
+.batch-list-item small{display:block;color:var(--muted);font-weight:400;margin-top:4px}
+.batch-meal-notes{display:grid;gap:6px}
+.batch-note{font-size:12px;text-align:left;font-weight:400;background:var(--tint);border:0;padding:9px 10px}
+.batch-note span{display:block;font-size:11px;color:var(--muted);margin-top:3px}
+dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
+.batch-editor h3{font-size:15px;margin:20px 0 10px}
+.batch-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.batch-fields>label{display:grid;gap:6px;font-size:13px;font-weight:600}
+.batch-fields input,.batch-fields select{width:100%;min-width:0}
+.batch-fields input[type=date]{padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;box-sizing:border-box}
+.batch-fields small{font-size:11px;font-weight:400;color:var(--muted)}
+.batch-picker{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:300px;overflow:auto;padding:4px 2px}
+.batch-date{min-width:0;border:1px solid var(--line);border-radius:10px;padding:10px;margin:0}
+.batch-date legend{font-size:12px;font-weight:650;padding:0 4px}
+.batch-choice{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:8px;font-size:12px;padding:6px 0}
+.batch-choice select{padding:5px 6px;font-size:12px;width:100%;min-width:0}
+.batch-choice label{display:flex;align-items:center;gap:5px;font-size:12px}
+.batch-choice input,.batch-checkbox input{width:auto;accent-color:var(--accent)}
+.batch-unavailable{font-size:11px;color:var(--muted)}
+.batch-weigh{margin:20px 0;padding:16px;background:var(--paper2);border-radius:10px}
+.batch-fields>.batch-checkbox{display:flex;align-items:center;font-weight:400}
+.batch-portions th,.batch-portions td{padding:12px 8px}
+.batch-portions span{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.batch-portions strong{font-size:16px;white-space:nowrap}
+.batch-caution{font-size:12px;color:var(--muted);line-height:1.6}
+.batch-selection-list{padding-left:20px;font-size:12px;color:var(--muted)}
+.batch-weight-fix{display:flex;align-items:center;gap:10px;margin:12px 0}
+.batch-weight-fix input{width:120px}
+[data-batch-error]{color:#b54725;font-size:13px}
+@media(max-width:680px){.batch-picker{grid-template-columns:1fr}.batch-fields{grid-template-columns:1fr}.dayhead{flex-wrap:wrap}.day-actions{flex-wrap:wrap;gap:6px}.day-actions .batch-add{font-size:12px}.batch-portions td,.batch-portions th{padding:10px 4px}.batch-portions strong{font-size:14px}.batch-weigh{padding:12px}}
 </style>
 </head>
 <body>
@@ -277,6 +311,7 @@ dialog{padding:18px}.dialog-head h2{font-size:18px}.comparison td,.comparison th
 
   <div id="planner"></div>
   <div id="dayview"></div>
+  <div id="batchList"></div>
 
   <section class="panel section" id="utensils">
     <h2>Utensils</h2>
@@ -333,6 +368,7 @@ dialog{padding:18px}.dialog-head h2{font-size:18px}.comparison td,.comparison th
 
 <script src="cloud-config.js"></script>
 <script src="convex-browser.js"></script>
+<script src="batch-runtime.js"></script>
 <script src="cloud-runtime.js"></script>
 <script>
 const DB={
@@ -486,7 +522,7 @@ function mondayOf(iso){const d=new Date(iso+'T12:00:00');if(isNaN(d))return null
 function fmtMon(iso){try{return new Date(iso+'T12:00:00').toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});}catch(e){return iso;}}
 const L=(id,q)=>({id,q});
 function nut(id){if(id==='milk'&&!state.labels.milk)return milkPer100ml();return state.labels[id]||DB[id].slice(1,3);}
-function val(x){const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f,fb:(FIB[x.id]||0)*f};}
+function val(x){if(x.n)return {...x.n};const u=DB[x.id][3],n=nut(x.id),f=(u==='serving'||u==='egg')?x.q:x.q/100;return{k:n[0]*f,p:n[1]*f,fb:(FIB[x.id]||0)*f};}
 function sum(a){return a.reduce((t,x)=>{const v=val(x);return{k:t.k+v.k,p:t.p+v.p,fb:t.fb+v.fb};},{k:0,p:0,fb:0});}
 const R=n=>Math.round(n), F=n=>+n.toFixed(1);
 
@@ -530,7 +566,7 @@ const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
 function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0,scale=dinnerScale(person);return id==='Y'?[L(soyaId(),((h?60:50)+(boost?10:0))*scale)]:[L('paneer',((h?125:100)+(boost?25:0))*scale)];}
 function cardioDone(day,person){return person==='h'?day.cardioH!==false:day.cardioW!==false;}
-function meal(day,which,person){
+function baseMeal(day,which,person){
   const h=person==='h';
   const cardio=cardioDone(day,person);
   if(day.off)return[];
@@ -571,7 +607,7 @@ function dayUnknownFibre(i,person){
 }
 function ledger(){
   const r={};const add=a=>{for(const x of a)r[x.id]=(r[x.id]||0)+x.q;};
-  state.days.forEach(d=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,p));});
+  state.days.forEach((d,i)=>{for(const p of['w','h'])for(const m of['b','l','d','e'])add(freshMeal(d,m,p));if(state.weekKey)for(const [,batch]of batchesCookedOn(dateForDay(i)))add(batch.ingredients);});
   return r;
 }
 function cookQty(i){
@@ -579,7 +615,7 @@ function cookQty(i){
   // nutrition and shopping — cook list, nutrition input and shopping use are one basis by construction.
   const d=state.days[i],q={};const add=a=>{for(const x of a)q[x.id]=(q[x.id]||0)+x.q;};
   if(d.off)return q;
-  for(const per of['w','h'])for(const m of['b','l','d','e'])add(meal(d,m,per));
+  for(const per of['w','h'])for(const m of['b','l','d','e'])add(freshMeal(d,m,per));
   return q;
 }
 function vegList(){
@@ -681,9 +717,13 @@ function splitCalc(d,m,di){
   const cookedFrac=((kept(d,'l')?1:0)+(kept(d,'d')?1:0))===2?1:.5; // cooked batch vs full daily batch
   const rowF=(label,wShare,hShare,cooked,ukey,uvessel)=>row(label,wShare/cooked,1,hShare/cooked,1,ukey,uvessel);
   const protName=d.p==='Y'?SOYA_OPTS[state.soya]+' soya':PROTEINS[d.p].toLowerCase();
-  let html=`<div class="splitcalc">${rowF('Cooked sabzi batch',sabShare(d,'w',m),sabShare(d,'h',m),sabBatch(d),sel('sabzi'),UT_NAMES[sel('sabzi')])}${rowF('Cooked dal batch',dalShare('w'),dalShare('h'),cookedFrac,sel('dal'),UT_NAMES[sel('dal')])}`;
+  const totalSab=freshSabziTotal(d);
+  let html='<div class="splitcalc">';
+  if(totalSab>0&&(freshSabziShare(d,'w',m)||freshSabziShare(d,'h',m)))html+=rowF('Fresh cooked sabzi batch',freshSabziShare(d,'w',m),freshSabziShare(d,'h',m),totalSab,sel('sabzi'),UT_NAMES[sel('sabzi')]);
+  html+=rowF('Cooked dal batch',dalShare('w'),dalShare('h'),cookedFrac,sel('dal'),UT_NAMES[sel('dal')]);
   if(m==='d'&&!NO_EXTRA(d.s)){
-    html+=rowF('Cooked '+protName+' batch',protShare(d,'w'),protShare(d,'h'),1,sel('prot'),UT_NAMES[sel('prot')]);
+    const w=coveredComponent(d,m,'w','protein')?0:protShare(d,'w'),h=coveredComponent(d,m,'h','protein')?0:protShare(d,'h');
+    if(w+h>0)html+=rowF('Fresh cooked '+protName+' batch',w,h,w+h,sel('prot'),UT_NAMES[sel('prot')]);
   }
   html+='</div>';
   return html;
@@ -708,7 +748,7 @@ function inspect(i,m){
   const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
   if(d.off||(d.skip&&d.skip[m]))return`<p>Skipped — eating out. Nothing to split for this meal.</p><p class="hintline">Unskip it on the day card to bring the ratios back.</p>`;
   const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
-  const rows=splitRatio(d,m).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
+  const rows=batchSplitRows(d,m,splitRatio(d,m)).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
   const calc=splitCalc(d,m,i);
   const mlines={w:meal(d,m,'w'),h:meal(d,m,'h')};
   const oilMl={w:0,h:0,sp:0};for(const p of['w','h'])for(const x of mlines[p]){if(x.id==='oil')oilMl[p]+=x.q;if(x.id==='spice')oilMl.sp+=x.q;}
@@ -758,7 +798,7 @@ function presetCard(){
   <details class="explanation"><summary>How the plans differ</summary><p>Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged.</p><p>Values reflect your current meal choices and toggles. Eating-out meals count as zero home food, not zero total intake.</p></details></div>`;
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
-function cookRows(i){
+function freshCookRows(i){
   // Every quantity below is read from cookQty() — the same aggregated meal() lines behind
   // nutrition and shopping — so the cook list can never disagree with them. Skipping a meal
   // cooks only the still-needed portion (default: no implicit leftovers).
@@ -783,12 +823,9 @@ function cookRows(i){
     const starch=[(lunch?`Rice — ${F(riceG)} g uncooked (husband lunch)`:null),`Atta — ${F(attaG)} g (${rotis} roti${rotis>1?'s':''}${restTag})`].filter(Boolean);
     const dalBatchG=150*batchScale(d,'dal'); // dal-batch dry dal only (breakfast grain shown under Breakfast)
     groups.push(['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — '+F(dalBatchG)+' g (wash, for the day)',...starch]]);
-    const half=!lunch||!dinner;
-    const sabTitle='Sabzi batch · '+SABZIS[d.s]+(d.s==='S8'?` (${SOYA_OPTS[state.soya]})`:'')+(half?` · ${lunch?'lunch only':'dinner only'} (no leftovers planned)`:'');
-    groups.push([sabTitle,sabziBase(d.s).map(x=>{
-      const v=(q[x.id]||0)-(bfMap[x.id]||0); // onion/carrot/oil shared with breakfast: show the sabzi remainder
-      return`${DB[x.id][0]} — ${F(Math.max(0,v))} ${DB[x.id][3]}`;
-    })]);
+    const freshSab=freshSabziLines(d);
+    if(freshSab.length)groups.push(['Fresh sabzi · '+SABZIS[d.s],freshSab.filter(x=>x.id!=='oil').map(x=>`${DB[x.id][0]} — ${F(x.q)} ${DB[x.id][3]}`)]);
+
   }
   if(dinner||lunch){
     const extras=[];
@@ -808,6 +845,7 @@ function cookRows(i){
   if(oilG>0||spiceG>0||kept(d,'b'))groups.push(['Oil',['Oil — '+F(oilG)+' ml across dishes · spices '+F(spiceG)+' g (estimates, editable in Packet labels)']]);
   return groups;
 }
+function cookRows(i){const fresh=freshCookRows(i),batch=batchCookGroups(i);if(state.days[i].off&&batch.length)fresh[0]=['Note',['Meals eaten out; prepared batch portions are listed below.']];return [...fresh,...batch];}
 function cookCard(i){
   const d=state.days[i];
   const skipped=['b','l','d'].filter(m=>d.skip&&d.skip[m]);
@@ -867,7 +905,7 @@ function openEdit(i,iso){
   editCtx={i,iso:iso||null};
   const v=editValsFromState(i);editSnap=JSON.stringify(v);
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
-  $('#dlgBody').innerHTML=editFormHTML(v);
+  $('#dlgBody').innerHTML=editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
 }
 async function saveEdit(){
@@ -913,7 +951,7 @@ function render(){
         :`<div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g protein</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g protein</div></div>`;
       const ratioBtn=skipped?'':`<button class="ing" data-ing="${i},${m}">Sharing ratio →</button>`;
       const skipTag=skipped?`<span class="skiptag">Skipped</span>`:'';
-      return`<div class="slot${skipped?' skipped':''}"><div class="slothead"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div>${skipTag}</div><h3>${mealTitle(d,m)}</h3>${extra}
+      return`<div class="slot${skipped?' skipped':''}"><div class="slothead"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div>${skipTag}</div><h3>${batchMealTitle(d,m)}</h3>${extra}${batchMealNotes(i,m)}
         ${numsHtml}
         ${ratioBtn}</div>`;
     }).join('');
@@ -921,7 +959,7 @@ function render(){
     const offTag=d.off?` · ⛔ Eating out`:'';
     const ud=utDayAt(i);
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
-      <div class="day-actions"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button>
+      <div class="day-actions"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button><button class="cookbtn batch-add" data-batch-add="${i}" aria-label="Cook a batch from ${DAYS[i]}">Cook a batch</button>
       </div></div>
       ${d.off?'<p class="eatout-tag">Eating out — excluded from shopping</p>':`<div class="day-totals"><div><span>Wife</span><strong>${R(dw.total.k)} <small>kcal</small></strong><span>${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre</span></div><div><span>Husband</span><strong>${R(dh.total.k)} <small>kcal</small></strong><span>${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>`}
       <div class="daysub">Dal: ${DALNAMES[d.dal]} · Cardio: W ${d.cardioW!==false?'✓':'✗'} · H ${d.cardioH!==false?'✓':'✗'}${restTag}${offTag}</div>
@@ -947,6 +985,7 @@ function render(){
       ?`<div class="payload">Select the saved week in Calendar.</div>`:(!lockedWeeks[mon]?'<p class="hintline">No saved week for this date. Showing your week template; saving a day creates this week.</p>':'');
     $('#dayview').innerHTML=`<div class="daynav"><button data-daynav="-1" aria-label="Previous day">‹</button><h2>${title}</h2><button data-daynav="1" aria-label="Next day">›</button>${dayOff!==0?'<button data-daynav="0">Today</button>':''}</div>${loadBanner}${dayHTML(state.days[vi],vi)}`;
   }else{$('#dayview').innerHTML='';}
+  renderBatchList();
   // shopping
   $('#vegTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${vegList().map(x=>`<tr><td>${DB[x.id][0]}</td><td class="num">${R(x.used)} g</td><td class="num"><b>${R(x.buy)} g</b></td></tr>`).join('')}</tbody></table>`;
   const led=ledger();
@@ -1126,4 +1165,3 @@ startCloud();
 </script>
 </body>
 </html>
-                          

@@ -1,7 +1,9 @@
+import {validateBatch} from './batch-math.js';
 // Shared wire format. Tombstones retain revisions, including after deletion/recreation.
 export const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 export function validateRecord(key,value){
+ if(key.startsWith('batch/')){if(!/^batch\/[a-zA-Z0-9-]{8,64}$/.test(key))throw Error('Invalid batch key');if(value!==null)validateBatch(value);if(JSON.stringify(value).length>32000)throw Error('Batch too large');return;}
  if(!/^(setting\/(labels|density|soya|oilUse|personModes|utSel|utensils\/(kadhai|cooker|pan|bigpan|medpan))|template\/day\/[0-6]|week\/\d{4}-\d{2}-\d{2}(\/day\/[0-6])?)$/.test(key))throw Error('Invalid record key');
  if(JSON.stringify(value).length>12000)throw Error('Record too large');
  if(value===null){if(!key.startsWith('week/'))throw Error('Cannot delete household settings');return;}
