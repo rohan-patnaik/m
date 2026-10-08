@@ -5,10 +5,12 @@ import {readFileSync} from 'node:fs';
 import {webcrypto} from 'node:crypto';
 import * as math from '../batch-math.js';
 import * as records from '../records.js';
+import * as weighMath from '../weigh-math.js';
 function app(){
  const document={addEventListener(){},querySelector(){return null;},querySelectorAll(){return[];}};
- const ctx=vm.createContext({document,window:{addEventListener(){}},BatchMath:math,MealCloud:records,crypto:webcrypto,structuredClone,console,TextEncoder,setInterval(){},navigator:{onLine:true}});
+ const ctx=vm.createContext({document,window:{addEventListener(){}},BatchMath:math,WeighMath:weighMath,MealCloud:records,crypto:webcrypto,structuredClone,console,TextEncoder,setInterval(){},navigator:{onLine:true}});
  vm.runInContext(readFileSync(new URL('../batch-runtime.js',import.meta.url),'utf8'),ctx);
+ vm.runInContext(readFileSync(new URL('../weigh-runtime.js',import.meta.url),'utf8'),ctx);
  vm.runInContext(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),ctx);
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
  vm.runInContext(script.slice(0,script.indexOf("document.addEventListener('input'")),ctx);
@@ -63,4 +65,30 @@ test('a Sunday batch for next week is bought once and survives calendar hydratio
 test('cooking week is materialized from template even with no servings in that week',()=>{
  const run=app();const result=run(`(()=>{state.weekKey=null;batchDraft={recipe:'P',cookedOn:'2026-10-11',vessel:'pan',includeVessel:false,gross:700,oil:null,roles:{'2026-10-12/d':'protein'},selected:{'2026-10-12/d/w':true}};stageBatch('fixture-template',buildBatchPreview(true));selectWeek('2026-10-05');return {cooking:!!lockedWeeks['2026-10-05'],next:!!lockedWeeks['2026-10-12'],prep:cookRows(6)};})()`);
  assert.ok(result.cooking&&result.next);assert.ok(result.prep.some(g=>g[0].startsWith('Cooked batch')));
+});
+test('600 g for two equal meals makes four 150 g portions and correct scale targets',()=>{
+ const servings=['l','d'].flatMap(meal=>['w','h'].map(person=>({meal,person,factor:1})));
+ const r={...weighMath.allocateFood(1600,1000,servings),tare:1000};
+ assert.deepEqual(r.portions.map(s=>s.grams),[150,150,150,150]);
+ assert.deepEqual(weighMath.servingSteps(r,'l').map(s=>[s.foodLeft,s.scaleLeft]),[[450,1450],[300,1300]]);
+ assert.deepEqual(weighMath.servingSteps(r,'d').map(s=>s.scaleLeft),[1150,1000]);
+ assert.throws(()=>weighMath.allocateFood(900,1000,servings));
+});
+test('daily weights use actual plan shares and preserve calories',()=>{
+ const run=app();const result=run(`(()=>{state.days[3].s='S3';const before=daily(3,'w').total;const a=WeighMath.allocateFood(1600,1000,weighSpecs(3,'sabzi'));const d=WeighMath.allocateFood(1600,1000,weighSpecs(3,'dal'));dailyWeights['2026-10-08/sabzi']={...a,gross:1600,tare:1000,vessel:'kadhai',scope:'all',savedAt:Date.now(),basis:weighBasis(3,'sabzi','all')};snapshotDraft();hydrateDraft();const saved=currentWeigh(3,'sabzi'),after=daily(3,'w').total;state.personModes.w='medium';const stale=currentWeigh(3,'sabzi');return {before,after,sabzi:a.portions,dal:d.portions,saved,stale};})()`);
+ assert.deepEqual(Array.from(result.sabzi,s=>s.grams),[140,174,112,174]);assert.deepEqual(Array.from(result.dal,s=>s.grams),[140,160,140,160]);
+ weighMath.validateWeighRecord('weigh/2026-10-08/sabzi',result.saved);assert.equal(result.stale,null);for(const k of ['k','p','fb'])assert.equal(result.before[k],result.after[k]);
+});
+test('lunch-only and batch-covered portions share only the food actually being weighed',()=>{
+ const run=app();const result=run(`(()=>{const only=WeighMath.allocateFood(600,0,weighSpecs(0,'sabzi','l'));state.days[0].skip.l=true;const dinner=WeighMath.allocateFood(600,0,weighSpecs(0,'sabzi'));state.days[0].skip.l=false;batchDraft={recipe:'S8',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:400,oil:null,roles:{'2026-10-05/d':'sabzi'},selected:{'2026-10-05/d/w':true}};savedBatches['fixture-covered']=buildBatchPreview(true);return {only,dinner,fresh:weighSpecs(0,'sabzi')};})()`);
+ assert.deepEqual(Array.from(result.only.portions,s=>s.grams),[300,300]);
+ assert.equal(result.dinner.portions.length,2);assert.equal(result.dinner.portions.reduce((n,s)=>n+s.grams,0),600);
+ assert.equal(result.fresh.some(s=>s.person==='w'&&s.meal==='d'),false);
+});
+test('cooked-weight records reject invalid dates, duplicate servings and totals',()=>{
+ const r={gross:1600,tare:1000,netWeight:600,vessel:'kadhai',scope:'all',basis:'test',savedAt:1,portions:[{meal:'l',person:'w',grams:600}]};
+ assert.doesNotThrow(()=>records.validateRecord('weigh/2026-10-08/sabzi',r));
+ assert.throws(()=>records.validateRecord('weigh/2026-02-30/sabzi',r));
+ assert.throws(()=>records.validateRecord('weigh/2026-10-08/sabzi',{...r,netWeight:601}));
+ assert.throws(()=>records.validateRecord('weigh/2026-10-08/sabzi',{...r,portions:[...r.portions,...r.portions]}));
 });

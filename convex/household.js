@@ -4,7 +4,8 @@ import {validateRecord} from '../records.js';
 import {validateBatchAssignments} from '../batch-math.js';
 export const read=query({args:{},handler:async ctx=>(await ctx.db.query('records').collect()).map(({key,value,revision})=>({key,value,revision}))});
 export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),value:v.any(),expectedRevision:v.number()})),formatVersion:v.optional(v.number())},handler:async(ctx,{changes,formatVersion})=>{
- if(changes.some(c=>c.key.startsWith('batch/'))&&formatVersion!==2)throw new ConvexError('Reload the app before editing batch meals.');
+ if(changes.some(c=>c.key.startsWith('batch/'))&&![2,3].includes(formatVersion))throw new ConvexError('Reload the app before editing batch meals.');
+ if(changes.some(c=>c.key.startsWith('weigh/'))&&formatVersion!==3)throw new ConvexError('Reload the app before editing cooked weights.');
  if(changes.length>500)throw new ConvexError('Too many changes');
  const seen=new Set();
  for(const c of changes){if(seen.has(c.key))throw new ConvexError('Duplicate key');seen.add(c.key);validateRecord(c.key,c.value);

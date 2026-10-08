@@ -236,6 +236,20 @@ dialog{padding:18px}.dialog-head h2{font-size:18px}.comparison td,.comparison th
 }
 
 .batch-add{color:var(--accent)}
+.weighed-notes{display:grid;gap:4px;margin:8px 0}.weighed-note{text-align:left;background:var(--tint);border:0;font-size:12px;font-weight:400;padding:8px}
+dialog:has(.weigh-card){max-width:760px}
+.weigh-card{padding:18px 0;border-bottom:1px solid var(--line)}.weigh-card h3{margin:0 0 4px;font-size:17px}.weigh-vessel{color:var(--muted);font-size:12px;margin:0 0 12px}
+.weigh-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.weigh-fields>label{font-size:13px;font-weight:600;display:grid;gap:6px}
+.weigh-fields select,.weigh-fields input[type=number]{width:100%;min-width:0}
+.weigh-fields .weigh-reading{position:relative}.weigh-reading input{padding-right:62px}.weigh-reading>.weigh-unit{position:absolute;right:12px;bottom:10px;font-weight:400;color:var(--muted)}
+.weigh-options{font-size:12px;align-self:end}.weigh-options summary{cursor:pointer;color:var(--accent);padding:10px 0}.weigh-options label{display:grid;gap:5px;margin:8px 0}.weigh-protein{font-size:13px;margin:16px 0}.weigh-protein>summary{cursor:pointer;font-weight:600}
+.weigh-actions{position:sticky;bottom:-24px;padding:12px 0;background:var(--paper);border-top:1px solid var(--line);z-index:1}
+.weigh-fields .weigh-includes{display:flex;align-items:center;gap:8px;font-weight:400}.weigh-includes input{accent-color:var(--accent)}
+.weigh-net{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:16px 0 8px}.weigh-net strong{font-size:20px}.weigh-net span{font-size:12px;color:var(--muted)}
+.weigh-portions th,.weigh-portions td{text-align:right;padding:10px 6px;white-space:nowrap}.weigh-portions th:first-child{text-align:left}.weigh-portions td{font-weight:650}
+.weigh-steps{margin:12px 0;font-size:13px}.weigh-steps summary{cursor:pointer;color:var(--accent);font-weight:600}.weigh-steps>div{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 0}.weigh-steps>p{margin:10px 0 4px}.weigh-steps span{color:var(--muted)}
+.weigh-error{color:#b54725;font-size:13px}.text-btn{background:none;border:0;padding:2px 0;color:var(--accent);text-decoration:underline;font-size:inherit}
+@media(max-width:680px){.weigh-fields{grid-template-columns:1fr}.weigh-portions{font-size:12px}.weigh-portions th,.weigh-portions td{padding:10px 3px}}
 .batch-list{margin:20px 0}.batch-list h2{font-size:18px;margin:0 0 10px}
 .batch-list-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 16px;margin:8px 0;text-align:left;background:var(--paper)}
 .batch-list-item small{display:block;color:var(--muted);font-weight:400;margin-top:4px}
@@ -369,6 +383,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="cloud-config.js"></script>
 <script src="convex-browser.js"></script>
 <script src="batch-runtime.js"></script>
+<script src="weigh-runtime.js"></script>
 <script src="cloud-runtime.js"></script>
 <script>
 const DB={
@@ -474,7 +489,7 @@ const DEFAULT_UTSEL={sabzi:'kadhai',dal:'cooker',prot:'pan'};
 const DEFAULT_UTDAY=()=>Array.from({length:7},()=>({...DEFAULT_UTSEL}));
 function ensureUtDay(){if(!Array.isArray(state.utDay)||state.utDay.length!==7){const g=(state.utSel&&typeof state.utSel.sabzi==='string')?state.utSel:null;state.utDay=Array.from({length:7},()=>({sabzi:(g&&UT_NAMES[g.sabzi])?g.sabzi:'kadhai',dal:(g&&UT_NAMES[g.dal])?g.dal:'cooker',prot:(g&&UT_NAMES[g.prot])?g.prot:'pan'}));}else{state.utDay=state.utDay.map(u=>({sabzi:UT_NAMES[u.sabzi]?u.sabzi:'kadhai',dal:UT_NAMES[u.dal]?u.dal:'cooker',prot:UT_NAMES[u.prot]?u.prot:'pan'}));}return state.utDay;}
 function utDayAt(i){ensureUtDay();return state.utDay[i];}
-function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${n}</option>`).join('');}
+function utOpts(cur){return Object.entries(UT_NAMES).map(([id,n])=>`<option value="${id}"${id===cur?' selected':''}>${n}${state?.utensils?.[id]>0?' ('+state.utensils[id]+' g)':''}</option>`).join('');}
 let lastSavedStr='';
 let loadingCloud=false;
 function persistUtensils(){}
@@ -949,9 +964,9 @@ function render(){
       const skipped=d.off||(d.skip&&d.skip[m]);
       const numsHtml=skipped?`<div class="nums"><div>Skipped · eating out</div></div>`
         :`<div class="nums"><div>Wife<b>${R(nums[0].k)} kcal</b>${F(nums[0].p)} g protein</div><div>Husband<b>${R(nums[1].k)} kcal</b>${F(nums[1].p)} g protein</div></div>`;
-      const ratioBtn=skipped?'':`<button class="ing" data-ing="${i},${m}">Sharing ratio →</button>`;
+      const ratioBtn=skipped?'':m==='b'?`<button class="ing" data-ing="${i},${m}">Breakfast details</button>`:`<button class="ing" data-weigh="${i}" data-weigh-meal="${m}">Serve portions</button>`;
       const skipTag=skipped?`<span class="skiptag">Skipped</span>`:'';
-      return`<div class="slot${skipped?' skipped':''}"><div class="slothead"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div>${skipTag}</div><h3>${batchMealTitle(d,m)}</h3>${extra}${batchMealNotes(i,m)}
+      return`<div class="slot${skipped?' skipped':''}"><div class="slothead"><div class="lbl">${m==='b'?'Breakfast':m==='l'?'Lunch':'Dinner'}</div>${skipTag}</div><h3>${batchMealTitle(d,m)}</h3>${extra}${batchMealNotes(i,m)}${weighedNotes(i,m)}
         ${numsHtml}
         ${ratioBtn}</div>`;
     }).join('');
@@ -959,7 +974,7 @@ function render(){
     const offTag=d.off?` · ⛔ Eating out`:'';
     const ud=utDayAt(i);
     return`<article class="panel day"><div class="dayhead"><h2>${DAYS[i]}</h2>
-      <div class="day-actions"><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button><button class="cookbtn batch-add" data-batch-add="${i}" aria-label="Cook a batch from ${DAYS[i]}">Cook a batch</button>
+      <div class="day-actions"><button class="cookbtn primary" data-weigh="${i}" aria-label="Weigh food for ${DAYS[i]}">Weigh food</button><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button><button class="cookbtn batch-add" data-batch-add="${i}" aria-label="Cook a batch from ${DAYS[i]}">Cook a batch</button>
       </div></div>
       ${d.off?'<p class="eatout-tag">Eating out — excluded from shopping</p>':`<div class="day-totals"><div><span>Wife</span><strong>${R(dw.total.k)} <small>kcal</small></strong><span>${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre</span></div><div><span>Husband</span><strong>${R(dh.total.k)} <small>kcal</small></strong><span>${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>`}
       <div class="daysub">Dal: ${DALNAMES[d.dal]} · Cardio: W ${d.cardioW!==false?'✓':'✗'} · H ${d.cardioH!==false?'✓':'✗'}${restTag}${offTag}</div>
@@ -1081,7 +1096,7 @@ document.addEventListener('change',e=>{
   if(t.dataset&&t.dataset.ut){
     const v=parseFloat(t.value);
     state.utensils[t.dataset.ut]=(!Number.isFinite(v)||v<0)?0:Math.round(v);
-    state.utensilUpdatedAt[t.dataset.ut]=Date.now();persistUtensils();save();return;
+    state.utensilUpdatedAt[t.dataset.ut]=Date.now();persistUtensils();save();syncUtSel();persistGlobalUtensils();return;
   }
   if(t.dataset&&t.dataset.utsel){
     const k=t.dataset.utsel;

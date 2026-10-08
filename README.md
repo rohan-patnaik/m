@@ -12,6 +12,14 @@ Meals and settings are authoritative in Convex. The frontend uses live WebSocket
 - Legacy Firebase browser copies are archived once in `legacyArchives`, then only those unchanged legacy keys are removed. They never override the current shared plan. Archive failure retains the old copy for a retry on the next visit.
 - The app intentionally has no end-user login: anyone with its link can read and edit this household. Convex admin credentials are never shipped to the browser.
 
+## Daily weighing and serving
+
+**Weigh food** accepts the whole cooked sabzi and dal once for the day. Vessel weight is shown beside its name and subtracted by default when known. Use the secondary controls for food-only readings, another vessel, or a batch cooked for only lunch or dinner. **Save weights** stores dated `weigh/<date>/<dish>` records in Convex; both meal cards and other devices reuse them. Separate dinner protein is an optional section.
+
+Whole grams are allocated across every included meal/person and add up exactly to the net food weight. The remaining-food column and optional scale targets assume lunch is served before dinner, husband then wife; these are expected readings, not a food-consumption log. Ratios follow the recipe and individual diet settings. Weighing does not change calorie or shopping calculations. Changing the recipe, serving scope, presets or batch coverage marks an old allocation as stale until reviewed and saved again. Previously recorded tare is preserved when global vessel settings change.
+
+Vessel weights are global; editing them saves on field change. Wire format version 3 preserves weighing records and prevents older clients from deleting them. The October 8 restoration recovered the earlier positive utensil weights from the preserved `meal-before-household-sync-v1` archive, replacing only still-zero shared weights and retaining an audit on the artifact drive.
+
 ## Cooked batches
 
 Use **Cook a batch** on a day card, choose a recipe and the covered date/meal/person boxes, then cook the combined raw quantities. The picker covers the cooking date and the next six days, including across calendar weeks. Paneer/soya recipes can replace either sabzi or a separate dinner protein serving. A protein-containing sabzi replaces the separate top-up too.

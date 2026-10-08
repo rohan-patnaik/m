@@ -6,4 +6,5 @@ await copyFile('index.html',out+'/index.html');
 await copyFile('cloud-config.js',out+'/cloud-config.js');
 await copyFile('cloud-runtime.js',out+'/cloud-runtime.js');
 await copyFile('batch-runtime.js',out+'/batch-runtime.js');
+await copyFile('weigh-runtime.js',out+'/weigh-runtime.js');
 await build({entryPoints:['convex-browser.js'],bundle:true,format:'iife',minify:true,outfile:out+'/convex-browser.js'});
