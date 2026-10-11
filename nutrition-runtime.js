@@ -2,6 +2,12 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
+ "paneerHP":{"k":202.6,"p":25,"c":5.4,"s":5.4,"f":9,"sat":5.8,"fb":0,"source":"Heritage NOURISH+ packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/xxl/40359963-4_1-heritage-nourish-high-protein-paneer.jpg"},
+ "curdH":{"k":58,"p":3.3,"c":4.3,"s":null,"f":3,"sat":2,"fb":0,"source":"Heritage Total Curd packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/225759-2_8-heritage-curd-premium.jpg"},
+ "butterH":{"k":723.2,"p":.4,"c":.4,"s":null,"f":80,"sat":52,"fb":0,"source":"Heritage table butter packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/256566-2_3-heritage-table-butter-pasteurised.jpg"},
+ "walnuts":{"k":654,"p":15.23,"c":13.71,"f":65.21,"s":2.61,"fb":6.7,"sat":6.126,"fdc":170187,"source":"USDA SR Legacy (generic estimate)","basis":"100 g raw"},
+ "flax":{"k":534,"p":18.29,"c":28.88,"f":42.16,"s":1.55,"fb":27.3,"sat":3.663,"fdc":169414,"source":"USDA SR Legacy (generic estimate)","basis":"100 g raw"},
+ "chicken":{"source":"USDA SR Legacy (generic estimate)","fdc":171077,"basis":"100 g raw, boneless, skinless breast","k":120,"p":22.5,"c":0,"f":2.62,"s":0,"fb":0,"sat":0.563},
  "onion":{"source":"USDA SR Legacy (generic estimate)","fdc":170000,"basis":"100 g raw edible","s":4.24,"f":0.1,"c":9.34,"k":40.0,"sat":0.042,"p":1.1,"fb":1.7,"name":"Onions, raw"},
  "tomato":{"source":"USDA SR Legacy (generic estimate)","fdc":170457,"basis":"100 g raw edible","s":2.63,"c":3.89,"k":18.0,"sat":0.028,"f":0.2,"fb":1.2,"p":0.88,"name":"Tomatoes, red, ripe, raw, year round average"},
  "carrot":{"source":"USDA SR Legacy (generic estimate)","fdc":170393,"basis":"100 g raw edible","sat":0.032,"p":0.93,"f":0.24,"s":4.74,"c":9.58,"k":41.0,"fb":2.8,"name":"Carrots, raw"},
@@ -41,7 +47,7 @@ const COMPARE_NUTRIENTS={
  "oil":{"c":0,"f":99.7,"s":0,"added":0,"sat":6.2,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g","url":"https://www.tatasimplybetter.com/products/tata-simply-better-coldpressed-mustard-oil-1l?variant=50349740097856"}
 };
 
-function comparisonEmpty(){return{k:0,p:0,c:0,cHi:0,f:0,fHi:0,s:0,sHi:0,fb:0,oil:0,sat:0,unknown:false};}
+function comparisonEmpty(){return{k:0,p:0,c:0,cHi:0,f:0,fHi:0,s:0,sHi:0,fb:0,oil:0,sat:0,a:0,aHi:0,carbUnknown:false,unknown:false};}
 function comparisonSum(lines){
  const out=comparisonEmpty();
  for(const x of lines){
@@ -52,6 +58,8 @@ function comparisonSum(lines){
   out.k+=n.k;out.p+=n.p;out.fb+=n.fb||0;
   const f=factor*density,upper=x.id==='egg'?50:x.id==='whey'?35:100;
   const c=ref.c==null?0:ref.c;
+  const documentedFibre=/USDA|IFCT/.test(ref.source||'')&&typeof ref.fb==='number'&&x.id!=='nuts'?ref.fb:0;
+  out.a+=Math.max(0,c-documentedFibre)*f;out.aHi+=(ref.c==null?upper:Math.max(0,c-documentedFibre))*f;out.carbUnknown ||= ref.c==null||!!x.n||!!state.labels[x.id];
   out.c+=c*f;out.cHi+=(ref.c==null?upper:c)*f;
   out.f+=(ref.f||0)*f;out.fHi+=(ref.f==null?upper:ref.f)*f;
   out.sat+=(typeof ref.sat==='number'?ref.sat:0)*f;
@@ -61,42 +69,30 @@ function comparisonSum(lines){
  }
  return out;
 }
-function comparisonAdd(a,b,scale=1){for(const k of ['k','p','c','cHi','f','fHi','s','sHi','fb','oil','sat'])a[k]+=b[k]*scale;a.unknown ||= b.unknown;return a;}
+function comparisonAdd(a,b,scale=1){for(const k of ['k','p','c','cHi','f','fHi','s','sHi','fb','oil','sat','a','aHi'])a[k]+=b[k]*scale;a.unknown ||= b.unknown;a.carbUnknown ||= b.carbUnknown;return a;}
 // Explicit example portions, not a prescribed diet. All weights are raw edible or packet weights.
-function ketoDraftMeal(day,p,m){
- if(day.off||day.skip?.[m])return[];
- const h=p==='h';
- if(m==='e')return[];
- if(m==='b')return [L('paneer',h?100:75),L('palak',50),L('mushroom',50),L('oil',h?7:6),...((h?day.wheyH:day.wheyW)?[L('whey',1)]:[]),...(h&&day.eggH?[L('egg',2)]:[])];
- const date=mealDate(day),link=date?batchLink(date,m,p,'sabzi'):null;
- const recipe=link?.batch.recipe||day.s;
- const veg={S1:'bhindi',S2:'gobi',S3:'palak',S4:'cabbage',S5:'mushroom',S6:'cabbage',S7:'gobi',S8:'gobi',S9:'palak',S10:'gobi',S11:'cabbage'}[recipe]||'gobi';
- return [L('paneer',m==='l'?(h?125:100):(h?100:75)),L(soyaId(),h?5:10),L(veg,veg==='bhindi'?60:80),L('onion',10),L('tomato',20),L('cucumber',h?50:37.5),L('oil',h?9:7),L('spice',1),...(m==='l'?[L('curd',50)]:[])];
+function ketoMealKey(i,p,m,scope=state.weekKey||'template'){return `keto/${scope}/day/${i}/${p}/${m}`;}
+function ketoDefaultConfig(day,p,m,i){
+ const h=p==='h',protein=h&&m==='d'?([1,4].includes(i)?'chicken':'eggs'):'paneer';
+ return {protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:'paneerHP',curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:h?33:10,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare(day,p,m)};
 }
-const ketoFixed=x=>x.id==='whey'||x.id==='egg';
+function ketoConfig(day,p,m,i=state.days.indexOf(day),scope=state.weekKey||'template'){i=Math.max(0,i);return {...ketoDefaultConfig(day,p,m,i),...structuredClone(ketoMeals[ketoMealKey(i,p,m,scope)]||{})};}
+function ketoDraftMeal(day,p,m){return typeof householdKetoBase==='function'?householdKetoBase(day,p,m):[];}
 function comparisonWeek(p){
- const balanced=comparisonEmpty(),raw=comparisonEmpty(),fixed=comparisonEmpty();
- for(const d of state.days)for(const m of ['b','l','d','e']){
-  comparisonAdd(balanced,comparisonSum(meal(d,m,p)),1/7);
-  const lines=ketoDraftMeal(d,p,m);
-  comparisonAdd(raw,comparisonSum(lines),1/7);
-  comparisonAdd(fixed,comparisonSum(lines.filter(ketoFixed)),1/7);
- }
- // Keep enabled 35g whey scoops / 2 eggs unchanged. Match energy by scaling other foods.
- const scale=raw.k>fixed.k?Math.max(0,(balanced.k-fixed.k)/(raw.k-fixed.k)):1,keto=comparisonEmpty();
- for(const d of state.days)for(const m of ['b','l','d','e'])comparisonAdd(keto,comparisonSum(ketoDraftMeal(d,p,m).map(x=>({...x,q:x.q*(ketoFixed(x)?1:scale)}))),1/7);
- return{balanced,keto,scale};
+ const balanced=comparisonEmpty(),keto=comparisonEmpty();
+ state.days.forEach((d,i)=>{for(const m of ['b','l','d','e']){comparisonAdd(balanced,comparisonSum(balancedMeal(d,m,p)),1/7);comparisonAdd(keto,comparisonSum(ketoActualMeal(d,p,m)),1/7);}});
+ return{balanced,keto,scale:1};
 }
-function ketoPortionedMeal(day,p,m){const {scale}=comparisonWeek(p);return ketoDraftMeal(day,p,m).map(x=>({...x,q:x.q*(ketoFixed(x)?1:scale)}));}
+function ketoPortionedMeal(day,p,m){return ketoActualMeal(day,p,m);}
 function comparisonRange(lo,hi){return Math.abs(hi-lo)<.05?String(F(lo)):F(lo)+'–'+F(hi);}
 function comparisonTable(p){
  const {balanced:a,keto:b}=comparisonWeek(p);
- const rows=[['Calories',R(a.k)+' kcal',R(b.k)+' kcal'],['Protein',F(a.p)+' g',F(b.p)+' g'],['Carbs¹',comparisonRange(a.c,a.cHi)+' g',comparisonRange(b.c,b.cHi)+' g'],['Total sugars²',comparisonRange(a.s,a.sHi)+' g',comparisonRange(b.s,b.sHi)+' g'],['Added sugar³','0 g','0 g'],['Fat',comparisonRange(a.f,a.fHi)+' g',comparisonRange(b.f,b.fHi)+' g'],['Saturated fat⁴','≥'+F(a.sat)+' g','≥'+F(b.sat)+' g'],['Fibre⁴','≥'+F(a.fb)+' g','≥'+F(b.fb)+' g'],['Cooking oil',F(a.oil)+' ml',F(b.oil)+' ml']];
- return `<section class="nutrition-compare"><h3>${PERSON_NAMES[p]} <small>${{easy:'Low',medium:'Medium',hard:'High'}[personMode(p)]} portions</small></h3><table><caption>Daily average · 7-day home meals</caption><thead><tr><th scope="col">Nutrient</th><th scope="col">Balanced</th><th scope="col">Keto draft</th></tr></thead><tbody>${rows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table><p class="keto-caption">Weekly energy: ${R(a.k*7).toLocaleString()} kcal in each model.</p></section>`;
+ const rows=[['Calories',R(a.k)+' kcal',R(b.k)+' kcal'],['Protein',F(a.p)+' g',F(b.p)+' g'],['Counted available carbs¹',comparisonRange(a.a,a.aHi)+' g',comparisonRange(b.a,b.aHi)+' g'],['Estimated total carbs¹',comparisonRange(a.c,a.cHi)+' g',comparisonRange(b.c,b.cHi)+' g'],['Total sugars²',comparisonRange(a.s,a.sHi)+' g',comparisonRange(b.s,b.sHi)+' g'],['Added sugar³','0 g','0 g'],['Fat',comparisonRange(a.f,a.fHi)+' g',comparisonRange(b.f,b.fHi)+' g'],['Saturated fat⁴','≥'+F(a.sat)+' g','≥'+F(b.sat)+' g'],['Fibre⁴','≥'+F(a.fb)+' g','≥'+F(b.fb)+' g'],['Cooking oil',F(a.oil)+' ml',F(b.oil)+' ml']];
+ return `<section class="nutrition-compare"><h3>${PERSON_NAMES[p]} <small>${{easy:'Low',medium:'Medium',hard:'High'}[personMode(p)]} portions</small></h3><table><caption>Daily average · 7-day home meals</caption><thead><tr><th scope="col">Nutrient</th><th scope="col">Balanced</th><th scope="col">Keto draft</th></tr></thead><tbody>${rows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table><p class="keto-caption">Weekly energy: Balanced ${R(a.k*7).toLocaleString()} · Keto ${R(b.k*7).toLocaleString()} kcal.</p></section>`;
 }
 function ketoPortionHTML(day,p,m){
  const lines=ketoPortionedMeal(day,p,m);
  if(!lines.length)return '';
- const names={tofu:'firm tofu',cabbage:'cabbage',capsicum:'capsicum',zucchini:'zucchini'};
- return `<p class="keto-portions">${lines.map(x=>`${F(x.q)} ${DB[x.id]?.[3]==='egg'?'eggs':DB[x.id]?.[3]==='serving'?'scoops':DB[x.id]?.[3]==='ml'?'ml':'g'} ${esc(names[x.id]||DB[x.id]?.[0].split(' · ')[0]||x.id)}`).join(' · ')}</p>`;
+ const names={chicken:'boneless skinless breast (raw)',cabbage:'cabbage'};
+ return `<p class="keto-portions">${lines.map(x=>x.id==='egg'?`${F(x.q)} eggs`:x.id==='whey'?`${F(x.q)} whey scoop${x.q===1?'':'s'} (35 g each)`:`${F(x.q)} ${DB[x.id]?.[3]==='ml'?'ml':'g'} ${esc(names[x.id]||DB[x.id]?.[0].split(' · ')[0]||x.id)}`).join(' · ')}</p>`;
 }

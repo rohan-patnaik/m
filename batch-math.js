@@ -12,18 +12,18 @@ export function portionLines(batch,serving){return batch.ingredients.map(x=>({id
 export function claimsFor(batch,s){const keys=[`${s.date}/${s.meal}/${s.person}/${s.component}`];if(s.component==='sabzi'&&s.meal==='d'&&PROTEIN_SABZIS.has(batch.recipe))keys.push(`${s.date}/${s.meal}/${s.person}/protein`);return keys;}
 export function validateBatch(batch){
  const number=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
- if(!batch||!(/^(S(?:[1-9]|10|11)|P|Y)$/.test(batch.recipe))||!validDate(batch.cookedOn)||!['kadhai','cooker','pan','bigpan','medpan'].includes(batch.vessel)||!number(batch.tare,0,50000)||!Number.isInteger(batch.netWeight)||!number(batch.netWeight,1,100000)||!number(batch.createdAt,0,1e15))throw Error('Invalid batch details');
+ if(!batch||!(/^(S(?:[1-9]|10|11)|K[1-4]|P|Y|Q|C|E)$/.test(batch.recipe))||!validDate(batch.cookedOn)||!['kadhai','cooker','pan','bigpan','medpan'].includes(batch.vessel)||!number(batch.tare,0,50000)||!Number.isInteger(batch.netWeight)||!number(batch.netWeight,1,100000)||!number(batch.createdAt,0,1e15))throw Error('Invalid batch details');
  if(!Array.isArray(batch.ingredients)||!batch.ingredients.length||batch.ingredients.length>30||batch.ingredients.some(x=>!x||!ALLOWED_INGREDIENTS.has(x.id)||!number(x.q,0,100000)||!x.n||!['k','p','fb'].every(k=>number(x.n[k],0,1e7))))throw Error('Invalid batch ingredients');
  if(new Set(batch.ingredients.map(x=>x.id)).size!==batch.ingredients.length)throw Error('Duplicate batch ingredient');
  if(!Array.isArray(batch.servings)||!batch.servings.length||batch.servings.length>56)throw Error('Select batch servings');
  const seen=new Set();let shares=0,grams=0;
  for(const s of batch.servings){
  if(!validDate(s.date)||s.date<batch.cookedOn||!['l','d'].includes(s.meal)||!['w','h'].includes(s.person)||!['sabzi','protein'].includes(s.component)||!number(s.share,1e-9,1)||!Number.isInteger(s.grams)||!number(s.grams,1,100000))throw Error('Invalid batch serving');
- if(s.component==='protein'&&(s.meal!=='d'||!['S3','S8','P','Y'].includes(batch.recipe)))throw Error('This recipe cannot replace dinner protein');
- if(s.component==='sabzi'&&['P','Y'].includes(batch.recipe))throw Error('Separate protein must replace a dinner protein serving');
+ if(s.component==='protein'&&(s.meal!=='d'||!['S3','S8','P','Y','Q','C','E'].includes(batch.recipe)))throw Error('This recipe cannot replace dinner protein');
+ if(s.component==='sabzi'&&['P','Y','Q','C','E'].includes(batch.recipe))throw Error('Separate protein must replace a dinner protein serving');
  for(const key of claimsFor(batch,s)){if(seen.has(key))throw Error('A meal is assigned twice');seen.add(key);}shares+=s.share;grams+=s.grams;
  }
  if(Math.abs(shares-1)>1e-7||grams!==batch.netWeight)throw Error('Batch portions must add up to the entire cooked batch');
 }
 export function validateBatchAssignments(batches){const seen=new Set();for(const b of batches){validateBatch(b);for(const s of b.servings)for(const k of claimsFor(b,s)){if(seen.has(k))throw Error('A serving already belongs to another batch. Remove that batch first.');seen.add(k);}}}
-const ALLOWED_INGREDIENTS=new Set(['atta','rice','oats','besan','moong','masoor','arhar','poha','chana','rajma','chickpea','kalachana','pasta','maida','butter','paneer','soyN','soyS','curd','milk','nuts','oil','spice','bhindi','onion','gobi','carrot','potato','palak','tomato','arbi','mushroom','beans','cucumber']);
+const ALLOWED_INGREDIENTS=new Set(['atta','rice','oats','besan','moong','masoor','arhar','poha','chana','rajma','chickpea','kalachana','pasta','maida','butter','butterH','paneerHP','curdH','walnuts','flax','egg','whey','chicken','cabbage','paneer','soyN','soyS','curd','milk','nuts','oil','spice','bhindi','onion','gobi','carrot','potato','palak','tomato','arbi','mushroom','beans','cucumber']);

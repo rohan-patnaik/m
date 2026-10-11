@@ -6,13 +6,13 @@ function weighSpecs(i,dish,scope='all'){
   if(scope!=='all'&&scope!==meal||!kept(day,meal))continue;
   let factor=0;
   if(dish==='sabzi'&&!coveredComponent(day,meal,person,'sabzi'))factor=sabShare(day,person,meal);
-  if(dish==='dal')factor=dalShare(person);
-  if(dish==='prot'&&meal==='d'&&!NO_EXTRA(day.s)&&!coveredComponent(day,meal,person,'protein'))factor=protein(day.p,person,day)[0].q;
+  if(dish==='dal')factor=typeof assignedDalShare==='function'?assignedDalShare(person):dalShare(person);
+  if(dish==='prot'&&meal==='d'&&!coveredComponent(day,meal,person,'protein')){if(typeof isKeto==='function'&&isKeto(person)){const cfg=ketoConfig(day,person,meal);if(cfg.protein==='paneer')factor=cfg.quantity;}else if(!NO_EXTRA(day.s))factor=protein(day.p,person,day)[0].q;}
   if(factor>0)servings.push({meal,person,factor});
  }
  return servings;
 }
-function weighBasis(i,dish,scope){const d=state.days[i];return JSON.stringify({recipe:dish==='sabzi'?d.s:dish==='dal'?d.dal:d.p,servings:weighSpecs(i,dish,scope)});}
+function weighBasis(i,dish,scope){const d=state.days[i];return JSON.stringify({recipe:dish==='sabzi'?(typeof sharedRecipe==='function'?sharedRecipe(d):d.s):dish==='dal'?d.dal:d.p,servings:weighSpecs(i,dish,scope)});}
 function currentWeigh(i,dish){if(!state.weekKey)return null;const r=dailyWeights[dateForDay(i)+'/'+dish];return r&&r.basis===weighBasis(i,dish,r.scope)?r:null;}
 function weighedNotes(i,meal){if(!state.weekKey||!['l','d'].includes(meal))return '';const rows=[];
  for(const dish of Object.keys(DISH_NAMES)){

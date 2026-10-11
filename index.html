@@ -319,6 +319,19 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 .keto-meal:last-child{border:0}
 .keto-meal h4{font-size:14px;margin:0 0 12px}
 .keto-meal-row{display:grid;grid-template-columns:80px 1fr 1.4fr;gap:20px;font-size:13px;margin:0 0 18px;align-items:start}
+.keto-adjust{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.keto-adjust summary{cursor:pointer;color:var(--accent);font-weight:600}
+.keto-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.household-assignments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.household-assignments b{display:block;margin-bottom:8px}
+.keto-day-checks{padding:14px 20px;border-bottom:1px solid var(--line);font-size:13px}.keto-day-checks p{margin:6px 0}.keto-plan-status{font-weight:600;color:var(--ink)}
+.keto-protein-field{grid-column:1/-1;display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.keto-protein-choices{display:flex;gap:6px;flex-wrap:wrap}.keto-protein-choices button{font-size:12px;padding:7px 10px}.keto-protein-choices button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.keto-fields label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.keto-fields input,.keto-fields select{width:100%;min-width:0;box-sizing:border-box;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink)}
+.keto-remaining{font-weight:600;color:var(--ink)!important}
+.keto-review{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:20px 0}
+.keto-review h3{margin:0 0 8px;font-size:17px}
+.keto-review p{font-size:13px;margin:8px 0}
 .keto-meal-row:last-child{margin-bottom:0}
 .keto-person{color:var(--muted);font-weight:600;padding-top:20px}
 .keto-col-label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
@@ -386,6 +399,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
 
+  <div id="syncBar" class="weekbar" hidden></div>
   <div id="regularPlan">
   <div class="planner-controls"><div class="portion-controls">    <label class="portion-field">Wife<select id="presetW" class="navsel" aria-label="Wife portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
     <label class="portion-field">Husband<select id="presetH" class="navsel" aria-label="Husband portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
@@ -401,7 +415,6 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
   </div>
   <span id="customStatus" hidden></span>
   <div id="weekBar" class="weekbar" hidden></div>
-  <div id="syncBar" class="weekbar" hidden></div>
 
   <div class="stats" id="stats"></div>
 
@@ -469,9 +482,11 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="weigh-runtime.js"></script>
 <script src="cloud-runtime.js"></script>
 <script src="nutrition-runtime.js"></script>
+<script src="household-runtime.js"></script>
 <script src="keto-runtime.js"></script>
 <script>
 const DB={
+ chicken:['Chicken breast · raw boneless skinless',120,22.5,'g'],paneerHP:['Heritage NOURISH+ high protein paneer',202.6,25,'g'],curdH:['Heritage Total Curd',58,3.3,'g'],butterH:['Heritage table butter',723.2,.4,'g'],walnuts:['Planned walnuts · generic estimate',654,15.23,'g'],flax:['Ground flaxseed · generic estimate',534,18.29,'g'],cabbage:['Cabbage · raw',25,1.28,'g'],
  atta:['Atta · Pillsbury Chakki Fresh (DMart packet)',364,11.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
  oats:['Oats · Saffola plain',369,12.6,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
  masoor:['Masoor dal (dry)',322,24.35,'g'],arhar:['Toor dal · Tata Sampann unpolished',364,18.2,'g'],poha:['Poha (dry)',350,7,'g'],
@@ -492,7 +507,7 @@ const DB={
 // null = not declared on the matched panel: excluded from sums and flagged in the UI, NOT counted as zero.
 // Dals use ICMR-NIN IFCT 2017 reference means (kJ/4.184); atta uses the Pillsbury Chakki Fresh table
 // (its page shows a stray 333 kcal line beside the structured 364 kcal/100 g table — table value used).
-const FIB={atta:10,rice:1.3,oats:10.4,besan:11,moong:9.37,masoor:10.43,arhar:11.6,poha:1.5,chana:17,
+const FIB={chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:1.3,oats:10.4,besan:11,moong:9.37,masoor:10.43,arhar:11.6,poha:1.5,chana:17,
   whey:null,egg:0,curd:0,milk:0,paneer:0,soyN:null,soyS:15.5,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,rajma:15,chickpea:17,spice:20,
   kalachana:17,pasta:2.9,maida:2.7,butter:0,beans:2.7};
@@ -507,11 +522,8 @@ const personMode=p=>(state.personModes||{w:'easy',h:'medium'})[p];
 const P=p=>PORTIONS[personMode(p)]||PORTIONS.medium;
 const dinnerScale=p=>personMode(p)==='easy'?.8:1;
 function restoreModes(w){} // Portions are household settings, never restored from a week.
-// Household profiles (maintenance via Mifflin-St Jeor; desk job + daily cardio ≈ ×1.55)
-const PROFILE={w:{name:'Wife',height:165,weight:64,age:29},h:{name:'Husband',height:173,weight:76,age:29}};
-const ACT=1.55;
-function tdee(pr){const b=10*pr.weight+6.25*pr.height-5*pr.age+(pr===PROFILE.h?5:-161);return Math.round(b*ACT);}
-function protRange(pr){return[Math.round(1.6*pr.weight),Math.round(2*pr.weight)];}
+// Resting-energy reference only; maintenance and wife body data are unconfirmed.
+const PROFILE={w:{name:'Wife'},h:{name:'Husband',height:172.72,weight:75,age:29}};
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha',B5:'W: oats · H: egg poha'};
 const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
@@ -557,7 +569,8 @@ function srcTableHTML(){
 function soyaId(){return state.soya==='S'?'soyS':'soyN';}
 // Single sharing basis: fraction of the FULL daily batch per meal-person. Cook quantities,
 // nutrition, shopping and split fractions all derive from these shares (fix A/E/F).
-function sabShare(d,p,m){return (d.s==='S3'?(p==='w'?2/9:5/18):.25)*(m==='d'?dinnerScale(p):1);}
+function balancedSabShare(d,p,m){return (d.s==='S3'?(p==='w'?2/9:5/18):.25)*(m==='d'?dinnerScale(p):1);}
+function sabShare(d,p,m){return typeof isKeto==='function'&&isKeto(p)?ketoConfig(d,p,m).sabziFraction:balancedSabShare(d,p,m);}
 function sabBatch(d){return ['l','d'].reduce((n,m)=>n+(kept(d,m)?sabShare(d,'w',m)+sabShare(d,'h',m):0),0);}
 function dalShare(p){return p==='w'?7/30:4/15;}
 function protShare(d,p){const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q;return(p==='w'?qw:qh)/(qw+qh);}
@@ -675,13 +688,13 @@ function baseMeal(day,which,person){
   // Rest day (cardio skipped): no evening nuts — milk stays.
   if(which==='e')return cardio?[L('milk',P(person).milk),L('nuts',P(person).nuts)]:[L('milk',P(person).milk)];
   const oU=oilUse();
-  const sc=n=>n.map(x=>L(x.id,x.q*sabShare(day,person,which)));
+  const sc=n=>n.map(x=>L(x.id,x.q*balancedSabShare(day,person,which)));
   const a=[];
   if(which==='l')a.push(L(h?'rice':'atta',h?P(person).rice:P(person).attaLunch));
   // Rest day: no dinner roti for the person who skipped cardio.
   else if(cardio)a.push(L('atta',P(person).attaDinner));
   a.push(L(day.dal,150*dalShare(person)),L('oil',oU.dal*dalShare(person)),L('spice',1.5),...sc(sabzi(day.s)));
-  if(which==='l')a.push(L('curd',200));
+  if(which==='l')a.push(L(typeof balancedCurdType==='string'?balancedCurdType:'curd',200));
   else{
     if(!NO_EXTRA(day.s)){
       const qw=protein(day.p,'w',day)[0].q,qh=protein(day.p,'h',day)[0].q,tot=qw/dinnerScale('w')+qh/dinnerScale('h'),myQ=person==='w'?qw:qh;
@@ -719,7 +732,7 @@ function cookQty(i){
   return q;
 }
 function vegList(){
-  const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1,beans:.9};
+  const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1,cabbage:.9,beans:.9};
   return Object.entries(rates).filter(([id])=>used[id]>0).map(([id,y])=>{const step=id==='gobi'?300:id==='mushroom'?200:250,buy=Math.ceil((used[id]/y-1e-8)/step)*step;return{id,used:used[id],buy};});
 }
 const $=s=>document.querySelector(s);
@@ -756,6 +769,8 @@ function ratioText(wShare,hShare,cooked){
   return `W : H = ${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
 }
 function splitRatio(d,m){
+ if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||sharedRecipe(d)!==d.s)){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Strict keto':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
+
   if(m==='b'){
     if(d.b==='B4')return[
       ['Cooked poha','W : H = 4 : 5'],
@@ -805,6 +820,7 @@ function restCut(i,p){
 function restWho(d){const w=d.cardioW===false,h=d.cardioH===false;return w&&h?'Wife + husband':w?'Wife':'Husband';}
 function splitCalc(d,m,di){
   if(m!=='l'&&m!=='d')return'';
+  if(typeof isKeto==='function'&&['w','h'].some(isKeto))return '<p class="hintline">Use Weigh food on the day card once for the whole sabzi and dal. It allocates lunch and dinner using the assigned diets.</p>';
   const u=state.utensils||DEFAULT_UTENSILS;
   const perdi=(typeof di==='number')?utDayAt(di):null;
   const sel=k=>{if(perdi&&UT_NAMES[perdi[k]])return perdi[k];return (state.utSel&&UT_NAMES[state.utSel[k]])?state.utSel[k]:DEFAULT_UTSEL[k];};
@@ -854,7 +870,7 @@ function inspect(i,m){
   const oilMl={w:0,h:0,sp:0};for(const p of['w','h'])for(const x of mlines[p]){if(x.id==='oil')oilMl[p]+=x.q;if(x.id==='spice')oilMl.sp+=x.q;}
   const oilNote=(oilMl.w+oilMl.h>0)?`<p class="hintline">Recipe oil in this meal ≈ ${F(oilMl.w+oilMl.h)} ml (W ${F(oilMl.w)} · H ${F(oilMl.h)}) + spices ${F(oilMl.sp)} g — estimates, editable in Packet labels. Included in the kcal above.</p>`:'';
   let note='';
-  if(m==='d'&&(d.cardioW===false||d.cardioH===false)){
+  if(m==='d'&&!(typeof isKeto==='function'&&['w','h'].some(isKeto))&&(d.cardioW===false||d.cardioH===false)){
     const cuts=[];
     if(d.cardioW===false){const c=restCut(i,'w');cuts.push(`Wife −${R(c.k)} kcal`);}
     if(d.cardioH===false){const c=restCut(i,'h');cuts.push(`Husband −${R(c.k)} kcal`);}
@@ -869,36 +885,18 @@ function avgForMode(m,p){
   const t=state.days.reduce((a,_,i)=>{const v=daily(i,p).total;return{k:a.k+v.k/7,p:a.p+v.p/7,fb:a.fb+v.fb/7};},{k:0,p:0,fb:0});
   state.personModes[p]=keep;return t;
 }
-function personBlurb(p){const pr=PROFILE[p];return`${pr.weight} kg · ${pr.height} cm · ${pr.age} y · maintenance ~${tdee(pr)} kcal/day (estimate)`;}
-function personCard(p){
-  const pr=PROFILE[p],[plo,phi]=protRange(pr);
-  const a=avgForMode(personMode(p),p);
-  const modeName={easy:'Low',medium:'Medium',hard:'High'}[personMode(p)];
-  return`<table><tbody>
-    <tr><td>Profile</td><td class="num"><b>${pr.weight} kg · ${pr.height} cm · ${pr.age} y</b></td></tr>
-    <tr><td>Maintenance (Mifflin-St Jeor ×1.55 estimate — check against weight trend)</td><td class="num"><b>~${tdee(pr)} kcal</b></td></tr>
-    <tr><td>Protein target (1.6–2.0 g/kg)</td><td class="num"><b>${plo}–${phi} g</b></td></tr>
-    <tr><td>Fibre target (ICMR-NIN 2024)</td><td class="num"><b>25–35 g</b></td></tr>
-    <tr><td>Carbs guide (~45–55% of kcal)</td><td class="num"><b>~${Math.round(tdee(pr)*0.45/4)}–${Math.round(tdee(pr)*0.55/4)} g</b></td></tr>
-  </tbody></table>
-  <p class="hintline">Current plan (${modeName}, with today's toggles): <b>${R(a.k)} kcal · ${R(a.p)} g protein · ${R(a.fb)} g fibre</b> — a ~${Math.max(0,R(tdee(pr)-a.k))} kcal estimated deficit.</p>
-  <p class="hintline">${shortfallText(p)} Fibre excludes undeclared items (whey); eating-out days count as 0 home food, not restaurant intake.</p>`;
-}
-function shortfallText(p){
-  const[plo]=protRange(PROFILE[p]);
-  const low=state.days.map((d,i)=>({i,v:daily(i,p).total.p})).filter(x=>x.v<plo);
-  if(!low.length)return`Protein ${plo} g+ met on all 7 days (current toggles). `;
-  return`Below ${plo} g protein on: ${low.map(x=>DAYS[x.i].slice(0,3)+' '+F(x.v)+'g').join(', ')}. No quantities auto-raised — change the plan explicitly if you want more. `;
-}
+function personBlurb(p){return p==='w'?'Body data and targets unconfirmed':'75 kg · 172.72 cm · 29 years · 45 min daily strength · maintenance unconfirmed';}
+function personCard(p){return p==='h'?'<p>75 kg · 172.72 cm · 29 years. Daily strength training 45 minutes; no cardio assumed.</p><p>Resting energy 1689.5 kcal is an estimate, not an intake target. Maintenance is unconfirmed. Keto trial targets and review are in the Keto view.</p>':'<p>Wife’s body data and targets are unconfirmed. Her current vegetarian meal portions are preserved. Choose her diet independently in the Keto view.</p>';}
 function presetCard(){
   const cell=(m,p)=>{const a=avgForMode(m,p);return `<td class="num"><strong>${R(a.k)} <small>kcal</small></strong><span>${R(a.p)} g protein</span>${m===personMode(p)?'<em class="selected-plan">Selected</em>':''}</td>`;};
   const rows=['easy','medium','hard'].map(m=>`<tr><th scope="row">${{easy:'Low',medium:'Medium',hard:'High'}[m]}</th>${cell(m,'w')}${cell(m,'h')}</tr>`).join('');
-  const maintenance=p=>{const[lo,hi]=protRange(PROFILE[p]);return `<td class="num"><strong>~${tdee(PROFILE[p])} <small>kcal</small></strong><span>${lo}–${hi} g protein</span></td>`;};
+  const maintenance=p=>'<td class="num">Unconfirmed</td>';
   return `<div class="comparison"><table><thead><tr><th>Plan</th><th class="num">Wife</th><th class="num">Husband</th></tr></thead><tbody>${rows}<tr class="maintenance"><th scope="row">Maintenance<span>Estimated</span></th>${maintenance('w')}${maintenance('h')}</tr></tbody></table>
-  <details class="explanation"><summary>How the plans differ</summary><p>Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged.</p><p>Values reflect your current meal choices and toggles. Eating-out meals count as zero home food, not zero total intake.</p></details></div>`;
+  <details class="explanation"><summary>How the plans differ</summary><p>Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged.</p><p>Low / Medium / High controls Balanced portions only. Keto has independent raw portions in the Keto view. Values reflect your current meal choices and toggles. Eating-out meals count as zero home food, not zero total intake.</p></details></div>`;
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function freshCookRows(i){
+  if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||sharedRecipe(state.days[i])!==state.days[i].s))return householdPrep(i);
   // Every quantity below is read from cookQty() — the same aggregated meal() lines behind
   // nutrition and shopping — so the cook list can never disagree with them. Skipping a meal
   // cooks only the still-needed portion (default: no implicit leftovers).
@@ -951,7 +949,7 @@ function cookCard(i){
   const skipped=['b','l','d'].filter(m=>d.skip&&d.skip[m]);
   const skipNote=skipped.length&&!d.off
     ?`<p class="hintline" style="margin:0 0 4px">⛔ Skipped (${skipped.map(m=>({b:'breakfast',l:'lunch',d:'dinner'})[m]).join(', ')}) — cook list below excludes ${skipped.length>1?'them':'it'}.</p>`:'';
-  const banner=(d.cardioW===false||d.cardioH===false)
+  const banner=!(typeof isKeto==='function'&&['w','h'].some(isKeto))&&(d.cardioW===false||d.cardioH===false)
     ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
   return skipNote+banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
@@ -989,7 +987,7 @@ function editFormHTML(v){
     <label>Lunch + dinner sabzi<select data-ek="s">${opts(SABZIS,v.s)}</select></label>
     <label>Dinner protein${noExtra?' (already in sabzi — nothing extra)':''}<select data-ek="p"${noExtra?' disabled':''}>${opts(PROTEINS,v.p)}</select></label>
     <label>Dal<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>
-    <div><div class="lbl">For the day</div><div class="tglrow">${tgl('wheyW','W whey')}${tgl('wheyH','H whey')}${tgl('eggH','H eggs')}${tgl('cardioW','W cardio')}${tgl('cardioH','H cardio')}</div></div>
+    <div><div class="lbl">For the day</div><div class="tglrow">${tgl('wheyW','W whey')}${tgl('wheyH','H whey')}${tgl('eggH','H eggs')}${tgl('cardioW','W cardio')}</div></div>
     <div><div class="lbl">Skip</div><div class="tglrow">${tgl('skipB','Breakfast')}${tgl('skipL','Lunch')}${tgl('skipD','Dinner')}${tgl('off','Eat out (whole day)')}</div></div>
     <div class="editbtns"><button data-editcancel>Cancel</button><button class="primary" data-editsave disabled>Save</button></div>
   </div>`;
@@ -997,7 +995,7 @@ function editFormHTML(v){
 function collectEdit(){
   const g=k=>{const el=document.querySelector(`[data-ek="${k}"]`);return el?el.value:null;};
   const t=k=>{const el=document.querySelector(`[data-et="${k}"]`);return el?el.checked:false;};
-  return{b:g('b'),s:g('s'),p:g('p'),dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:t('cardioH'),off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
+  return{b:g('b'),s:g('s'),p:g('p'),dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
@@ -1032,7 +1030,7 @@ function render(){
   const w=avgForMode(personMode('w'),'w'),h=avgForMode(personMode('h'),'h');
   $('#stats').innerHTML=['w','h'].map(p=>{
     const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
-    return`<div class="stat"><div class="who">${n} · home-food daily avg <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
+    return`<div class="stat"><div class="who">${n} · ${typeof isKeto==='function'&&isKeto(p)?'Strict keto':'Balanced'} daily avg <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
   }).join('');
   $('#customStatus').textContent=state.custom?'Customised':'';
   $('#presetW').value=personMode('w');$('#presetH').value=personMode('h');
@@ -1043,7 +1041,7 @@ function render(){
       let extra='';
       if(m==='b'&&!(d.off||(d.skip&&d.skip[m]))){
         const chip=(on,txt)=>`<span class="stchip${on?'':' off'}">${on?'✓':'✗'} ${txt}</span>`;
-        extra=`<div class="stchips">${chip(d.wheyW,'W whey')}${chip(d.wheyH,'H whey')}${chip(d.eggH,'H eggs')}</div>`;
+        extra=`<div class="stchips">${chip(d.wheyW,'W whey')}${chip(d.wheyH,'H whey')}${!isKeto('h')?chip(d.eggH,'H eggs'):''}</div>`;
       }
       const nums=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
       const skipped=d.off||(d.skip&&d.skip[m]);
@@ -1062,7 +1060,7 @@ function render(){
       <div class="day-actions"><button class="cookbtn primary" data-weigh="${i}" aria-label="Weigh food for ${DAYS[i]}">Weigh food</button><button class="cookbtn" data-cook="${i}" aria-label="Cook list for ${DAYS[i]}"><span class="cook-ic">🍳</span><span class="cook-tx">Cook list</span></button><button class="cookbtn" data-edit="${i}" aria-label="Edit meals for ${DAYS[i]}"><span class="cook-ic">✏️</span><span class="cook-tx">Edit</span></button><button class="cookbtn batch-add" data-batch-add="${i}" aria-label="Cook a batch from ${DAYS[i]}">Cook a batch</button>
       </div></div>
       ${d.off?'<p class="eatout-tag">Eating out — excluded from shopping</p>':`<div class="day-totals"><div><span>Wife</span><strong>${R(dw.total.k)} <small>kcal</small></strong><span>${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre</span></div><div><span>Husband</span><strong>${R(dh.total.k)} <small>kcal</small></strong><span>${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>`}
-      <div class="daysub">Dal: ${DALNAMES[d.dal]} · Cardio: W ${d.cardioW!==false?'✓':'✗'} · H ${d.cardioH!==false?'✓':'✗'}${restTag}${offTag}</div>
+      <div class="daysub">Dal: ${DALNAMES[d.dal]} · W cardio ${d.cardioW!==false?'✓':'✗'} · H strength 45 min${restTag}${offTag}</div>
       <div class="ut-use" style="margin:0 0 10px"><label>Sabzi <select data-utday="${i}" data-uk="sabzi">${utOpts(ud.sabzi)}</select></label><label>Dal <select data-utday="${i}" data-uk="dal">${utOpts(ud.dal)}</select></label><label>Paneer/soya <select data-utday="${i}" data-uk="prot">${utOpts(ud.prot)}</select></label></div>
       <div class="meals">${slots}</div></article>`;
   }
@@ -1092,16 +1090,16 @@ function render(){
   const W2=state.weeks===2?2:1;
   $('#dmartHead').textContent=W2===2?'DMart · 2 weeks (10–14 day run)':'DMart · 1 week';
   document.querySelectorAll('[data-weeks]').forEach(b=>b.classList.toggle('on',+b.dataset.weeks===state.weeks));
-  const packets={atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
-  const brands={atta:'Atta · Pillsbury Chakki Fresh',oats:'Oats · Saffola plain',moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Toor dal · Tata Sampann unpolished',paneer:'Paneer · Heritage 500 g',soyN:'Soya chunks · Nutrela 200 g',soyS:'Soya chunks · Saffola 200 g',pasta:'Pasta · Borges penne durum',butter:'Butter · Amul salted',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
+  const packets={chicken:250,paneerHP:240,curdH:400,butterH:100,walnuts:200,flax:200,atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
+  const brands={chicken:'Chicken breast · raw 250 g packs',paneerHP:'Heritage NOURISH+ paneer · 240 g',curdH:'Heritage Total Curd · 400 g',butterH:'Heritage table butter',walnuts:'Planned walnuts (estimate)',flax:'Ground flaxseed (estimate)',atta:'Atta · Pillsbury Chakki Fresh',oats:'Oats · Saffola plain',moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Toor dal · Tata Sampann unpolished',paneer:'Paneer · Heritage 500 g',soyN:'Soya chunks · Nutrela 200 g',soyS:'Soya chunks · Saffola 200 g',pasta:'Pasta · Borges penne durum',butter:'Butter · Amul salted',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
   const ids=Object.keys(packets).concat(['egg','whey','spice']);
   $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use / week</th><th class="num">Buy${W2===2?' · 2 wks':''}</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
     const u=DB[id][3],q=led[id],size=packets[id];
-    const buy=size?Math.ceil((q*W2-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q*W2)+' servings':id==='egg'?R(q*W2)+' eggs':'pantry';
+    const buy=id==='chicken'?`${Math.ceil(q*W2/250)} × 250 g or ${Math.ceil(q*W2/500)} × 500 g · ${F(Math.ceil(q*W2/500)*500-q*W2)} g unused with 500 g packs`:size?Math.ceil((q*W2-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q*W2)+' servings':id==='egg'?R(q*W2)+' eggs':'pantry';
     return`<tr><td>${brands[id]||DB[id][0]}</td><td class="num">${F(q)} ${u}</td><td class="num">${buy}</td></tr>`;
   }).join('')}</tbody></table>`;
   // labels
-  const keys=['whey','paneer','curd','milk'];
+  const keys=['whey','paneer','paneerHP','curd','curdH','milk','butterH'];
   $('#labelTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">kcal</th><th class="num">Protein g</th></tr></thead><tbody>${keys.map(id=>{
     const n=nut(id),basis=id==='milk'?'100 ml (58/3.1 per 100 g × density)':DB[id][3]==='serving'?'serving':DB[id][3]==='egg'?'egg':'100 '+DB[id][3];
     return`<tr><td>${DB[id][0]}<div style="font-size:11px;color:var(--muted)">per ${basis}</div></td>
@@ -1111,7 +1109,7 @@ function render(){
   $('#labelStatus').textContent='Per serving / 100 g-ml as shown. Totals recalculate instantly. Fibre with — = undeclared on the matched panel (excluded, not zero).';
   ensureOilUse();
   const oU=oilUse();
-  $('#soyaRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Soya chunks brand <select data-soya><option value="N"${state.soya!=='S'?' selected':''}>Nutrela (panel: 354 kcal · 53.2 g protein)</option><option value="S"${state.soya==='S'?' selected':''}>Saffola (panel: 312 kcal · 53 g)</option></select></label>`;
+  $('#soyaRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Soya chunks brand <select data-soya><option value="N"${state.soya!=='S'?' selected':''}>Nutrela (panel: 354 kcal · 53.2 g protein)</option><option value="S"${state.soya==='S'?' selected':''}>Saffola (panel: 312 kcal · 53 g)</option></select></label><label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">Balanced curd <select data-balanced-curd><option value="curdH"${balancedCurdType==='curdH'?' selected':''}>Heritage Total</option><option value="curd"${balancedCurdType==='curd'?' selected':''}>Milky Mist</option></select></label>`;
   $('#oilRow').innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:6px;flex:1 1 100%">Recipe-oil estimates (ml, editable). Full day ≈ ${F(oU.sabzi+oU.dal+oU.bf+oU.prot+oU.egg)} ml vs ~33.33 ml/day household calibration (1 L / 30 days ≈ 272.09 kcal/day household — not per person, not an extra item); oil scales with cooked meals.</div>`+
     ['sabzi','dal','bf','prot','egg'].map(k=>`<label style="font-size:12px;display:grid;gap:4px">Oil · ${{sabzi:'sabzi batch',dal:'dal batch',bf:'breakfast',prot:'dinner protein',egg:'eggs (H)'}[k]}<input type="number" min="0" step="0.5" value="${oU[k]}" data-oiluse="${k}" style="width:84px"></label>`).join('');
   const mp=state.labels.milk?null:milkPer100ml();

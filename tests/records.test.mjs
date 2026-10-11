@@ -17,3 +17,13 @@ test('legacy cleanup archives before removing only unchanged planner keys',async
  vm.runInContext('cloudClient={mutation:async()=>{throw Error("offline")}}',ctx);await vm.runInContext('archiveLegacyStorage()',ctx);assert.ok(data.has('simple-meals-v1'));
  vm.runInContext('cloudClient={mutation:async()=>({archived:true})}',ctx);await vm.runInContext('archiveLegacyStorage()',ctx);assert.ok(!data.has('simple-meals-v1'));assert.equal(data.get('unrelated'),'keep');
 });
+
+test('keto meal validation enforces week, vegetarian wife, egg counts and bounded raw quantities',()=>{
+ const cfg={protein:'chicken',quantity:125,soya:0,oil:4};
+ assert.doesNotThrow(()=>validateRecord('keto/2026-10-05/day/1/h/d',cfg));
+ assert.doesNotThrow(()=>validateRecord('keto/template/day/0/w/b',{...cfg,protein:'paneer'}));
+ assert.doesNotThrow(()=>validateRecord('keto/2026-10-05/day/1/h/d',null));
+ for(const key of ['keto/2026-10-06/day/1/h/d','keto/2026-02-30/day/1/h/d','keto/template/day/7/h/d','keto/template/day/1/h/e'])assert.throws(()=>validateRecord(key,cfg));
+ assert.throws(()=>validateRecord('keto/template/day/1/w/d',cfg));
+ for(const patch of [{quantity:-1},{quantity:1001},{oil:NaN},{oil:51},{soya:101},{protein:'tofu'},{extra:true},{protein:'eggs',quantity:2.5}])assert.throws(()=>validateRecord('keto/template/day/1/h/d',{...cfg,...patch}));
+});

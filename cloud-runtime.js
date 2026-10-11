@@ -1,6 +1,6 @@
 // Meal data lives only in Convex; drafts and UI preferences live only in memory.
 let cloudClient,cloudReady=false,cloudSaving=false,cloudBase={},cloudDraft={},cloudLatest={},cloudConflicts=[],deferredCloud=null;
-let legacyCleanupStarted=false;
+let legacyCleanupStarted=false,ketoMeals={};
 let templateDays,templateUtensils,syncStatusText='Loading your household from Convex…',cloudError='';
 const SHARED_SETTINGS=['labels','density','soya','oilUse','personModes','utSel'];
 function connected(){return !!cloudClient?.connectionState().isWebSocketConnected&&navigator.onLine;}
@@ -20,6 +20,8 @@ function snapshotDraft(){
  }
  for(const [id,batch]of Object.entries(savedBatches))next['batch/'+id]=structuredClone(batch);
  for(const [key,value]of Object.entries(dailyWeights))next['weigh/'+key]=structuredClone(value);
+ for(const [key,value]of Object.entries(ketoMeals))next[key]=structuredClone(value);
+ if(typeof householdDiets==='object'){next['setting/curdType']=balancedCurdType;next['setting/diets']=structuredClone(householdDiets);next['setting/ketoOptions']=structuredClone(ketoOptions);for(const [key,value]of Object.entries(sharedRecipes))next[key]=structuredClone(value);for(const [week,value]of Object.entries(trialChecks))next['keto/trial/'+week]=structuredClone(value);}
  cloudDraft=next;
 }
 function cloudChanges(){return MealCloud.changesBetween(cloudBase,cloudDraft);}
@@ -30,6 +32,8 @@ function hydrateDraft(){
  for(const k of Object.keys(DEFAULT_UTENSILS))state.utensils[k]=cloudDraft['setting/utensils/'+k]||0;
  templateDays=Array.from({length:7},(_,i)=>structuredClone(cloudDraft['template/day/'+i]?.meal||DEFAULT_DAYS[i]));
  templateUtensils=Array.from({length:7},(_,i)=>structuredClone(cloudDraft['template/day/'+i]?.utensils||DEFAULT_UTSEL));
+ ketoMeals=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\//.test(k)&&v).map(([k,v])=>[k,structuredClone(v)]));
+ if(typeof householdDiets==='object'){balancedCurdType=cloudDraft['setting/curdType']||'curdH';householdDiets=structuredClone(cloudDraft['setting/diets']||{w:'balanced',h:'keto'});ketoOptions={...KETO_OPTION_DEFAULTS,...structuredClone(cloudDraft['setting/ketoOptions']||{})};sharedRecipes=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('keto/shared/')&&v).map(([k,v])=>[k,structuredClone(v)]));trialChecks=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('keto/trial/')&&v).map(([k,v])=>[k.slice(11),structuredClone(v)]));}
  savedBatches=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('batch/')&&v).map(([k,v])=>[k.slice(6),structuredClone(v)]));
  dailyWeights=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('weigh/')&&v).map(([k,v])=>[k.slice(6),structuredClone(v)]));
  lockedWeeks={};
@@ -61,7 +65,7 @@ function renderSyncBar(){
  const bar=document.querySelector('#syncBar');if(!bar)return;
  const changes=cloudReady?cloudChanges():[];
  const message=cloudError||(cloudSaving?'Saving…':!cloudReady?'Loading your household…':!connected()?'Connection lost — drafts are only in this open tab. Reconnect before saving.':cloudConflicts.length?'Another device edited the same item. Reload conflicting items before saving.':changes.length?'Unsaved changes':'All changes saved');
- syncStatus(message);bar.hidden=cloudReady&&connected()&&!cloudError&&!cloudSaving&&!cloudConflicts.length&&!changes.length;bar.replaceChildren();const text=document.createElement('span');text.textContent=message;bar.append(text);
+ syncStatus(message);bar.hidden=cloudReady&&connected()&&!cloudError&&!cloudSaving&&!cloudConflicts.length&&!changes.length;const renderState=JSON.stringify([message,cloudReady,cloudSaving,connected(),cloudConflicts.length,changes.length]);if(bar.dataset.renderState===renderState)return;bar.dataset.renderState=renderState;bar.replaceChildren();const text=document.createElement('span');text.textContent=message;bar.append(text);
  if(cloudReady){const save=document.createElement('button');save.textContent=cloudSaving?'Saving…':'Save changes';save.className='primary';save.dataset.cloudsave='';save.disabled=!changes.length||cloudSaving||!connected()||!!cloudConflicts.length;bar.append(save);
  if(changes.length&&!cloudSaving){const discard=document.createElement('button');discard.textContent='Discard changes';discard.dataset.clouddiscard='';bar.append(discard);}
  if(cloudConflicts.length){const reload=document.createElement('button');reload.textContent='Reload conflicting items';reload.dataset.cloudresolve='';bar.append(reload);}}
@@ -77,7 +81,7 @@ async function saveChanges(){
  const changes=cloudChanges();if(!changes.length)return true;
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:3});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:5});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;

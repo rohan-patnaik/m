@@ -3,7 +3,29 @@ import {validateBatch} from './batch-math.js';
 // Shared wire format. Tombstones retain revisions, including after deletion/recreation.
 export const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
+function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
+ if(key==='setting/curdType'){if(value!==null&&!['curd','curdH'].includes(value))throw Error('Invalid Balanced curd variant');return;}
+ if(key==='setting/diets'){if(value===null)return;if(!value||Array.isArray(value)||Object.keys(value).sort().join(',')!=='h,w'||!['w','h'].every(p=>['balanced','keto'].includes(value[p])))throw Error('Invalid household diets');return;}
+ if(key==='setting/ketoOptions'){
+ if(value===null)return;
+ const numbers={targetK:[1000,3500],pMin:[60,200],pMax:[60,250],carbBudget:[15,100],baselineWeight:[30,250],baselineWaist:[0,200],reviewWeeks:[4,6]};
+ if(!value||Object.keys(value).sort().join(',')!==[...Object.keys(numbers),'startDate'].sort().join(',')||Object.entries(numbers).some(([k,[min,max]])=>typeof value[k]!=='number'||!Number.isFinite(value[k])||value[k]<min||value[k]>max)||value.pMax<value.pMin||![4,5,6].includes(value.reviewWeeks)||!/^\d{4}-\d{2}-\d{2}$/.test(value.startDate)||new Date(value.startDate+'T00:00:00Z').toISOString().slice(0,10)!==value.startDate)throw Error('Invalid keto planning settings');return;
+ }
+ if(key.startsWith('keto/shared/')){const m=/^keto\/shared\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]$/.exec(key);if(!m||m[1]!=='template'&&(!validMonday(m[1])))throw Error('Invalid shared recipe key');if(value!==null&&(!value||Object.keys(value).join(',')!=='recipe'||!/^K[1-4]$/.test(value.recipe)))throw Error('Invalid shared vegetable recipe');return;}
+ if(key.startsWith('keto/trial/')){if(!/^keto\/trial\/\d{4}-\d{2}-\d{2}$/.test(key)||!validMonday(key.slice(11)))throw Error('Invalid trial week');if(value===null)return;const ranges={weight:[30,250],waist:[30,200],hunger:[1,5]};if(!value||Array.isArray(value)||Object.entries(value).some(([k,v])=>ranges[k]?typeof v!=='number'||!Number.isFinite(v)||v<ranges[k][0]||v>ranges[k][1]||k==='hunger'&&!Number.isInteger(v):!['strength','energy','bowel'].includes(k)||!['good','stable','worse'].includes(v)))throw Error('Invalid trial check');return;}
+ if(key.startsWith('keto/')){
+ const match=/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/([0-6])\/(w|h)\/(b|l|d)$/.exec(key);
+ if(!match)throw Error('Invalid keto meal key');
+ if(match[1]!=='template'){const date=new Date(match[1]+'T00:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==match[1]||date.getUTCDay()!==1)throw Error('Invalid keto week');}
+ if(value===null)return;
+ const number=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
+ if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','flax','sabziFraction'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
+ if(value.paneerType!==undefined&&!['paneer','paneerHP'].includes(value.paneerType)||value.curdType!==undefined&&!['curd','curdH'].includes(value.curdType))throw Error('Invalid dairy product');
+ for(const [field,max]of Object.entries({curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,flax:50,sabziFraction:2}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
+ if(!number(value.quantity,0,value.protein==='eggs'?6:1000)||value.protein==='eggs'&&!Number.isInteger(value.quantity)||!number(value.soya,0,100)||!number(value.oil,0,50))throw Error('Invalid keto portion');
+ return;
+ }
  if(key.startsWith('weigh/')){validateWeighRecord(key,value);return;}
  if(key.startsWith('batch/')){if(!/^batch\/[a-zA-Z0-9-]{8,64}$/.test(key))throw Error('Invalid batch key');if(value!==null)validateBatch(value);if(JSON.stringify(value).length>32000)throw Error('Batch too large');return;}
  if(!/^(setting\/(labels|density|soya|oilUse|personModes|utSel|utensils\/(kadhai|cooker|pan|bigpan|medpan))|template\/day\/[0-6]|week\/\d{4}-\d{2}-\d{2}(\/day\/[0-6])?)$/.test(key))throw Error('Invalid record key');
