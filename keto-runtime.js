@@ -7,6 +7,16 @@ const KETO_SOURCES={
  calories:'https://www.nhs.uk/better-health/lose-weight/calorie-counting/',
  vegetarian:'https://health.clevelandclinic.org/im-a-vegetarian-why-cant-i-lose-weight'
 };
+// Printed values from the existing 2026-10-04 package-labels.json audit.
+// Carbohydrate means the label's declaration; no net-carb subtraction is inferred.
+const KETO_PACKETS=[
+ {name:'ATOM Isolate · Double Rich Chocolate',basis:'35 g powder',carbs:2.8,fat:1,fibre:null,url:'https://asitisnutrition.com/products/atomwheyproteinisolate?variant=41170886262835'},
+ {name:'Heritage fresh paneer',basis:'100 g',carbs:3,fat:22,fibre:null,url:'https://www.bigbasket.com/pd/214024/heritage-paneer-500-g-pouch/'},
+ {name:'Milky Mist curd · 1 kg pouch',basis:'100 g',carbs:4.8,fat:3,fibre:null,url:'https://www.bigbasket.com/pd/40262046/milky-mist-curd-fresh-no-preservatives-creamy-1-kg/'},
+ {name:'Heritage green toned milk',basis:'100 g, not 100 ml',carbs:4.6,fat:3,fibre:null,url:'https://www.bigbasket.com/pd/40147597/heritage-daily-health-toned-milk-500-ml-pouch/'},
+ {name:'Nutrela chunks',basis:'100 g dry',carbs:33.5,fat:.82,fibre:null,url:'https://www.dmart.in/product/nutrela-soya-chunks?selectedProd=46502'},
+ {name:'Saffola Mealmaker chunks',basis:'100 g dry',carbs:30.2,fat:1,fibre:15.5,url:'https://www.dmart.in/product/saffola-mealmaker-soya-chunks--psoya0saff3xx40121?selectedProd=823503'}
+];
 const KETO_VIDEOS=[
  {id:'p5N7x8TQrt8',doctor:'Ken Berry, MD',title:'7 Steps to Starting the Keto Diet',time:62,stamp:'1:02–3:20; 6:17–7:00',take:'Reduce sugar and grains; build meals around ordinary whole foods.',qualification:'The blanket claims about grain inflammation and seed oils, and the salt/supplement advice, are not adopted.'},
  {id:'RM354ysZ5xM',doctor:'Eric Westman, MD',title:'Avoid These Keto Foods',time:199,stamp:'3:19–5:18; 7:55–9:18',take:'Keto drinks, MCT coffee and special keto products are unnecessary. Cheese, cream, oil and vegetables still need portions.',qualification:'His prescription-strength approach excludes nuts. Other doctors allow them; the preview treats nuts as optional, weighed and counted.'},
@@ -101,7 +111,10 @@ function renderKeto(){
  <div><dt>Cooking and shopping</dt><dd>Use more leafy greens, gobi, mushrooms, cabbage and cucumber, plus the chosen protein. Rice/atta/oats/poha/pasta/dal/beans would leave the regular keto shopping list or need tightly budgeted portions. Weigh the whole cooked batch once; divide into the selected date/meal/person boxes.</dd></div>
  </dl></section>
  <details class="keto-info"><summary>Before treating this as a ready-to-follow keto plan</summary><div>
- <p><b>Labels still needed for keto calculations:</b> total carbohydrate, fibre, fat and serving size for Heritage paneer/milk, Milky Mist curd, ATOM Double Rich Chocolate whey, each chunk brand, the chosen tofu, and the actual nuts/seeds. Confirm the label’s carbohydrate definition before subtracting fibre; avoid subtracting it twice.</p>
+ <p><b>Already available from the earlier packet audit:</b> the printed carb/fat values below. Check that your current packet matches. These facts are not yet part of the planner’s recipe calculations.</p>
+ <div class="keto-packet-scroll"><table class="keto-packets"><thead><tr><th>Product / basis</th><th>Carbs</th><th>Fat</th><th>Fibre</th></tr></thead><tbody>${KETO_PACKETS.map(x=>`<tr><td><a href="${x.url}" target="_blank" rel="noopener">${x.name}</a><small>${x.basis}</small></td><td>${x.carbs} g</td><td>${x.fat} g</td><td>${x.fibre===null?'ND':x.fibre+' g'}</td></tr>`).join('')}</tbody></table></div>
+ <p class="keto-caption">Public packet panels transcribed on 4 October 2026; your actual batch supersedes them. ND = not declared, not zero. Carbs are as printed, not a verified net-carb figure. Do not transfer dry-chunk values to cooked grams.</p>
+ <p><b>What remains:</b> the chosen tofu and actual nuts/seeds, full ingredient carb profiles, agreed recipe portions and confirmation of whether fibre is included in each carb declaration. Do not subtract fibre twice. Milk measured in ml also needs a density estimate or an actual gram weight.</p>
  <p><b>Calories still matter for fat loss.</b> We have not reduced either person’s target. Choose sustainable calories and adequate protein with a dietitian, then calculate the proposed recipes including oil. <a href="${KETO_SOURCES.calories}" target="_blank" rel="noopener">NHS calorie guidance</a></p>
  <p>Keto can make fibre and food variety harder to maintain and does not reliably outperform less restrictive diets long term. Review suitability with a clinician/dietitian, especially with diabetes medication, kidney/liver disease, pregnancy or breastfeeding. Do not change medications, salt or potassium supplements on the basis of these videos. <a href="${KETO_SOURCES.harvard}" target="_blank" rel="noopener">Harvard</a> · <a href="${KETO_SOURCES.diabetes}" target="_blank" rel="noopener">Diabetes UK</a></p>
  <p>These are proposed vegetarian substitutions, not claims that grains or legumes are unhealthy for everyone. <a href="${KETO_SOURCES.vegetarian}" target="_blank" rel="noopener">Cleveland Clinic: vegetarian protein choices</a></p>

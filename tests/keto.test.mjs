@@ -40,6 +40,10 @@ test('comparison uses prepared recipes and cannot change plan, calories, shoppin
  assert.match(root.innerHTML,/not a verified global/);
  assert.equal((root.innerHTML.match(/data-keto-day="/g)||[]).length,7);
  assert.equal(run('KETO_VIDEOS.length'),5);
+ assert.equal(run('KETO_PACKETS[0].carbs'),2.8);
+ assert.equal(run("KETO_PACKETS.find(x=>x.name==='Nutrela chunks').fibre"),null);
+ assert.match(root.innerHTML,/100 g, not 100 ml/);
+ assert.match(root.innerHTML,/ND = not declared, not zero/);
  run("ketoPerson='w';renderKeto()");assert.equal(snapshot(),before);
  assert.doesNotMatch(root.innerHTML,/class="keto-person">Husband/);
 });
