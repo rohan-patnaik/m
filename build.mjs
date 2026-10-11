@@ -3,6 +3,8 @@ import {build} from 'esbuild';
 const out=process.env.MEAL_BUILD_DIR||'dist';
 await mkdir(out,{recursive:true});
 await copyFile('index.html',out+'/index.html');
+await copyFile('ux-runtime.js',out+'/ux-runtime.js');
+await copyFile('ux.css',out+'/ux.css');
 await copyFile('cloud-config.js',out+'/cloud-config.js');
 await copyFile('cloud-runtime.js',out+'/cloud-runtime.js');
 await copyFile('batch-runtime.js',out+'/batch-runtime.js');

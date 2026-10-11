@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Weekly Meal Planner</title>
+<title>Our meals</title>
 <style>
 :root{
   color-scheme:light;
@@ -388,30 +388,24 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 .keto-portions{padding:10px;background:var(--tint);border-radius:8px;line-height:1.8;font-size:12px}
 @media(max-width:600px){.keto-baselines{padding:16px;gap:24px}.nutrition-compare table{font-size:12px}.nutrition-compare th:first-child{width:30%}.nutrition-compare td{font-size:11.5px;white-space:nowrap}.nutrition-compare th,.nutrition-compare td{padding:9px 3px}}
 </style>
+<link rel="stylesheet" href="ux.css">
 </head>
 <body>
 <div id="cloudLoading" role="status" style="padding:40px;text-align:center"><h2>Loading your household</h2><p id="cloudLoadingText">Loading your meals…</p><button onclick="location.reload()">Retry</button></div>
 <div class="wrap">
-  <header class="top">
-    <div>
-      <h1>Weekly Meal Planner</h1>
-
-    </div>
-  </header>
-
-  <div class="diet-switch viewseg" role="group" aria-label="Diet view"><button data-diet="balanced" aria-pressed="true">Balanced</button><button data-diet="keto" aria-pressed="false">Keto</button></div>
-  <nav class="tabs">
-    <a href="#planner" class="active"><span class="full">Weekly planner</span><span class="short">Planner</span></a>
-    <a href="#shopping"><span class="full">Shopping list</span><span class="short">Shop</span></a>
-    <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
-    <a href="#keto" aria-label="Compare diets"><span class="full">Compare</span><span class="short">Vs</span></a>
-    <button id="calBtn" class="navbtn" aria-label="Calendar" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅</span></button>
-    <details class="more-menu"><summary>More</summary><div class="more-items">    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
-    <button id="syncBtn" class="navbtn" title="Live household sync via a shared cloud copy"><span class="full">Sync</span><span class="short">Sync</span></button>
-</div></details>
-    <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
-  </nav>
-
+  <div class="ux-app-header">
+    <header class="top"><h1>Our meals</h1></header>
+    <nav class="tabs ux-nav" aria-label="Main navigation">
+      <a href="#today" data-ux-nav="today"><span>Today</span></a>
+      <a href="#week" data-ux-nav="week"><span>Week</span></a>
+      <a href="#shopping" data-ux-nav="shop"><span>Shop</span></a>
+    </nav>
+    <a href="#settings" id="settingsLink" class="ux-settings-link" aria-label="Settings" title="Settings">⚙</a>
+  </div>
+  <div class="ux-legacy" hidden>
+    <details class="more-menu"><summary>More</summary><div class="more-items"><button id="resetBtn">Reset week</button></div></details>
+    <button id="calBtn">Calendar</button><button id="syncBtn">Connection status</button><button id="themeBtn" aria-label="Switch theme">Theme</button>
+  </div>
   <div id="syncBar" class="weekbar" hidden></div>
   <div id="regularPlan">
   <div class="planner-controls"><div class="portion-controls">    <label class="portion-field">Wife<select id="presetW" class="navsel" aria-label="Wife portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
@@ -463,6 +457,9 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
   </section>
 
   </div>
+  <main id="todayPage" aria-label="Today’s meals"></main>
+  <main id="weekPage" hidden aria-label="Weekly meals"></main>
+  <section id="settingsPage" hidden aria-label="Settings"></section>
   <section class="panel section" id="shopping" hidden aria-label="Weekly shopping list"></section>
   <section id="keto" class="section" hidden aria-labelledby="ketoTitle"></section>
 </div>
@@ -478,6 +475,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="household-runtime.js"></script>
 <script src="shopping-runtime.js"></script>
 <script src="keto-runtime.js"></script>
+<script src="ux-runtime.js"></script>
 <script>
 const DB={
  chicken:['Chicken breast · raw boneless skinless',120,22.5,'g'],paneerHP:['Heritage NOURISH+ high protein paneer',202.6,25,'g'],curdH:['Heritage Total Curd',58,3.3,'g'],butterH:['Heritage table butter',723.2,.4,'g'],walnuts:['Planned walnuts · generic estimate',654,15.23,'g'],flax:['Ground flaxseed · generic estimate',534,18.29,'g'],cabbage:['Cabbage · raw',25,1.28,'g'],
@@ -1095,6 +1093,7 @@ function render(){
   $('#densityRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">Milk density estimate <input type="number" min="0.5" max="2" step="0.01" value="${milkDensity()}" data-density style="width:84px"> g/ml <span style="font-weight:400;color:var(--muted)">→ 100 ml = ${F(milkPer100ml()[0])} kcal · ${F(milkPer100ml()[1])} g protein (panel per 100 g: 58/3.1)${mp?'':' · manual override active'}</span></label>`;
   const st=$('#srcTable');if(st)st.innerHTML=srcTableHTML();
   renderKeto();
+  if(typeof renderUX==='function')renderUX();
   save();
 }
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.ut){const v=parseFloat(t.value);state.utensils[t.dataset.ut]=Number.isFinite(v)&&v>=0?Math.round(v):0;state.utensilUpdatedAt[t.dataset.ut]=Date.now();persistUtensils();save();}});

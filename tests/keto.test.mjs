@@ -9,14 +9,30 @@ import * as records from '../records.js';
 import {buildSync} from 'esbuild';
 const browserBundle=buildSync({entryPoints:[new URL('../convex-browser.js',import.meta.url).pathname],bundle:true,format:'iife',write:false}).outputFiles[0].text;
 
-function app(){
+test('UX progress round trips without changing ingredients and lists every sabzi',()=>{
+ const {run}=app(true);
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  const before=run('JSON.stringify(ledger())');
+  run("activityRecords={'buy/2026-10-05/gobi':{checked:true,updatedAt:1},'done/2026-10-07/b':{basis:'meal',complete:true,updatedAt:1}};snapshotDraft();activityRecords={};hydrateDraft()");
+  assert.equal(run("activityRecords['buy/2026-10-05/gobi'].checked"),true);
+  assert.equal(run('JSON.stringify(ledger())'),before);
+ }
+ run("sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
+ assert.match(run('uxWeekRow(state.days[5],5)'),/Paneer bhurji/);
+ assert.match(run("uxRecipeOptions('S12')"),/value="S12" selected/);
+ assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,16);
+});
+
+function app(withUX=false){
  const root={innerHTML:'',querySelector(){return null;},querySelectorAll(){return[];}};
  const shopping={innerHTML:'',hidden:true},regular={hidden:false};
  const document={addEventListener(){},querySelector(sel){return sel==='#keto'?root:sel==='#shopping'?shopping:sel==='#regularPlan'?regular:null;},querySelectorAll(){return[];}};
  const ctx=vm.createContext({document,window:{addEventListener(){}},BatchMath:math,WeighMath:weighMath,MealCloud:records,crypto:webcrypto,structuredClone,console,TextEncoder,setInterval(){},navigator:{onLine:true}});
   vm.runInContext(browserBundle,ctx);
- ctx.MealCloud=ctx.window.MealCloud;
+ ctx.MealCloud=ctx.window.MealCloud;ctx.ActivityMath=ctx.window.ActivityMath;
  for(const file of ['batch-runtime.js','weigh-runtime.js','cloud-runtime.js','nutrition-runtime.js','household-runtime.js','shopping-runtime.js','keto-runtime.js'])vm.runInContext(readFileSync(new URL('../'+file,import.meta.url),'utf8'),ctx);
+ if(withUX)vm.runInContext(readFileSync(new URL('../ux-runtime.js',import.meta.url),'utf8'),ctx);
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
  vm.runInContext(script.slice(0,script.indexOf("document.addEventListener('input'")),ctx);
@@ -200,7 +216,7 @@ test('one shopping route is available in every diet/day view without changing th
  const {run,shopping,regular,root}=app();run("householdDiets={w:'balanced',h:'keto'};state.view='day'");
  const before=run('JSON.stringify({state,householdDiets,cloudDraft,ledger:ledger()})');
  run("showKetoRoute('#shopping')");assert.equal(shopping.hidden,false);assert.equal(regular.hidden,true);assert.equal(root.hidden,true);
- assert.match(shopping.innerHTML,/Farmers’ market/);assert.match(shopping.innerHTML,/Supermarket \/ DMart \/ Walmart/);assert.match(shopping.innerHTML,/Wife: <b>Balanced/);assert.match(shopping.innerHTML,/Husband: <b>Strict keto/);
+ assert.match(shopping.innerHTML,/Farmers’ market/);assert.match(shopping.innerHTML,/DMart \/ Walmart/);assert.match(shopping.innerHTML,/Wife <b>Balanced/);assert.match(shopping.innerHTML,/Husband <b>Keto draft/);
  assert.match(shopping.innerHTML,/data-shopping-item="cucumber"/);
  run("showKetoRoute('#keto')");assert.equal(shopping.hidden,true);assert.equal(root.hidden,false);
  run("showKetoRoute('#planner')");assert.equal(regular.hidden,false);assert.equal(shopping.hidden,true);

@@ -21,6 +21,7 @@ function snapshotDraft(){
  for(const [id,batch]of Object.entries(savedBatches))next['batch/'+id]=structuredClone(batch);
  for(const [key,value]of Object.entries(dailyWeights))next['weigh/'+key]=structuredClone(value);
  for(const [key,value]of Object.entries(ketoMeals))next[key]=structuredClone(value);
+ if(typeof activityRecords==='object')for(const [key,value]of Object.entries(activityRecords))next[key]=structuredClone(value);
  if(typeof householdDiets==='object'){next['setting/curdType']=balancedCurdType;next['setting/diets']=structuredClone(householdDiets);next['setting/ketoOptions']=structuredClone(ketoOptions);for(const [key,value]of Object.entries(sharedRecipes))next[key]=structuredClone(value);for(const [week,value]of Object.entries(trialChecks))next['keto/trial/'+week]=structuredClone(value);}
  cloudDraft=next;
 }
@@ -36,6 +37,7 @@ function hydrateDraft(){
  if(typeof householdDiets==='object'){balancedCurdType=cloudDraft['setting/curdType']||'curdH';householdDiets=structuredClone(cloudDraft['setting/diets']||{w:'balanced',h:'keto'});ketoOptions={...KETO_OPTION_DEFAULTS,...structuredClone(cloudDraft['setting/ketoOptions']||{})};sharedRecipes=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('keto/shared/')&&v).map(([k,v])=>[k,structuredClone(v)]));trialChecks=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('keto/trial/')&&v).map(([k,v])=>[k.slice(11),structuredClone(v)]));}
  savedBatches=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('batch/')&&v).map(([k,v])=>[k.slice(6),structuredClone(v)]));
  dailyWeights=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>k.startsWith('weigh/')&&v).map(([k,v])=>[k.slice(6),structuredClone(v)]));
+ if(typeof activityRecords==='object')activityRecords=Object.fromEntries(Object.entries(cloudDraft).filter(([k,v])=>/^(serve|done|buy)\//.test(k)&&v).map(([k,v])=>[k,structuredClone(v)]));
  lockedWeeks={};
  for(const [key,value]of Object.entries(cloudDraft))if(/^week\/\d{4}-\d{2}-\d{2}$/.test(key)&&value){
  const date=key.slice(5),days=[],utDay=[];
@@ -81,7 +83,7 @@ async function saveChanges(){
  const changes=cloudChanges();if(!changes.length)return true;
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:6});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:7});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;

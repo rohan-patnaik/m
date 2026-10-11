@@ -1,6 +1,7 @@
 import {ConvexHttpClient} from 'convex/browser';
 import {anyApi} from 'convex/server';
 import assert from 'node:assert/strict';
+import {activityBasis} from '../activity-math.js';
 const url=process.env.MEAL_TEST_URL;if(url!=='https://stoic-weasel-242.convex.cloud')throw Error('Integration test is restricted to this project’s development deployment.');
 const c=new ConvexHttpClient(url);const read=async()=>Object.fromEntries((await c.query(anyApi.household.read,{})).map(r=>[r.key,r]));
 const before=await read(),k='setting/utensils/pan',other='setting/utensils/cooker';
@@ -8,6 +9,7 @@ const batchKeys=['batch/integration-first','batch/integration-second'];
 const ketoKey='keto/2099-01-05/day/1/h/d';
 const householdKeys=['setting/diets','setting/ketoOptions','keto/shared/2099-01-05/day/0','keto/trial/2099-01-05','setting/curdType'];
 const weighKey='weigh/2099-01-01/sabzi';
+const activityKeys=['serve/2099-01-01/sabzi','done/2099-01-01/b','buy/2099-01-05/gobi'];
 const batch={recipe:'P',cookedOn:'2099-01-01',vessel:'pan',tare:0,netWeight:500,createdAt:Date.now(),ingredients:[{id:'paneer',q:100,n:{k:300,p:18,fb:0}}],servings:[{date:'2099-01-01',meal:'d',person:'w',component:'protein',share:1,grams:500}]};
 try{
  await c.mutation(anyApi.household.commit,{changes:[{key:k,value:401,expectedRevision:before[k].revision}]});
@@ -22,6 +24,13 @@ try{
  const weight={gross:1600,tare:1000,netWeight:600,vessel:'kadhai',scope:'all',basis:'integration',savedAt:Date.now(),portions:[{meal:'l',person:'w',grams:150},{meal:'l',person:'h',grams:150},{meal:'d',person:'w',grams:150},{meal:'d',person:'h',grams:150}]};
  await c.mutation(anyApi.household.commit,{formatVersion:3,changes:[{key:weighKey,value:weight,expectedRevision:before[weighKey]?.revision||0}]});
  now=await read();assert.deepEqual(now[weighKey].value,weight);
+ const activities=[{basis:activityBasis(weight),served:['l/w'],updatedAt:Date.now()},{basis:'integration meal',complete:true,updatedAt:Date.now()},{checked:true,updatedAt:Date.now()}];
+ await c.mutation(anyApi.household.commit,{formatVersion:7,changes:activityKeys.map((key,i)=>({key,value:activities[i],expectedRevision:before[key]?.revision||0}))});
+ now=await read();activityKeys.forEach((key,i)=>assert.deepEqual(now[key].value,activities[i]));
+ await assert.rejects(c.mutation(anyApi.household.commit,{formatVersion:6,changes:[{key:activityKeys[0],value:null,expectedRevision:now[activityKeys[0]].revision}]}),/Reload the app/);
+ await assert.rejects(c.mutation(anyApi.household.commit,{formatVersion:7,changes:[{key:activityKeys[0],value:{...activities[0],basis:'stale'},expectedRevision:now[activityKeys[0]].revision}]}),/cooked weight changed/);
+ await assert.rejects(c.mutation(anyApi.household.commit,{formatVersion:7,changes:[{key:activityKeys[0],value:activities[0],expectedRevision:before[activityKeys[0]]?.revision||0}]}),/Another device/);
+ console.log('PASS: shared serving, completion and shopping checklists persist; stale progress, concurrent edits and old-client removal rejected.');
  await assert.rejects(c.mutation(anyApi.household.commit,{formatVersion:2,changes:[{key:weighKey,value:null,expectedRevision:now[weighKey].revision}]}),/Reload the app/);
  const config={protein:'chicken',quantity:125,soya:0,oil:4};
  await c.mutation(anyApi.household.commit,{formatVersion:6,changes:[{key:ketoKey,value:config,expectedRevision:before[ketoKey]?.revision||0}]});
@@ -39,4 +48,4 @@ try{
  console.log('PASS: diet assignments, swaps, targets and hunger checks persist; old clients cannot remove keto settings or batches.');
  console.log('PASS: keto raw portions persist; stale edits and old-client deletions rejected.');
  console.log('PASS: cooked weights persist; stale writes, invalid values, overlapping batches and old-client deletions rejected; transactions roll back atomically.');
-}finally{const now=await read();await c.mutation(anyApi.household.commit,{formatVersion:6,changes:[{key:k,value:before[k].value,expectedRevision:now[k].revision},...[...batchKeys,weighKey,ketoKey,...householdKeys].filter(key=>JSON.stringify(now[key]?.value??null)!==JSON.stringify(before[key]?.value??null)).map(key=>({key,value:before[key]?.value??null,expectedRevision:now[key]?.revision||0}))]});}
+}finally{const now=await read();await c.mutation(anyApi.household.commit,{formatVersion:7,changes:[{key:k,value:before[k].value,expectedRevision:now[k].revision},...[...batchKeys,weighKey,ketoKey,...householdKeys,...activityKeys].filter(key=>JSON.stringify(now[key]?.value??null)!==JSON.stringify(before[key]?.value??null)).map(key=>({key,value:before[key]?.value??null,expectedRevision:now[key]?.revision||0}))]});}

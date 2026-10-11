@@ -1,10 +1,12 @@
 import {validateWeighRecord} from './weigh-math.js';
 import {validateBatch} from './batch-math.js';
+import {validateActivity} from './activity-math.js';
 // Shared wire format. Tombstones retain revisions, including after deletion/recreation.
 export const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
+ if(/^(serve|done|buy)\//.test(key)){validateActivity(key,value);return;}
  if(key==='setting/curdType'){if(value!==null&&!['curd','curdH'].includes(value))throw Error('Invalid Balanced curd variant');return;}
  if(key==='setting/diets'){if(value===null)return;if(!value||Array.isArray(value)||Object.keys(value).sort().join(',')!=='h,w'||!['w','h'].every(p=>['balanced','keto'].includes(value[p])))throw Error('Invalid household diets');return;}
  if(key==='setting/ketoOptions'){

@@ -83,6 +83,7 @@ function renderKeto(){
  if(hadDays)root.querySelectorAll('[data-keto-day]').forEach(x=>x.open=openDays.has(x.dataset.ketoDay));root.querySelectorAll('[data-keto-edit]').forEach(x=>x.open=openEdits.has(x.dataset.ketoEdit));
 }
 function showKetoRoute(hash){
+ if(typeof showUXRoute==='function'){showUXRoute(hash);return;}
  const keto=hash==='#keto',shopping=hash==='#shopping';
  document.querySelectorAll('[data-diet]').forEach(b=>{const a=!shopping&&b.dataset.diet===(keto?'keto':'balanced');b.setAttribute('aria-pressed',String(a));b.classList.toggle('active',a);});
  document.querySelector('#regularPlan').hidden=keto||shopping;document.querySelector('#keto').hidden=!keto;

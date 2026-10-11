@@ -73,3 +73,36 @@ Backend: `npx convex dev --once` for development, `npx convex deploy` for produc
 `node scripts/migrate.mjs <firebase-backup.json> [--prod]` performs a validated admin-only seed and refuses to overwrite existing Convex data. The original Firebase data is retained for recovery. This deployed frontend never contacts Firebase.
 
 The machine's migration backups/evidence are retained under `/run/media/rohan/Stuff/Artifacts/meal-convex/recovery` and `outputs`. To roll back the frontend, revert the migration commit; first export any newer Convex changes and reconcile them with Firebase so rollback does not lose post-migration edits. Never blindly replace either database with an older backup.
+
+
+## Household interface (October 2026)
+
+The primary routes are Today (`#today`, also the default), Week (`#week`) and Shop
+(`#shopping`). Old `#planner`, `#labels`, `#utensils` and `#keto` links remain usable;
+labels and utensils now live in Settings, while Keto opens the detailed review.
+The three navigation items move to a bottom bar on phones. Today expands the
+relevant meal, keeps nutrition behind a disclosure, and shows carb-review warnings.
+Week keeps shared sabzis and person-specific exceptions together; phone rows use
+Choices to expose the individual selectors. Diet assignments remain independent.
+
+Weigh & serve walks through one dish at a time, using saved global vessel weights
+and the existing allocation math. A whole lunch-plus-dinner reading reserves both
+meals automatically. Serving progress, meal completion and shopping checkboxes are
+shared Convex records (`serve/`, `done/`, `buy/`), never device storage. Mark served
+is a serving guide, not a nutritional intake log; it does not subtract food from
+shopping or change calorie totals. Progress is invalidated when the saved weight
+or allocation changes. Meal completion is invalidated when its ingredients change.
+Prepared batch snapshots remain frozen and appear as already prepared portions.
+
+Wire format 7 protects the new checklist records against old clients. Serving
+writes verify the referenced cooked weight in the same transaction and use stable
+field ordering. Existing wire formats remain accepted for their original records.
+Recipe and settings edits autosave; modal editors still have explicit save actions.
+The sync status bar appears only for pending edits, disconnection or errors.
+
+Shopping distinguishes raw edible need from purchase weight. Cauliflower still
+uses a clearly identified 60% trimming estimate, now rounded in 100 g increments
+(575 g edible need suggests about 1 kg whole). Mushroom packets are conservatively
+counted at 180 g each, with 180–200 g sizes shown. Pantry packet estimates and the
+absence of home-stock subtraction are disclosed. No planned food portions were
+changed by the interface redesign.
