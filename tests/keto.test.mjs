@@ -21,7 +21,7 @@ test('UX progress round trips without changing ingredients and lists every sabzi
  run("sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
  assert.match(run('uxWeekRow(state.days[5],5)'),/Paneer bhurji/);
  assert.match(run("uxRecipeOptions('S12')"),/value="S12" selected/);
- assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,16);
+ assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,17);
 });
 
 function app(withUX=false){
@@ -39,6 +39,30 @@ function app(withUX=false){
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
  return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
 }
+test('palak corn counts raw corn, shared portions and shopping under every diet assignment',()=>{
+ const {run}=app(true);
+ assert.equal(run("comparisonSum([L('corn',100)]).k"),86);
+ assert.equal(run("comparisonSum([L('corn',100)]).c"),18.7);
+ assert.equal(run("comparisonSum([L('corn',100)]).aHi"),16.7);
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){
+  run(`householdDiets={w:'${w}',h:'${h}'};state.days[1].s='S8';sharedRecipes[sharedKey(1)]={recipe:'K3'}`);
+  const before=run('ledger()');
+  run("sharedRecipes[sharedKey(1)]={recipe:'K5'}");
+  const after=run('ledger()');
+  const expected=run("['w','h'].reduce((sum,p)=>sum+['l','d'].reduce((n,m)=>n+originalComponent(state.days[1],m,p,'sabzi').filter(x=>x.id==='corn').reduce((q,x)=>q+x.q,0),0),0)");
+  assert.ok(expected>0);assert.ok(Math.abs(after.corn-expected)<1e-8);
+  for(const [id,q] of Object.entries(before))assert.ok(Math.abs(after[id]-q)<1e-8,`${w}/${h}: ${id} unchanged`);
+  assert.equal(run("householdShopping().market.find(x=>x.id==='corn').buy"),Math.ceil(expected/100-1e-8)*100);
+  assert.match(run('uxWeekRow(state.days[1],1)'),/Palak corn/);
+  run('snapshotDraft();sharedRecipes={};hydrateDraft()');
+  assert.equal(run("personRecipe(state.days[1],'w')"),'K5');
+ }
+ run("householdDiets={w:'balanced',h:'keto'}");
+ assert.match(run('uxWarning(1)'),/carb budget needs review/);
+ assert.equal(run("NO_EXTRA('K5')"),false);
+ assert.equal(run("recipeName('S3')"),'Palak paneer');
+});
+
 test('keto proposals respect off meals and separate vegetarian/egg defaults',()=>{
  const {run}=app();
  assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + high-protein paneer');

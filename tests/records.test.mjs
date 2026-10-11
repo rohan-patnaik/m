@@ -5,6 +5,11 @@ test('different day changes merge without overwriting a draft',()=>{const b={a:{
 test('same item edits conflict; matching edits converge',()=>{const b={a:{value:1,revision:1}},r={a:{value:2,revision:2}};assert.deepEqual(mergeRecords(b,{a:3},r).conflicts,['a']);assert.deepEqual(mergeRecords(b,{a:2},r).conflicts,[]);});
 test('deletions carry revision and recreate safely',()=>{assert.deepEqual(changesBetween({a:{value:1,revision:7}},{}),[{key:'a',value:null,expectedRevision:7}]);assert.deepEqual(changesBetween({a:{value:null,revision:8}},{a:2}),[{key:'a',value:2,expectedRevision:8}]);});
 test('object key order does not create phantom changes',()=>assert.ok(equal({a:1,b:2},{b:2,a:1})));
+test('palak corn is valid in shared selections but unknown recipe codes are rejected',()=>{
+ assert.doesNotThrow(()=>validateRecord('keto/shared/template/day/3',{recipe:'K5'}));
+ assert.doesNotThrow(()=>validateRecord('keto/shared/2026-10-05/day/1',{recipe:'K3',h:'K5'}));
+ assert.throws(()=>validateRecord('keto/shared/template/day/3',{recipe:'K6'}));
+});
 test('reject invalid settings, arbitrary paths and meal codes',()=>{assert.throws(()=>validateRecord('setting/utensils/pan',-1));assert.throws(()=>validateRecord('other',{}));assert.throws(()=>validateRecord('template/day/0',{meal:{b:'bad'}}));assert.doesNotThrow(()=>validateRecord('setting/personModes',{w:'easy',h:'medium'}));});
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';

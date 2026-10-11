@@ -83,7 +83,7 @@ async function saveChanges(){
  const changes=cloudChanges();if(!changes.length)return true;
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:7});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:8});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;

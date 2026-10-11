@@ -4,7 +4,7 @@ function shoppingProduce(){return {
  bhindi:{yield:YIELDS.bhindi/500,step:250},palak:{yield:YIELDS.palak/500,step:250},
  carrot:{yield:.9,step:250},potato:{yield:.9,step:250},onion:{yield:.9,step:250},
  tomato:{yield:1,step:250},mushroom:{yield:1,step:200},cucumber:{yield:1,step:250},
- cabbage:{yield:.9,step:250},beans:{yield:.9,step:250}
+ cabbage:{yield:.9,step:250},beans:{yield:.9,step:250},corn:{yield:1,step:100}
 };}
 const SHOP_PACKETS={chicken:250,paneerHP:240,curdH:400,butterH:100,walnuts:200,flax:200,atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
 const SHOP_NAMES={gobi:'Cauliflower',palak:'Palak / spinach',cucumber:'Cucumbers',cabbage:'Cabbage',chicken:'Chicken breast · raw boneless, skinless',paneerHP:'Heritage NOURISH+ high-protein paneer',curdH:'Heritage Total Curd',butterH:'Heritage table butter',walnuts:'Walnuts',flax:'Ground flaxseed',atta:'Pillsbury Chakki Fresh atta',oats:'Saffola plain oats',moong:'Tata moong dal',masoor:'Tata masoor dal',arhar:'Tata Sampann toor dal',paneer:'Heritage regular paneer',soyN:'Nutrela soya chunks',soyS:'Saffola soya chunks',pasta:'Borges durum wheat pasta',butter:'Amul salted butter',curd:'Milky Mist curd',milk:'Heritage green milk',oil:'Tata mustard oil',whey:'ATOM Isolate · Double Rich Chocolate',spice:'Spices (recipe estimate)'};

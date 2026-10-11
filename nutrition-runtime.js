@@ -2,6 +2,7 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
+ "corn":{"source":"USDA SR Legacy (generic estimate)","fdc":169998,"basis":"100 g raw edible kernels","k":86,"p":3.27,"c":18.7,"f":1.35,"s":6.26,"fb":2,"sat":0.325,"name":"Corn, sweet, yellow, raw","url":"https://fdc.nal.usda.gov/food-details/169998/nutrients"},
  "paneerHP":{"k":202.6,"p":25,"c":5.4,"s":5.4,"f":9,"sat":5.8,"fb":0,"source":"Heritage NOURISH+ packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/xxl/40359963-4_1-heritage-nourish-high-protein-paneer.jpg"},
  "curdH":{"k":58,"p":3.3,"c":4.3,"s":null,"f":3,"sat":2,"fb":0,"source":"Heritage Total Curd packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/225759-2_8-heritage-curd-premium.jpg"},
  "butterH":{"k":723.2,"p":.4,"c":.4,"s":null,"f":80,"sat":52,"fb":0,"source":"Heritage table butter packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/256566-2_3-heritage-table-butter-pasteurised.jpg"},
