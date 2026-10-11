@@ -12,7 +12,7 @@ export function servingSteps(record,meal){
  return ['h','w'].map(person=>record.portions.find(s=>s.meal===meal&&s.person===person)).filter(Boolean).map(s=>{food-=s.grams;return {...s,foodLeft:food,scaleLeft:food+record.tare};});
 }
 export function validateWeighRecord(key,r){
- const match=/^weigh\/(\d{4}-\d{2}-\d{2})\/(sabzi|dal|prot)$/.exec(key);
+ const match=/^weigh\/(\d{4}-\d{2}-\d{2})\/(sabzi|sabzi-w|sabzi-h|dal|prot)$/.exec(key);
  if(!match||!validDate(match[1]))throw Error('Invalid cooked-weight key');
  if(r===null)return;
  if(JSON.stringify(r).length>12000)throw Error('Cooked-weight record too large');

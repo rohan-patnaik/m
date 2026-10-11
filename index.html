@@ -519,7 +519,7 @@ function restoreModes(w){} // Portions are household settings, never restored fr
 // Resting-energy reference only; maintenance and wife body data are unconfirmed.
 const PROFILE={w:{name:'Wife'},h:{name:'Husband',height:172.72,weight:75,age:29}};
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha',B5:'W: oats · H: egg poha'};
-const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo'};
+const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo',S12:'Paneer bhurji'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
@@ -564,7 +564,7 @@ function soyaId(){return state.soya==='S'?'soyS':'soyN';}
 // Single sharing basis: fraction of the FULL daily batch per meal-person. Cook quantities,
 // nutrition, shopping and split fractions all derive from these shares (fix A/E/F).
 function balancedSabShare(d,p,m){return (d.s==='S3'?(p==='w'?2/9:5/18):.25)*(m==='d'?dinnerScale(p):1);}
-function sabShare(d,p,m){return typeof isKeto==='function'&&isKeto(p)?ketoConfig(d,p,m).sabziFraction:balancedSabShare(d,p,m);}
+function sabShare(d,p,m){return typeof isKeto==='function'&&isKeto(p)?ketoConfig(d,p,m).sabziFraction:balancedSabShare(typeof assignedBalancedDay==='function'?assignedBalancedDay(d,p):d,p,m);}
 function sabBatch(d){return ['l','d'].reduce((n,m)=>n+(kept(d,m)?sabShare(d,'w',m)+sabShare(d,'h',m):0),0);}
 function dalShare(p){return p==='w'?7/30:4/15;}
 function protShare(d,p){const qw=protein(d.p,'w',d)[0].q,qh=protein(d.p,'h',d)[0].q;return(p==='w'?qw:qh)/(qw+qh);}
@@ -659,7 +659,8 @@ function sabziBase(id){
    S8:[L(soyaId(),100),L('onion',100),L('tomato',150)],
    S9:[L('kalachana',100),L('onion',100),L('tomato',150)],
    S10:[L('pasta',200),L('maida',30),L('milk',200),L('butter',15),L('onion',100),L('tomato',150)],
-   S11:[L('beans',300),L('carrot',150),L('potato',150),L('onion',100)]})[id];
+   S11:[L('beans',300),L('carrot',150),L('potato',150),L('onion',100)],
+   S12:[L('paneer',225),L('onion',100),L('tomato',150)]})[id];
 }
 function sabzi(id){
   // Full daily batch including its tadka oil (butter in S10 is additional, not a substitute).
@@ -667,7 +668,7 @@ function sabzi(id){
   return [...sabziBase(id),...(oU.sabzi>0?[L('oil',oU.sabzi)]:[])];
 }
 // Sabzis with protein already cooked in (no extra dinner protein).
-const NO_EXTRA=s=>['S3','S8','S9','S10'].includes(s);
+const NO_EXTRA=s=>['S3','S8','S9','S10','S12'].includes(s);
 const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
@@ -759,7 +760,7 @@ function ratioText(wShare,hShare,cooked){
   return `W : H = ${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
 }
 function splitRatio(d,m){
- if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||sharedRecipe(d)!==d.s)){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Strict keto':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
+ if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d))){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Strict keto':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
 
   if(m==='b'){
     if(d.b==='B4')return[
@@ -810,7 +811,7 @@ function restCut(i,p){
 function restWho(d){const w=d.cardioW===false,h=d.cardioH===false;return w&&h?'Wife + husband':w?'Wife':'Husband';}
 function splitCalc(d,m,di){
   if(m!=='l'&&m!=='d')return'';
-  if(typeof isKeto==='function'&&['w','h'].some(isKeto))return '<p class="hintline">Use Weigh food on the day card once for the whole sabzi and dal. It allocates lunch and dinner using the assigned diets.</p>';
+  if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d)))return '<p class="hintline">Use Weigh food on the day card once for the whole sabzi and dal. It allocates lunch and dinner using the assigned diets.</p>';
   const u=state.utensils||DEFAULT_UTENSILS;
   const perdi=(typeof di==='number')?utDayAt(di):null;
   const sel=k=>{if(perdi&&UT_NAMES[perdi[k]])return perdi[k];return (state.utSel&&UT_NAMES[state.utSel[k]])?state.utSel[k]:DEFAULT_UTSEL[k];};
@@ -886,7 +887,7 @@ function presetCard(){
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function freshCookRows(i){
-  if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||sharedRecipe(state.days[i])!==state.days[i].s))return householdPrep(i);
+  if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(state.days[i])))return householdPrep(i);
   // Every quantity below is read from cookQty() — the same aggregated meal() lines behind
   // nutrition and shopping — so the cook list can never disagree with them. Skipping a meal
   // cooks only the still-needed portion (default: no implicit leftovers).
@@ -1051,7 +1052,8 @@ function render(){
       </div></div>
       ${d.off?'<p class="eatout-tag">Eating out — excluded from shopping</p>':`<div class="day-totals"><div><span>Wife</span><strong>${R(dw.total.k)} <small>kcal</small></strong><span>${R(dw.total.p)} g protein · ${R(dw.total.fb)} g fibre</span></div><div><span>Husband</span><strong>${R(dh.total.k)} <small>kcal</small></strong><span>${R(dh.total.p)} g protein · ${R(dh.total.fb)} g fibre</span></div></div>`}
       <div class="daysub">Dal: ${DALNAMES[d.dal]} · W cardio ${d.cardioW!==false?'✓':'✗'} · H strength 45 min${restTag}${offTag}</div>
-      <div class="ut-use" style="margin:0 0 10px"><label>Sabzi <select data-utday="${i}" data-uk="sabzi">${utOpts(ud.sabzi)}</select></label><label>Dal <select data-utday="${i}" data-uk="dal">${utOpts(ud.dal)}</select></label><label>Paneer/soya <select data-utday="${i}" data-uk="prot">${utOpts(ud.prot)}</select></label></div>
+      ${recipeSelectorsHTML(d,i)}
+      <div class="ut-use" style="margin:12px 0 10px"><label>Sabzi <select data-utday="${i}" data-uk="sabzi">${utOpts(ud.sabzi)}</select></label><label>Dal <select data-utday="${i}" data-uk="dal">${utOpts(ud.dal)}</select></label><label>Paneer/soya <select data-utday="${i}" data-uk="prot">${utOpts(ud.prot)}</select></label></div>
       <div class="meals">${slots}</div></article>`;
   }
   // planner (week-set mode: all 7 days) + Set-week lock button after Sunday
@@ -1186,7 +1188,7 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-ing]');
   if(b){
     const[i,m]=b.dataset.ing.split(',').map((x,j)=>j===0?+x:x);
-    $('#dlgTitle').textContent=DAYS[i]+' · '+mealTitle(state.days[i],m);
+    $('#dlgTitle').textContent=DAYS[i]+' · '+batchMealTitle(state.days[i],m);
     $('#dlgBody').innerHTML=inspect(i,m);
     $('#dlg').showModal();return;
   }

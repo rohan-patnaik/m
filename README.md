@@ -52,6 +52,10 @@ The single **Shopping list** navigation link opens `#shopping` from Balanced, Ke
 
 Weekly need is raw edible/dry weight, milk/oil volume, whole eggs or 35 g whey scoops. Produce buying weights use the existing estimated trimming yields and practical rounding; supermarket packs round upward and keep regular/high-protein paneer and curd variants separate. Chicken offers 250/500 g packs with excess raw grams shown. This is a one-week list assuming no existing stock, not a store inventory/availability lookup. Unspecified salt, fresh herbs, ginger and garlic are not invented as measured recipe ingredients.
 
+The full sabzi list is available in Planner and Keto day cards. `keto/shared/<week>/day/<i>` supports a shared `recipe` and optional `w`/`h` exceptions; shared edits preserve those exceptions. Paneer bhurji (`S12`) uses regular Heritage paneer, onion, tomato and allocated cooking oil. It includes the meal's protein and replaces the Balanced dinner top-up (and the Keto lunch/dinner top-up) rather than stacking them. Saved Balanced menus and prepared batch snapshots remain intact.
+
+When the two recipes differ, prep lists separate the cooking quantities and **Weigh food** uses independent `sabzi-w`/`sabzi-h` cards and records. Never weigh two different dishes as a single shared batch. Batch prefilling selects only people whose planned recipe matches. Wire format 6 prevents older clients removing individual recipe assignments, individual cooked weights or bhurji batches.
+
 ## Deployments
 
 Convex team/project: `rohan-patnaik/meal-planner` (Free).

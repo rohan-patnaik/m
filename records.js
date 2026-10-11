@@ -12,7 +12,7 @@ export function validateRecord(key,value){
  const numbers={targetK:[1000,3500],pMin:[60,200],pMax:[60,250],carbBudget:[15,100],baselineWeight:[30,250],baselineWaist:[0,200],reviewWeeks:[4,6]};
  if(!value||Object.keys(value).sort().join(',')!==[...Object.keys(numbers),'startDate'].sort().join(',')||Object.entries(numbers).some(([k,[min,max]])=>typeof value[k]!=='number'||!Number.isFinite(value[k])||value[k]<min||value[k]>max)||value.pMax<value.pMin||![4,5,6].includes(value.reviewWeeks)||!/^\d{4}-\d{2}-\d{2}$/.test(value.startDate)||new Date(value.startDate+'T00:00:00Z').toISOString().slice(0,10)!==value.startDate)throw Error('Invalid keto planning settings');return;
  }
- if(key.startsWith('keto/shared/')){const m=/^keto\/shared\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]$/.exec(key);if(!m||m[1]!=='template'&&(!validMonday(m[1])))throw Error('Invalid shared recipe key');if(value!==null&&(!value||Object.keys(value).join(',')!=='recipe'||!/^K[1-4]$/.test(value.recipe)))throw Error('Invalid shared vegetable recipe');return;}
+ if(key.startsWith('keto/shared/')){const m=/^keto\/shared\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]$/.exec(key);if(!m||m[1]!=='template'&&(!validMonday(m[1])))throw Error('Invalid shared recipe key');if(value!==null&&(!value||!Object.keys(value).length||Object.entries(value).some(([k,v])=>!['recipe','w','h'].includes(k)||!/^(K[1-4]|S(?:[1-9]|10|11|12))$/.test(v))))throw Error('Invalid shared vegetable recipe');return;}
  if(key.startsWith('keto/trial/')){if(!/^keto\/trial\/\d{4}-\d{2}-\d{2}$/.test(key)||!validMonday(key.slice(11)))throw Error('Invalid trial week');if(value===null)return;const ranges={weight:[30,250],waist:[30,200],hunger:[1,5]};if(!value||Array.isArray(value)||Object.entries(value).some(([k,v])=>ranges[k]?typeof v!=='number'||!Number.isFinite(v)||v<ranges[k][0]||v>ranges[k][1]||k==='hunger'&&!Number.isInteger(v):!['strength','energy','bowel'].includes(k)||!['good','stable','worse'].includes(v)))throw Error('Invalid trial check');return;}
  if(key.startsWith('keto/')){
  const match=/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/([0-6])\/(w|h)\/(b|l|d)$/.exec(key);
@@ -34,7 +34,7 @@ export function validateRecord(key,value){
  const number=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
  const utensils=['kadhai','cooker','pan','bigpan','medpan'];
  const selection=x=>x&&['sabzi','dal','prot'].every(k=>utensils.includes(x[k]));
- if(key.includes('/day/')){const d=value.meal;if(!d||!/^B[1-5]$/.test(d.b)||!/^S(?:[1-9]|10|11)$/.test(d.s)||!['P','Y'].includes(d.p)||!['moong','masoor','arhar'].includes(d.dal)||!selection(value.utensils))throw Error('Invalid day');
+ if(key.includes('/day/')){const d=value.meal;if(!d||!/^B[1-5]$/.test(d.b)||!/^S(?:[1-9]|10|11|12)$/.test(d.s)||!['P','Y'].includes(d.p)||!['moong','masoor','arhar'].includes(d.dal)||!selection(value.utensils))throw Error('Invalid day');
  for(const k of ['off','wheyW','wheyH','eggH','cardioW','cardioH'])if(typeof d[k]!=='boolean')throw Error('Invalid meal flag');
  if(!d.skip||!['b','l','d'].every(k=>typeof d.skip[k]==='boolean'))throw Error('Invalid skipped meal');
  }else if(key.startsWith('week/')){if(!number(value.savedAt,0,1e15))throw Error('Invalid week');}

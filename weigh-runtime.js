@@ -1,25 +1,30 @@
 let dailyWeights={},weighContext=null;
-const DISH_NAMES={sabzi:'Sabzi',dal:'Dal',prot:'Dinner paneer/soya'};
+const DISH_NAMES={sabzi:'Sabzi','sabzi-w':'Wife’s sabzi','sabzi-h':'Husband’s sabzi',dal:'Dal',prot:'Dinner paneer/soya'};
 function weighSpecs(i,dish,scope='all'){
  const day=state.days[i],servings=[];
+ const separate=typeof differentSabzis==='function'&&differentSabzis(day);
+ if(dish==='sabzi'&&separate||dish.startsWith('sabzi-')&&!separate)return [];
+ const onlyPerson=dish.startsWith('sabzi-')?dish.slice(-1):null;
  for(const meal of ['l','d'])for(const person of ['w','h']){
+  if(onlyPerson&&person!==onlyPerson)continue;
   if(scope!=='all'&&scope!==meal||!kept(day,meal))continue;
   let factor=0;
-  if(dish==='sabzi'&&!coveredComponent(day,meal,person,'sabzi'))factor=sabShare(day,person,meal);
+  if(dish.startsWith('sabzi')&&!coveredComponent(day,meal,person,'sabzi'))factor=sabShare(day,person,meal);
   if(dish==='dal')factor=typeof assignedDalShare==='function'?assignedDalShare(person):dalShare(person);
-  if(dish==='prot'&&meal==='d'&&!coveredComponent(day,meal,person,'protein')){if(typeof isKeto==='function'&&isKeto(person)){const cfg=ketoConfig(day,person,meal);if(cfg.protein==='paneer')factor=cfg.quantity;}else if(!NO_EXTRA(day.s))factor=protein(day.p,person,day)[0].q;}
+  if(dish==='prot'&&meal==='d'&&!coveredComponent(day,meal,person,'protein')){if(typeof isKeto==='function'&&isKeto(person)){const cfg=ketoConfig(day,person,meal);if(cfg.protein==='paneer'&&personRecipe(day,person)!=='S12')factor=cfg.quantity;}else if(!NO_EXTRA(typeof personRecipe==='function'?personRecipe(day,person):day.s))factor=protein(day.p,person,day)[0].q;}
   if(factor>0)servings.push({meal,person,factor});
  }
  return servings;
 }
-function weighBasis(i,dish,scope){const d=state.days[i];return JSON.stringify({recipe:dish==='sabzi'?(typeof sharedRecipe==='function'?sharedRecipe(d):d.s):dish==='dal'?d.dal:d.p,servings:weighSpecs(i,dish,scope)});}
+function weighBasis(i,dish,scope){const d=state.days[i];return JSON.stringify({recipe:dish.startsWith('sabzi')?(dish==='sabzi'?(typeof sharedRecipe==='function'?sharedRecipe(d):d.s):personRecipe(d,dish.slice(-1))):dish==='dal'?d.dal:d.p,servings:weighSpecs(i,dish,scope)});}
+function weighDishName(i,dish){return dish.startsWith('sabzi-')?PERSON_NAMES[dish.slice(-1)]+' · '+recipeName(personRecipe(state.days[i],dish.slice(-1))):DISH_NAMES[dish];}
 function currentWeigh(i,dish){if(!state.weekKey)return null;const r=dailyWeights[dateForDay(i)+'/'+dish];return r&&r.basis===weighBasis(i,dish,r.scope)?r:null;}
 function weighedNotes(i,meal){if(!state.weekKey||!['l','d'].includes(meal))return '';const rows=[];
  for(const dish of Object.keys(DISH_NAMES)){
   const raw=dailyWeights[dateForDay(i)+'/'+dish],r=currentWeigh(i,dish);if(!raw)continue;
-  if(!r){rows.push(`<button class="weighed-note" data-weigh="${i}" data-weigh-meal="${meal}">${DISH_NAMES[dish]}: plan changed — update portions</button>`);continue;}
+  if(!r){rows.push(`<button class="weighed-note" data-weigh="${i}" data-weigh-meal="${meal}">${weighDishName(i,dish)}: plan changed — update portions</button>`);continue;}
   const portions=r.portions.filter(s=>s.meal===meal);if(!portions.length)continue;
-  rows.push(`<button class="weighed-note" data-weigh="${i}" data-weigh-meal="${meal}"><b>${DISH_NAMES[dish]}</b> ${portions.map(s=>`${PERSON_NAMES[s.person]} ${s.grams} g`).join(' · ')}</button>`);
+  rows.push(`<button class="weighed-note" data-weigh="${i}" data-weigh-meal="${meal}"><b>${weighDishName(i,dish)}</b> ${portions.map(s=>`${PERSON_NAMES[s.person]} ${s.grams} g`).join(' · ')}</button>`);
  }
  return rows.length?`<div class="weighed-notes">${rows.join('')}</div>`:'';
 }
@@ -48,10 +53,10 @@ function openWeigh(i,meal='l'){
  const cards=[];
  for(const dish of Object.keys(DISH_NAMES)){
   if(!weighSpecs(i,dish).length)continue;
-  const r=dailyWeights[weighContext.date+'/'+dish],vessel=r?.vessel||utDayAt(i)[dish==='prot'?'prot':dish],weight=state.utensils[vessel]||0;
+  const r=dailyWeights[weighContext.date+'/'+dish],vessel=r?.vessel||utDayAt(i)[dish==='prot'?'prot':dish.startsWith('sabzi')?'sabzi':dish],weight=state.utensils[vessel]||0;
   const stale=r&&r.basis!==weighBasis(i,dish,r.scope);
   const scopeOpts=dish==='prot'?'<option value="d">Dinner</option>':[['all','Lunch + dinner'],['l','Lunch only'],['d','Dinner only']].map(([v,n])=>`<option value="${v}"${(r?.scope||'all')===v?' selected':''}>${n}</option>`).join('');
-  const card=`<section class="weigh-card" data-weigh-dish="${dish}"${r?.tare>0?` data-original-tare="${r.tare}"`:''}><h3>${DISH_NAMES[dish]}</h3><p class="weigh-vessel" data-weigh-caption></p><div class="weigh-fields"><label class="weigh-reading"><span data-weigh-reading-label>Whole batch scale reading</span><input data-weigh-gross type="number" min="1" max="150000" step="1" inputmode="decimal" value="${r?.gross??''}"><span class="weigh-unit">grams</span></label><details class="weigh-options"><summary>Change vessel or meals</summary><label>Cooked for<select data-weigh-scope>${scopeOpts}</select></label><label>Vessel<select data-weigh-vessel>${utOpts(vessel)}</select></label><label class="weigh-includes"><input type="checkbox" data-weigh-includes${r?r.tare>0?' checked':'':weight?' checked':''}> Includes empty vessel</label></details></div>${weight?'':`<p class="hintline">Empty vessel weight missing. <button class="text-btn" data-weigh-utensils>Set it once</button>, or enter food-only weight.</p>`}${stale?'<p class="weigh-error">The plan changed. Review and save the updated portions.</p>':''}<div data-weigh-output></div>${r?'<button class="text-btn" data-weigh-clear>Clear saved weight</button>':''}</section>`;
+  const card=`<section class="weigh-card" data-weigh-dish="${dish}"${r?.tare>0?` data-original-tare="${r.tare}"`:''}><h3>${weighDishName(i,dish)}</h3><p class="weigh-vessel" data-weigh-caption></p><div class="weigh-fields"><label class="weigh-reading"><span data-weigh-reading-label>Whole batch scale reading</span><input data-weigh-gross type="number" min="1" max="150000" step="1" inputmode="decimal" value="${r?.gross??''}"><span class="weigh-unit">grams</span></label><details class="weigh-options"><summary>Change vessel or meals</summary><label>Cooked for<select data-weigh-scope>${scopeOpts}</select></label><label>Vessel<select data-weigh-vessel>${utOpts(vessel)}</select></label><label class="weigh-includes"><input type="checkbox" data-weigh-includes${r?r.tare>0?' checked':'':weight?' checked':''}> Includes empty vessel</label></details></div>${weight?'':`<p class="hintline">Empty vessel weight missing. <button class="text-btn" data-weigh-utensils>Set it once</button>, or enter food-only weight.</p>`}${stale?'<p class="weigh-error">The plan changed. Review and save the updated portions.</p>':''}<div data-weigh-output></div>${r?'<button class="text-btn" data-weigh-clear>Clear saved weight</button>':''}</section>`;
   cards.push(dish==='prot'?`<details class="weigh-protein"${meal==='d'||r?' open':''}><summary>Separate dinner paneer/soya</summary>${card}</details>`:card);
  }
  const prepared=batchCookGroups(i).filter(g=>g[0].startsWith('Already prepared'));

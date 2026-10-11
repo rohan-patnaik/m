@@ -235,3 +235,43 @@ test('shopping follows protein/brand edits and frozen cooking batches without co
  run("balancedCurdType='curd'");assert.equal(run("householdShopping().supermarket.find(x=>x.id==='curd').needed"),1400);assert.equal(run("householdShopping().supermarket.find(x=>x.id==='curdH').needed"),700);
  run("renderShopping()");
 });
+
+test('wife bhurji replaces cabbage and dinner soya without changing husband or saved menu',()=>{
+ const {run,root}=app();run("householdDiets={w:'balanced',h:'keto'};state.days[5].s='S5';state.days[5].p='Y';sharedRecipes[sharedKey(5)]={recipe:'K1'}");
+ const husband=run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'h')))"),menu=run('JSON.stringify(state.days)'),before=JSON.parse(run('JSON.stringify(ledger())'));
+ run("sharedRecipes[sharedKey(5)].w='S12'");
+ assert.equal(run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'h')))"),husband);assert.equal(run('JSON.stringify(state.days)'),menu);
+ const wife=JSON.parse(run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'w')))"));assert.ok(wife.some(x=>x.id==='paneer'));assert.ok(!wife.some(x=>['cabbage','soyN','soyS'].includes(x.id)));assert.ok(wife.some(x=>x.id==='arhar'));
+ const after=JSON.parse(run('JSON.stringify(ledger())'));
+ assert.ok(Math.abs(after.cabbage-before.cabbage+225)<1e-8);assert.ok(Math.abs(after.paneer-before.paneer-101.25)<1e-8);assert.ok(Math.abs(after.soyN-before.soyN+48)<1e-8);
+ assert.equal(run("householdShopping().market.find(x=>x.id==='cabbage').buy"),500);
+ assert.match(run("assignedBalancedTitle(state.days[5],'w','d')"),/Paneer bhurji/);assert.doesNotMatch(run("assignedBalancedTitle(state.days[5],'w','d')"),/dinner protein/);
+ run('renderKeto()');assert.match(root.innerHTML,/Wife: Paneer bhurji · Husband: Cabbage/);
+ for(const group of JSON.parse(run('JSON.stringify(householdPrep(5))')).slice(0,2))assert.ok(group[0].includes('once for lunch + dinner'));
+ const groups=JSON.parse(run('JSON.stringify(householdPrep(5))')),expected=JSON.parse(run("JSON.stringify(aggregateBatchLines(['w','h'].flatMap(p=>['b','l','d','e'].flatMap(m=>freshMeal(state.days[5],m,p)))))"));
+ for(const x of expected){const name=run(`DB['${x.id}'][0]`),q=groups.flatMap(g=>g[1]).filter(s=>s.startsWith(name+' — ')).reduce((n,s)=>n+Number(s.slice(name.length+3).split(' ')[0]),0);assert.ok(Math.abs(q-x.q)<.31,x.id);}
+});
+test('full recipe options and person overrides round trip; changing shared preserves exceptions',()=>{
+ const {run}=app();run("render=()=>{};updateRecipe(5,'shared','K1');updateRecipe(5,'w','S12');snapshotDraft();sharedRecipes={};hydrateDraft();");
+ assert.equal(run("personRecipe(state.days[5],'w')"),'S12');assert.equal(run("personRecipe(state.days[5],'h')"),'K1');
+ const controls=run('recipeSelectorsHTML(state.days[5],5)');for(const name of ['Paneer bhurji','Palak paneer','Soya chunks sabzi','Beans + carrot + aloo','Cabbage','Mushroom'])assert.ok(controls.includes(name));
+ run("updateRecipe(5,'shared','S3')");assert.equal(run("personRecipe(state.days[5],'w')"),'S12');assert.equal(run("personRecipe(state.days[5],'h')"),'S3');
+ run("updateRecipe(5,'shared','original')");assert.equal(run("personRecipe(state.days[5],'w')"),'S12');
+ run("updateRecipe(5,'w','shared')");assert.equal(run("personRecipe(state.days[5],'w')"),run('state.days[5].s'));
+ assert.throws(()=>run("updateRecipe(5,'w','tofu')"));
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){run(`householdDiets={w:'${w}',h:'${h}'};sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}`);assert.equal(run("meal(state.days[5],'d','w').some(x=>['soyN','egg','chicken'].includes(x.id))"),false);assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='cabbage')"),false);}
+});
+test('separate sabzis have separate weighing records and recipe-matched batch selections',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'};state.days[5].s='S5';state.days[5].p='Y';sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
+ assert.equal(run("weighSpecs(5,'sabzi').length"),0);
+ for(const p of ['w','h']){
+  const specs=JSON.parse(run(`JSON.stringify(weighSpecs(5,'sabzi-${p}'))`));assert.equal(specs.length,2);assert.ok(specs.every(s=>s.person===p));const allocated=weighMath.allocateFood(600,0,specs);assert.equal(allocated.portions.reduce((n,s)=>n+s.grams,0),600);
+  const r={gross:600,tare:0,netWeight:600,vessel:'pan',scope:'all',basis:run(`weighBasis(5,'sabzi-${p}','all')`),savedAt:Date.now(),portions:allocated.portions};assert.doesNotThrow(()=>records.validateRecord(`weigh/2026-10-10/sabzi-${p}`,r));
+ }
+ assert.equal(run("weighSpecs(5,'prot').some(x=>x.person==='w')"),false);
+ run("batchDraft={recipe:'S12',cookedOn:'2026-10-10',vessel:'pan',includeVessel:false,gross:230,oil:null,roles:{},selected:{}};prefillBatchServings()");
+ assert.equal(run("batchDraft.selected['2026-10-10/l/w']"),true);assert.equal(run("batchDraft.selected['2026-10-10/l/h']"),false);
+ run("Object.keys(batchDraft.selected).forEach(k=>{if(!k.startsWith('2026-10-10/'))batchDraft.selected[k]=false})");const b=JSON.parse(run('JSON.stringify(buildBatchPreview(true))'));math.validateBatch(b);assert.ok(b.servings.every(s=>s.person==='w'));assert.ok(math.claimsFor(b,b.servings.find(s=>s.meal==='d')).some(k=>k.endsWith('/protein')));
+ const before=JSON.parse(run('JSON.stringify(ledger())'));run("savedBatches['fixture-bhurji']=buildBatchPreview(true)");const after=JSON.parse(run('JSON.stringify(ledger())'));for(const id of Object.keys(before))assert.ok(Math.abs(before[id]-(after[id]||0))<1e-7,id);
+ run("sharedRecipes[sharedKey(5)].w='S5'");assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='paneer')"),true);assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='soyN')"),false);
+});
