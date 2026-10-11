@@ -1207,7 +1207,7 @@ document.addEventListener('click',e=>{
   const dn=e.target.closest('[data-daynav]');
   if(dn){save();dayOff=dn.dataset.daynav==='0'?0:dayOff+ +dn.dataset.daynav;selectDayWeek();render();return;}
   const ul=e.target.closest('[data-calunlink]');
-  if(ul){selectWeek(null);state.view='week';render();if($('#dlg').open)$('#dlgBody').innerHTML=calCard();return;}
+  if(ul){selectWeek(null);state.view='week';location.hash='#week';render();if($('#dlg').open)$('#dlgBody').innerHTML=calCard();return;}
   const wl=e.target.closest('[data-weeklock]');
   if(wl){const inp=$('#weekLockDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     ensureUtDay();ensureOilUse();
@@ -1217,9 +1217,9 @@ document.addEventListener('click',e=>{
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
-    state.weekKey=mon;save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
+    state.weekKey=mon;state.view='week';location.hash='#week';save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
   const ld=e.target.closest('[data-calload]');
-  if(ld){selectWeek(ld.dataset.calload);state.view='week';render();$('#dlg').close();return;}
+  if(ld){selectWeek(ld.dataset.calload);state.view='week';location.hash='#week';render();$('#dlg').close();return;}
   const del=e.target.closest('[data-caldel]');
   if(del){const k=del.dataset.caldel;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
 });
