@@ -30,6 +30,14 @@ Enter one finished weight (food-only, or with the saved global vessel tare) and 
 
 Shopping counts the full recipe once on its cooking date. Future cook lists show stored portions as **Already prepared**; other meal components remain fresh. Cooking and serving weeks are saved together. Overlapping batch assignments are rejected atomically, and older clients must reload before changing batch records.
 
+## Keto comparison
+
+The **Keto** tab derives a read-only, seven-day menu comparison from the selected week/template, per-person presets, skip settings and prepared-batch recipes. Wife remains vegetarian; husband gets eggs only where already enabled. It never converts meals, changes shopping, or writes cloud records. Navigation and person filters are transient UI state.
+
+Current calorie/protein averages use the existing recipe calculations (including oil). Proposed swaps deliberately have no calculated keto totals: the database lacks carbohydrate/fat profiles, and tofu/nut choices and portions remain unconfirmed. A complete keto plan requires verified label definitions, carbohydrate/fibre/fat values, appropriate portions and clinical suitability review. No blind fibre subtraction or zero-carb inference is made.
+
+Five physician-led/featured YouTube videos were checked using retrieved English captions on 2026-10-11. Timestamped links, points used and conflicting advice are available in the tab, alongside Harvard, AHA, NHS, Diabetes UK and Cleveland Clinic sources. Original caption/metadata evidence stays on the artifact drive under `outputs/keto-research`; it is not shipped to the app. The selection is not a claimed global popularity ranking.
+
 ## Deployments
 
 Convex team/project: `rohan-patnaik/meal-planner` (Free).

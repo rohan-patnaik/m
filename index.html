@@ -282,6 +282,73 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 .batch-weight-fix input{width:120px}
 [data-batch-error]{color:#b54725;font-size:13px}
 @media(max-width:680px){.batch-picker{grid-template-columns:1fr}.batch-fields{grid-template-columns:1fr}.dayhead{flex-wrap:wrap}.day-actions{flex-wrap:wrap;gap:6px}.day-actions .batch-add{font-size:12px}.batch-portions td,.batch-portions th{padding:10px 4px}.batch-portions strong{font-size:14px}.batch-weigh{padding:12px}}
+/* Keto comparison: readable recipe changes, independent of the editable planner. */
+#regularPlan[hidden],#keto[hidden]{display:none!important}
+#keto{margin-top:24px}
+#keto a{color:var(--accent);text-underline-offset:3px}
+.keto-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.keto-heading h2{margin:0;font-size:26px;letter-spacing:-.5px}
+.keto-heading p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.keto-filter{display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:4px}
+.keto-filter button{border:0;background:transparent;padding:7px 12px}
+.keto-filter button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.keto-intro{max-width:76ch;margin:16px 0 20px}
+.keto-baselines{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+.keto-baseline h3{margin:0 0 10px;font-size:16px}
+.keto-baseline h3 span{font-size:12px;font-weight:400;color:var(--muted);margin-left:8px}
+.keto-baseline p{margin:6px 0;font-size:13px;color:var(--muted);max-width:65ch}
+.keto-baseline p b{font-size:20px;color:var(--ink)}
+.keto-caption{font-size:12px;color:var(--muted);line-height:1.6}
+.keto-budget{display:grid;grid-template-columns:1fr 1fr;gap:32px;border-block:1px solid var(--line);margin:24px 0;padding:20px 0}
+.keto-budget h3,.keto-notes h3,.keto-section-head h3{font-size:17px;margin:0 0 8px}
+.keto-budget p{font-size:13px;margin:0;max-width:65ch}
+.keto-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:28px}
+.keto-section-head h3{margin:0}
+.keto-week{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--paper)}
+.keto-day{border-bottom:1px solid var(--line)}
+.keto-day:last-child{border-bottom:0}
+.keto-day>summary{display:grid;grid-template-columns:150px 1fr;gap:20px;cursor:pointer;padding:18px 20px;position:relative;padding-right:45px;list-style:none}
+.keto-day>summary::-webkit-details-marker{display:none}
+.keto-day>summary:after{content:'+';position:absolute;right:20px;top:18px;font-size:20px;color:var(--accent)}
+.keto-day[open]>summary:after{content:'−'}
+.keto-day[open]>summary{background:var(--tint)}
+.keto-day>summary small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.keto-day>summary>span:last-of-type{align-self:center;font-size:14px}
+.keto-day-body{padding:0 20px 8px}
+.keto-meal{padding:18px 0;border-bottom:1px solid var(--line)}
+.keto-meal:last-child{border:0}
+.keto-meal h4{font-size:14px;margin:0 0 12px}
+.keto-meal-row{display:grid;grid-template-columns:80px 1fr 1.4fr;gap:20px;font-size:13px;margin:0 0 18px;align-items:start}
+.keto-meal-row:last-child{margin-bottom:0}
+.keto-person{color:var(--muted);font-weight:600;padding-top:20px}
+.keto-col-label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}
+.keto-meal-row p{margin:6px 0 0;font-size:12px;color:var(--muted);max-width:75ch}
+.keto-meal-row .keto-batch-note{color:var(--accent)}
+.keto-notes{margin:32px 0}
+.keto-notes dl{margin:0}
+.keto-notes dl>div{display:grid;grid-template-columns:190px 1fr;gap:24px;padding:16px 0;border-bottom:1px solid var(--line)}
+.keto-notes dt{font-size:14px;font-weight:600}
+.keto-notes dd{font-size:13px;margin:0;max-width:85ch}
+.keto-info{border-top:1px solid var(--line);padding:18px 0;font-size:13px}
+.keto-info>summary{font-size:14px;font-weight:650;cursor:pointer}
+.keto-info>div{max-width:85ch;padding-top:6px}
+.keto-video{padding:16px 0;border-bottom:1px solid var(--line)}
+.keto-video h4{font-size:14px;margin:0 0 4px}
+.keto-video small{display:block;color:var(--muted);margin:4px 0}
+.keto-video p{margin:8px 0 0}
+@media(max-width:680px){
+ .tabs{grid-template-columns:auto repeat(3,minmax(0,1fr)) auto auto auto}
+ .tabs a,.tabs .navbtn,.more-menu summary{padding:8px 4px;font-size:11px}
+ #calBtn{min-width:34px}
+ .keto-heading{gap:14px}.keto-heading h2{font-size:23px}
+ .keto-baselines{padding:16px;gap:18px}.keto-budget{grid-template-columns:1fr;gap:20px}
+ .keto-day>summary{grid-template-columns:1fr;gap:5px;padding:16px;padding-right:40px}
+ .keto-day>summary small{display:inline;margin-left:8px}.keto-day-body{padding:0 16px 4px}
+ .keto-meal-row{grid-template-columns:1fr;gap:10px;padding-top:12px;border-top:1px dashed var(--line)}
+ .keto-person{padding:0;color:var(--ink)}.keto-meal-row>div{padding-left:12px;border-left:2px solid var(--line)}
+ .keto-meal-row>div:last-child{border-color:var(--accent)}
+ .keto-notes dl>div{grid-template-columns:1fr;gap:8px}
+}
 </style>
 </head>
 <body>
@@ -298,17 +365,19 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
     <a href="#planner" class="active"><span class="full">Weekly planner</span><span class="short">Planner</span></a>
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
-    <button id="calBtn" class="navbtn" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅 Cal</span></button>
+    <a href="#keto">Keto</a>
+    <button id="calBtn" class="navbtn" aria-label="Calendar" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅</span></button>
     <details class="more-menu"><summary>More</summary><div class="more-items">    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
     <button id="syncBtn" class="navbtn" title="Live household sync via a shared cloud copy"><span class="full">Sync</span><span class="short">Sync</span></button>
 </div></details>
     <button id="themeBtn" class="theme-toggle" aria-label="Switch to dark mode" title="Toggle light / dark mode">🌙</button>
   </nav>
 
+  <div id="regularPlan">
   <div class="planner-controls"><div class="portion-controls">    <label class="portion-field">Wife<select id="presetW" class="navsel" aria-label="Wife portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
     <label class="portion-field">Husband<select id="presetH" class="navsel" aria-label="Husband portion plan"><option value="easy">Low</option><option value="medium">Medium</option><option value="hard">High</option></select></label>
     <button class="compare-btn" data-presets title="Compare plans vs maintenance" aria-label="Compare plans">Compare plans</button>
-</div>
+ </div>
   <div class="viewbar">
     <div class="viewseg" role="group" aria-label="Planner view">
       <button data-view="week" title="Plan the whole week (usually Saturday/Sunday)"><span class="full">Week-set</span><span class="short">Week</span></button>
@@ -375,7 +444,8 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
     </details>
   </section>
 
-
+  </div>
+  <section id="keto" class="section" hidden aria-labelledby="ketoTitle"></section>
 </div>
 
 <dialog id="dlg" aria-labelledby="dlgTitle"><div class="dialog-head"><h2 id="dlgTitle"></h2><button type="button" class="dialog-close" aria-label="Close dialog" onclick="this.closest('dialog').close()">×</button></div><div id="dlgBody"></div></dialog>
@@ -385,6 +455,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="batch-runtime.js"></script>
 <script src="weigh-runtime.js"></script>
 <script src="cloud-runtime.js"></script>
+<script src="keto-runtime.js"></script>
 <script>
 const DB={
  atta:['Atta · Pillsbury Chakki Fresh (DMart packet)',364,11.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
@@ -1032,6 +1103,7 @@ function render(){
   const mp=state.labels.milk?null:milkPer100ml();
   $('#densityRow').innerHTML=`<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">Milk density estimate <input type="number" min="0.5" max="2" step="0.01" value="${milkDensity()}" data-density style="width:84px"> g/ml <span style="font-weight:400;color:var(--muted)">→ 100 ml = ${F(milkPer100ml()[0])} kcal · ${F(milkPer100ml()[1])} g protein (panel per 100 g: 58/3.1)${mp?'':' · manual override active'}</span></label>`;
   const st=$('#srcTable');if(st)st.innerHTML=srcTableHTML();
+  renderKeto();
   save();
 }
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.ut){const v=parseFloat(t.value);state.utensils[t.dataset.ut]=Number.isFinite(v)&&v>=0?Math.round(v):0;state.utensilUpdatedAt[t.dataset.ut]=Date.now();persistUtensils();save();}});
@@ -1173,8 +1245,10 @@ $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.label
 for(const [p,id]of [['w','presetW'],['h','presetH']])$( '#'+id).onchange=()=>{state.personModes[p]=$('#'+id).value;state.custom=true;save();render();};
 document.querySelectorAll('.tabs a').forEach(a=>a.addEventListener('click',()=>{
   document.querySelectorAll('.tabs a').forEach(x=>x.classList.remove('active'));a.classList.add('active');
+  showKetoRoute(a.hash);
 }));
 render();
+showKetoRoute(location.hash);
 syncUtensils();
 startCloud();
 </script>
