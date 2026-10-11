@@ -46,6 +46,12 @@ Fullness planning uses protein each meal, substantial vegetables, measured curd,
 
 **Save changes** persists edits to Convex and live queries update other devices. Different-record changes merge; same-record conflicts require review. Wire format 5 prevents older clients deleting new household/keto records and keto batch variants. Five physician video transcripts, matched packet photos and authoritative references are linked in the Keto tab; retained research evidence is under `outputs/keto-research` and `outputs/keto-household-handoff` on the artifact drive.
 
+## Weekly shopping list
+
+The single **Shopping list** navigation link opens `#shopping` from Balanced, Keto or Day mode. It shows the selected calendar week (or template), both assigned diets, farmers’ market produce and supermarket/DMart/Walmart items together. Comparison filters and view switches do not change the list. Quantities follow actual assigned meals, skips, portion/brand edits and the existing batch ledger; batches cooked in the selected week are purchased once, including reserved future servings.
+
+Weekly need is raw edible/dry weight, milk/oil volume, whole eggs or 35 g whey scoops. Produce buying weights use the existing estimated trimming yields and practical rounding; supermarket packs round upward and keep regular/high-protein paneer and curd variants separate. Chicken offers 250/500 g packs with excess raw grams shown. This is a one-week list assuming no existing stock, not a store inventory/availability lookup. Unspecified salt, fresh herbs, ginger and garlic are not invented as measured recipe ingredients.
+
 ## Deployments
 
 Convex team/project: `rohan-patnaik/meal-planner` (Free).

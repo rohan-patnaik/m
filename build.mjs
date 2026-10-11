@@ -7,6 +7,7 @@ await copyFile('cloud-config.js',out+'/cloud-config.js');
 await copyFile('cloud-runtime.js',out+'/cloud-runtime.js');
 await copyFile('batch-runtime.js',out+'/batch-runtime.js');
 await copyFile('weigh-runtime.js',out+'/weigh-runtime.js');
+await copyFile('shopping-runtime.js',out+'/shopping-runtime.js');
 await copyFile('keto-runtime.js',out+'/keto-runtime.js');
 await copyFile('household-runtime.js',out+'/household-runtime.js');
 await copyFile('nutrition-runtime.js',out+'/nutrition-runtime.js');

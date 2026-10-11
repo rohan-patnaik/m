@@ -11,16 +11,17 @@ const browserBundle=buildSync({entryPoints:[new URL('../convex-browser.js',impor
 
 function app(){
  const root={innerHTML:'',querySelector(){return null;},querySelectorAll(){return[];}};
- const document={addEventListener(){},querySelector(sel){return sel==='#keto'?root:null;},querySelectorAll(){return[];}};
+ const shopping={innerHTML:'',hidden:true},regular={hidden:false};
+ const document={addEventListener(){},querySelector(sel){return sel==='#keto'?root:sel==='#shopping'?shopping:sel==='#regularPlan'?regular:null;},querySelectorAll(){return[];}};
  const ctx=vm.createContext({document,window:{addEventListener(){}},BatchMath:math,WeighMath:weighMath,MealCloud:records,crypto:webcrypto,structuredClone,console,TextEncoder,setInterval(){},navigator:{onLine:true}});
   vm.runInContext(browserBundle,ctx);
  ctx.MealCloud=ctx.window.MealCloud;
- for(const file of ['batch-runtime.js','weigh-runtime.js','cloud-runtime.js','nutrition-runtime.js','household-runtime.js','keto-runtime.js'])vm.runInContext(readFileSync(new URL('../'+file,import.meta.url),'utf8'),ctx);
+ for(const file of ['batch-runtime.js','weigh-runtime.js','cloud-runtime.js','nutrition-runtime.js','household-runtime.js','shopping-runtime.js','keto-runtime.js'])vm.runInContext(readFileSync(new URL('../'+file,import.meta.url),'utf8'),ctx);
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
  vm.runInContext(script.slice(0,script.indexOf("document.addEventListener('input'")),ctx);
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
- return {root,run:expression=>vm.runInContext(expression,ctx)};
+ return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
 }
 test('keto proposals respect off meals and separate vegetarian/egg defaults',()=>{
  const {run}=app();
@@ -193,4 +194,44 @@ test('high hunger prompts review and Heritage curd is a distinct shared default'
  const {run,root}=app();run("trialChecks['2026-10-05']={hunger:4};renderKeto()");assert.match(root.innerHTML,/High hunger recorded/);assert.match(root.innerHTML,/before cutting food further/);
  run("balancedCurdType='curdH'");assert.equal(run("meal(state.days[0],'l','w').find(x=>x.id==='curdH').q"),200);assert.equal(run("comparisonSum([L('curdH',200)]).k"),116);
  run('snapshotDraft();balancedCurdType="curd";hydrateDraft()');assert.equal(run('balancedCurdType'),'curdH');
+});
+
+test('one shopping route is available in every diet/day view without changing the plan',()=>{
+ const {run,shopping,regular,root}=app();run("householdDiets={w:'balanced',h:'keto'};state.view='day'");
+ const before=run('JSON.stringify({state,householdDiets,cloudDraft,ledger:ledger()})');
+ run("showKetoRoute('#shopping')");assert.equal(shopping.hidden,false);assert.equal(regular.hidden,true);assert.equal(root.hidden,true);
+ assert.match(shopping.innerHTML,/Farmers’ market/);assert.match(shopping.innerHTML,/Supermarket \/ DMart \/ Walmart/);assert.match(shopping.innerHTML,/Wife: <b>Balanced/);assert.match(shopping.innerHTML,/Husband: <b>Strict keto/);
+ assert.match(shopping.innerHTML,/data-shopping-item="cucumber"/);
+ run("showKetoRoute('#keto')");assert.equal(shopping.hidden,true);assert.equal(root.hidden,false);
+ run("showKetoRoute('#planner')");assert.equal(regular.hidden,false);assert.equal(shopping.hidden,true);
+ assert.equal(run('JSON.stringify({state,householdDiets,cloudDraft,ledger:ledger()})'),before);
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.equal((html.match(/href="#shopping"/g)||[]).length,1);assert.ok(html.indexOf('id="shopping"')>html.indexOf('id="labels"'));assert.doesNotMatch(html,/body\[data-view=day\] #shopping/);
+});
+test('shopping includes every assigned ingredient, respects skips, and rounds purchase quantities upward',()=>{
+ const {run}=app();
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  const list=JSON.parse(run('JSON.stringify(householdShopping())')),led=JSON.parse(run('JSON.stringify(ledger())'));
+  const rows=[...list.market,...list.supermarket];assert.equal(rows.length,Object.values(led).filter(q=>q>1e-8).length);
+  for(const row of rows){assert.equal(row.needed,led[row.id]);assert.ok(row.buy+1e-8>=row.needed);}
+  assert.equal(rows.find(x=>x.id==='cucumber').needed,run("ledger().cucumber"));
+  assert.equal(rows.some(x=>x.id==='chicken'),h==='keto');
+  if(h==='keto'){const chicken=rows.find(x=>x.id==='chicken');assert.equal(chicken.needed,500);assert.equal(chicken.packs,2);assert.equal(chicken.largePacks,1);assert.equal(chicken.largeLeftover,0);}
+ }
+ run("state.days.forEach(d=>d.off=true)");assert.equal(run('householdShopping().market.length+householdShopping().supermarket.length'),0);
+ run("state.days[0].off=false;state.days[0].skip={b:true,l:true,d:true}");assert.equal(run('householdShopping().market.length+householdShopping().supermarket.length'),0);
+ assert.equal(run("shoppingQuantity(1015,'g')"),'1.015 kg');assert.equal(run("shoppingQuantity(1400,'ml')"),'1.4 L');
+});
+test('shopping follows protein/brand edits and frozen cooking batches without counting twice',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'}");
+ const before=run('JSON.stringify(householdShopping())');
+ run("batchDraft={recipe:'C',cookedOn:'2026-10-06',vessel:'pan',includeVessel:false,gross:380,oil:null,roles:{'2026-10-06/d':'protein','2026-10-09/d':'protein'},selected:{'2026-10-06/d/h':true,'2026-10-09/d/h':true}};savedBatches['fixture-shop-chicken']=buildBatchPreview(true)");
+ const after=JSON.parse(run('JSON.stringify(householdShopping())'));
+ assert.equal(after.supermarket.find(x=>x.id==='chicken').needed,500);
+ const old=JSON.parse(before);for(const row of [...old.market,...old.supermarket]){const newer=[...after.market,...after.supermarket].find(x=>x.id===row.id);assert.ok(Math.abs(row.needed-newer.needed)<1e-8,row.id);}
+ run("ketoMeals[ketoMealKey(1,'h','d')]={...ketoConfig(state.days[1],'h','d'),quantity:125};");assert.equal(run("householdShopping().supermarket.find(x=>x.id==='chicken').needed"),500);
+ run("savedBatches={};ketoMeals[ketoMealKey(4,'h','d')]={...ketoConfig(state.days[4],'h','d'),quantity:125}");
+ assert.equal(run("householdShopping().supermarket.find(x=>x.id==='chicken').needed"),250);
+ run("balancedCurdType='curd'");assert.equal(run("householdShopping().supermarket.find(x=>x.id==='curd').needed"),1400);assert.equal(run("householdShopping().supermarket.find(x=>x.id==='curdH').needed"),700);
+ run("renderShopping()");
 });

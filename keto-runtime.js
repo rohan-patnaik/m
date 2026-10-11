@@ -81,7 +81,13 @@ function renderKeto(){
  root.querySelectorAll('.keto-info').forEach(x=>x.open=openInfo.has((x.closest('[data-keto-day]')?.dataset.ketoDay||'root')+'|'+x.firstElementChild.textContent));
  if(hadDays)root.querySelectorAll('[data-keto-day]').forEach(x=>x.open=openDays.has(x.dataset.ketoDay));root.querySelectorAll('[data-keto-edit]').forEach(x=>x.open=openEdits.has(x.dataset.ketoEdit));
 }
-function showKetoRoute(hash){const keto=hash==='#keto';document.querySelectorAll('[data-diet]').forEach(b=>{const a=b.dataset.diet===(keto?'keto':'balanced');b.setAttribute('aria-pressed',String(a));b.classList.toggle('active',a);});document.querySelector('#regularPlan').hidden=keto;document.querySelector('#keto').hidden=!keto;document.querySelectorAll('.tabs a').forEach(a=>{const active=keto?a.hash==='#keto':a.hash===(hash||'#planner');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});}
+function showKetoRoute(hash){
+ const keto=hash==='#keto',shopping=hash==='#shopping';
+ document.querySelectorAll('[data-diet]').forEach(b=>{const a=!shopping&&b.dataset.diet===(keto?'keto':'balanced');b.setAttribute('aria-pressed',String(a));b.classList.toggle('active',a);});
+ document.querySelector('#regularPlan').hidden=keto||shopping;document.querySelector('#keto').hidden=!keto;
+ const list=document.querySelector('#shopping');if(list){list.hidden=!shopping;if(shopping)renderShopping();}
+ document.querySelectorAll('.tabs a').forEach(a=>{const active=a.hash===(hash||'#planner');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+}
 window.addEventListener('hashchange',()=>showKetoRoute(location.hash));
 document.addEventListener('click',e=>{
  const diet=e.target.closest('[data-diet]');if(diet){location.hash=diet.dataset.diet==='keto'?'keto':'planner';showKetoRoute(location.hash);return;}

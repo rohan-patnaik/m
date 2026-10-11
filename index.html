@@ -97,8 +97,21 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield}
 .infobtn{border:none;background:none;padding:0 2px;font-size:12px;color:var(--accent);font-weight:700;cursor:pointer;line-height:1}
 .shophead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
 .shophead h2{margin:0}
-.wkbtn{font-size:12px;font-weight:650;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--paper)}
-.wkbtn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#shopping{scroll-margin-top:16px}
+.shopping-diets{display:flex;gap:10px 20px;flex-wrap:wrap;font-size:14px}
+.shophead p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.shopping-note{font-size:13px;color:var(--muted);line-height:1.6;margin:16px 0}
+.shopping-groups{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;margin-top:24px}
+.shopping-groups h3{font-size:18px;margin:0 0 8px}
+.shopping-groups .hintline{min-height:38px;margin:0 0 12px}
+.shopping-table{width:100%;border-collapse:collapse;font-size:14px}
+.shopping-table th,.shopping-table td{padding:12px 8px;vertical-align:top}
+.shopping-table tbody th{text-align:left;text-transform:none;letter-spacing:0;font-size:inherit;font-weight:500;color:var(--ink);width:44%}
+.shopping-table thead th{text-transform:none;letter-spacing:0;font-size:12px}
+.shopping-table td{font-variant-numeric:tabular-nums}
+.shopping-table small{display:block;font-weight:400;color:var(--muted);margin-top:5px;font-size:12px}
+@media(max-width:960px){.shopping-groups{grid-template-columns:1fr;gap:28px}.shopping-groups .hintline{min-height:0}}
+@media(max-width:420px){.shopping-table{font-size:12px}.shopping-table th,.shopping-table td{padding:10px 4px}.shopping-table tbody th{width:40%}.shopping-table thead th{font-size:11px}}
 .eatout-tag{font-size:12px;font-weight:700;color:var(--accent)}
 .stchips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
 .stchip{font-size:11px;font-weight:650;border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--paper)}
@@ -130,7 +143,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:680px){.viewseg button{font-size:12px;padding:7px 10px}.viewseg .full{display:none}.viewseg .short{display:inline}}
 body[data-view=day] #planner{display:none}
 body[data-view=week] #dayview{display:none}
-body[data-view=day] #shopping,body[data-view=day] #labels{display:none}
+body[data-view=day] #labels{display:none}
 
 body[data-view=day] #utensils{margin-top:14px}
 body[data-view=day] #utensils h2{font-size:16px;margin:0 0 8px}
@@ -283,7 +296,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 [data-batch-error]{color:#b54725;font-size:13px}
 @media(max-width:680px){.batch-picker{grid-template-columns:1fr}.batch-fields{grid-template-columns:1fr}.dayhead{flex-wrap:wrap}.day-actions{flex-wrap:wrap;gap:6px}.day-actions .batch-add{font-size:12px}.batch-portions td,.batch-portions th{padding:10px 4px}.batch-portions strong{font-size:14px}.batch-weigh{padding:12px}}
 /* Keto comparison: readable recipe changes, independent of the editable planner. */
-#regularPlan[hidden],#keto[hidden]{display:none!important}
+#regularPlan[hidden],#keto[hidden],#shopping[hidden]{display:none!important}
 #keto{margin-top:24px}
 #keto a{color:var(--accent);text-underline-offset:3px}
 .keto-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
@@ -389,7 +402,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
   <div class="diet-switch viewseg" role="group" aria-label="Diet view"><button data-diet="balanced" aria-pressed="true">Balanced</button><button data-diet="keto" aria-pressed="false">Keto</button></div>
   <nav class="tabs">
     <a href="#planner" class="active"><span class="full">Weekly planner</span><span class="short">Planner</span></a>
-    <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
+    <a href="#shopping"><span class="full">Shopping list</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
     <a href="#keto" aria-label="Compare diets"><span class="full">Compare</span><span class="short">Vs</span></a>
     <button id="calBtn" class="navbtn" aria-label="Calendar" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅</span></button>
@@ -435,27 +448,6 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 
   </section>
 
-  <section class="panel section" id="shopping">
-    <div class="shophead">
-      <h2>Shopping</h2>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <span class="hintline" style="margin:0">DMart for:</span>
-        <button class="wkbtn" data-weeks="1">1 week</button>
-        <button class="wkbtn" data-weeks="2">2 weeks</button>
-      </div>
-    </div>
-    <div class="grid2">
-      <div>
-        <h3 style="font-size:14px;margin:0 0 8px">Veggies · Sunday market (1 week)</h3>
-        <div id="vegTable"></div>
-      </div>
-      <div>
-        <h3 style="font-size:14px;margin:0 0 8px" id="dmartHead">DMart</h3>
-        <div id="dmartTable"></div>
-      </div>
-    </div>
-  </section>
-
   <section class="panel section" id="labels">
     <h2>Packet labels</h2>
     <div id="labelTable"></div>
@@ -471,6 +463,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
   </section>
 
   </div>
+  <section class="panel section" id="shopping" hidden aria-label="Weekly shopping list"></section>
   <section id="keto" class="section" hidden aria-labelledby="ketoTitle"></section>
 </div>
 
@@ -483,6 +476,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="cloud-runtime.js"></script>
 <script src="nutrition-runtime.js"></script>
 <script src="household-runtime.js"></script>
+<script src="shopping-runtime.js"></script>
 <script src="keto-runtime.js"></script>
 <script>
 const DB={
@@ -730,10 +724,6 @@ function cookQty(i){
   if(d.off)return q;
   for(const per of['w','h'])for(const m of['b','l','d','e'])add(freshMeal(d,m,per));
   return q;
-}
-function vegList(){
-  const used=ledger(),rates={gobi:YIELDS.gobi/300,arbi:YIELDS.arbi/750,bhindi:YIELDS.bhindi/500,palak:YIELDS.palak/500,carrot:.9,potato:.9,onion:.9,tomato:1,mushroom:1,cucumber:1,cabbage:.9,beans:.9};
-  return Object.entries(rates).filter(([id])=>used[id]>0).map(([id,y])=>{const step=id==='gobi'?300:id==='mushroom'?200:250,buy=Math.ceil((used[id]/y-1e-8)/step)*step;return{id,used:used[id],buy};});
 }
 const $=s=>document.querySelector(s);
 function syncUtensils(){
@@ -1084,20 +1074,7 @@ function render(){
     $('#dayview').innerHTML=`<div class="daynav"><button data-daynav="-1" aria-label="Previous day">‹</button><h2>${title}</h2><button data-daynav="1" aria-label="Next day">›</button>${dayOff!==0?'<button data-daynav="0">Today</button>':''}</div>${loadBanner}${dayHTML(state.days[vi],vi)}`;
   }else{$('#dayview').innerHTML='';}
   renderBatchList();
-  // shopping
-  $('#vegTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use</th><th class="num">Buy</th></tr></thead><tbody>${vegList().map(x=>`<tr><td>${DB[x.id][0]}</td><td class="num">${R(x.used)} g</td><td class="num"><b>${R(x.buy)} g</b></td></tr>`).join('')}</tbody></table>`;
-  const led=ledger();
-  const W2=state.weeks===2?2:1;
-  $('#dmartHead').textContent=W2===2?'DMart · 2 weeks (10–14 day run)':'DMart · 1 week';
-  document.querySelectorAll('[data-weeks]').forEach(b=>b.classList.toggle('on',+b.dataset.weeks===state.weeks));
-  const packets={chicken:250,paneerHP:240,curdH:400,butterH:100,walnuts:200,flax:200,atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
-  const brands={chicken:'Chicken breast · raw 250 g packs',paneerHP:'Heritage NOURISH+ paneer · 240 g',curdH:'Heritage Total Curd · 400 g',butterH:'Heritage table butter',walnuts:'Planned walnuts (estimate)',flax:'Ground flaxseed (estimate)',atta:'Atta · Pillsbury Chakki Fresh',oats:'Oats · Saffola plain',moong:'Moong dal · Tata',masoor:'Masoor dal · Tata',arhar:'Toor dal · Tata Sampann unpolished',paneer:'Paneer · Heritage 500 g',soyN:'Soya chunks · Nutrela 200 g',soyS:'Soya chunks · Saffola 200 g',pasta:'Pasta · Borges penne durum',butter:'Butter · Amul salted',curd:'Curd · Milky Mist 1 kg',milk:'Milk · Heritage green 500 ml',oil:'Oil · Tata mustard cold-pressed 1 L'};
-  const ids=Object.keys(packets).concat(['egg','whey','spice']);
-  $('#dmartTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">Use / week</th><th class="num">Buy${W2===2?' · 2 wks':''}</th></tr></thead><tbody>${ids.filter(id=>led[id]).map(id=>{
-    const u=DB[id][3],q=led[id],size=packets[id];
-    const buy=id==='chicken'?`${Math.ceil(q*W2/250)} × 250 g or ${Math.ceil(q*W2/500)} × 500 g · ${F(Math.ceil(q*W2/500)*500-q*W2)} g unused with 500 g packs`:size?Math.ceil((q*W2-1e-8)/size)+' × '+size+' '+u:id==='whey'?R(q*W2)+' servings':id==='egg'?R(q*W2)+' eggs':'pantry';
-    return`<tr><td>${brands[id]||DB[id][0]}</td><td class="num">${F(q)} ${u}</td><td class="num">${buy}</td></tr>`;
-  }).join('')}</tbody></table>`;
+  renderShopping();
   // labels
   const keys=['whey','paneer','paneerHP','curd','curdH','milk','butterH'];
   $('#labelTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">kcal</th><th class="num">Protein g</th></tr></thead><tbody>${keys.map(id=>{
@@ -1222,8 +1199,6 @@ document.addEventListener('click',e=>{
   const pi=e.target.closest('[data-info]');
   if(pi){const n=pi.dataset.info==='w'?'Wife':'Husband';$('#dlgTitle').textContent=n+' · profile & targets';$('#dlgBody').innerHTML=personCard(pi.dataset.info);$('#dlg').showModal();return;}
   if(e.target.closest('[data-presets]')){$('#dlgTitle').textContent='Plans vs maintenance';$('#dlgBody').innerHTML=presetCard();$('#dlg').showModal();return;}
-  const wk=e.target.closest('[data-weeks]');
-  if(wk){state.weeks=+wk.dataset.weeks===2?2:1;save();render();return;}
   const vw=e.target.closest('.viewseg [data-view]');
   if(vw){save();state.view=vw.dataset.view==='day'?'day':'week';state.viewExplicit=true;dayOff=0;if(state.view==='day')selectDayWeek();render();return;}
   const dn=e.target.closest('[data-daynav]');
