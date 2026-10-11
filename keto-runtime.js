@@ -1,4 +1,4 @@
-// A derived comparison only. No plan, shopping, batch or cloud records are written here.
+// Diet views and a derived, energy-matched comparison; saved meals are not replaced.
 let ketoPerson='both';
 const KETO_SOURCES={
  harvard:'https://nutritionsource.hsph.harvard.edu/healthy-weight/diet-reviews/ketogenic-diet/',
@@ -25,31 +25,32 @@ const KETO_VIDEOS=[
  {id:'da1vvigy5tQ',doctor:'Sarah Hallberg, DO · TEDxPurdueU',title:'Type 2 Diabetes',time:664,stamp:'11:04–12:45; 13:51–14:20',take:'Low carb is not zero carb. Plan real food you enjoy; replace grain and potato sides with other foods.',qualification:'This 2015 talk focuses on diabetes treatment. Its patient outcomes do not predict your results or justify changing medication yourselves.'}
 ];
 const KETO_DISHES={
- S1:{name:'Bhindi + tofu',note:'Keep bhindi; add a protein portion in place of dal. Count onion and gravy too.'},
- S2:{name:'Gobi + green beans + tofu',note:'Remove potato; reduce carrot if needed for the carb budget. Keep gobi.'},
- S3:{name:'Palak paneer or palak tofu',note:'Keep spinach and a measured protein portion. Avoid flour-thickened gravy; no automatic extra paneer.'},
- S4:{name:'Lauki + tofu',note:'Replace arbi with lauki or cabbage, plus a protein portion.'},
- S5:{name:'Mushrooms + tofu',note:'Keep mushrooms; add a protein portion in place of dal.'},
- S6:{name:'Cabbage + tofu',note:'Replace the usual dry rajma portion; its carbs need counting even after cooking.'},
- S7:{name:'Gobi + tofu',note:'Replace the usual dry chana portion; retain the masala flavour with measured gravy.'},
- S8:{name:'Tofu + capsicum',note:'Tofu is the draft replacement. Nutrela/Saffola chunks may fit in a measured portion only after checking that brand’s carb and fibre panel.'},
- S9:{name:'Palak + tofu',note:'Replace the usual kala chana portion; add a measured protein source.'},
- S10:{name:'Zucchini + mushrooms + tofu',note:'Replace pasta and maida sauce with a sauté. Butter and dairy still need counting.'},
- S11:{name:'Green beans + gobi + tofu',note:'Remove potato; reduce carrot if needed. Add protein in place of dal.'}
+ S1:{name:'Bhindi + paneer + measured chunks'},
+ S2:{name:'Cauliflower + paneer + measured chunks'},
+ S3:{name:'Palak paneer + measured chunks'},
+ S4:{name:'Cabbage + paneer + measured chunks'},
+ S5:{name:'Mushrooms + paneer + measured chunks'},
+ S6:{name:'Cabbage + paneer + measured chunks'},
+ S7:{name:'Cauliflower + paneer + measured chunks'},
+ S8:{name:'Cauliflower + paneer + measured chunks'},
+ S9:{name:'Palak paneer + measured chunks'},
+ S10:{name:'Cauliflower + paneer + measured chunks'},
+ S11:{name:'Cabbage + paneer + measured chunks'}
 };
-function ketoDish(recipe){return KETO_DISHES[recipe]||{name:'Vegetables + measured protein',note:'Review the recipe ingredients and carbohydrate portions.'};}
+function ketoDish(recipe){return KETO_DISHES[recipe]||{name:'Vegetables + paneer + measured chunks'};}
 function ketoSuggestion(day,person,mealKey,recipe){
- if(day.off||day.skip?.[mealKey])return {skipped:true,name:'Eating out / not planned',note:'No home meal proposed. Restaurant food also uses the day’s carb and calorie budget.'};
+ if(day.off||day.skip?.[mealKey])return {skipped:true,name:'Eating out / not planned',note:'Restaurant food also uses the day’s carb and calorie budget.'};
+ if(mealKey==='e')return{skipped:false,name:'Water / unsweetened tea',note:'Milk and mixed nuts are omitted from this draft to leave room for paneer and measured chunks.'};
  if(mealKey==='b'){
   const eggs=person==='h'&&day.eggH;
   const whey=person==='h'?day.wheyH:day.wheyW;
-  return {skipped:false,name:eggs?'Your eggs + sautéed vegetables':'Tofu bhurji + vegetables',note:(whey?'Keep your whey option, mixed with water; count its carbs. ':'')+'Replace oats, poha and besan/moong chillas. Protein portions need recalculating.'};
+  return {skipped:false,name:'Paneer bhurji + vegetables'+(eggs?' + eggs':''),note:(whey?'Keep whey mixed with water. ':'')+'Replace oats, poha and chillas; portions below are raw edible weights.'};
  }
- const dish=ketoDish(recipe||day.s);
- return {skipped:false,...dish,note:dish.note+' Replace the usual dal and rice/roti sides; include cucumber/salad. Paneer can substitute for tofu if its portion fits.'};
+ return {skipped:false,...ketoDish(recipe||day.s),note:'Replace dal and rice/roti with counted paneer and dry chunks. Lunch has a small packaged-curd portion; keep the smaller paneer share for dinner.'};
 }
 function ketoBefore(day,person,m){
  if(day.off||day.skip?.[m])return 'Eating out / skipped';
+ if(m==='e')return day.off?'Eating out / skipped':'Milk'+(cardioDone(day,person)&&P(person).nuts?' + nuts':'');
  if(m==='b'){
   const base=day.b==='B5'?(person==='w'?'Oats':'Poha'):BREAKFASTS[day.b];
   return [base,(person==='w'?day.wheyW:day.wheyH)?'whey':null,person==='h'&&day.eggH?'2 eggs':null].filter(Boolean).join(' + ');
@@ -67,14 +68,14 @@ function ketoBefore(day,person,m){
 }
 function ketoDayHTML(day,i){
  const persons=ketoPerson==='both'?['w','h']:[ketoPerson];
- const entries=['b','l','d'].map(m=>{
+ const entries=['b','l','d','e'].map(m=>{
   const rows=persons.map(p=>{
    const link=m!=='b'&&mealDate(day)?batchLink(mealDate(day),m,p,'sabzi'):null;
    const proposal=ketoSuggestion(day,p,m,link?.batch.recipe);
    const batchNote=m!=='b'&&mealDate(day)&&['sabzi','protein'].some(c=>batchLink(mealDate(day),m,p,c));
-   return `<div class="keto-meal-row"><span class="keto-person">${PERSON_NAMES[p]}</span><div><span class="keto-col-label">Current</span>${esc(ketoBefore(day,p,m))}</div><div><span class="keto-col-label">Proposed swap</span><b>${esc(proposal.name)}</b><p>${esc(proposal.note)}</p>${batchNote&&!proposal.skipped?'<p class="keto-batch-note">A prepared batch is assigned here. Review its actual ingredients before reusing it for keto.</p>':''}</div></div>`;
+   return `<div class="keto-meal-row"><span class="keto-person">${PERSON_NAMES[p]}</span><div><span class="keto-col-label">Current</span>${esc(ketoBefore(day,p,m))}</div><div><span class="keto-col-label">Proposed swap</span><b>${esc(proposal.name)}</b><p>${esc(proposal.note)}</p>${ketoPortionHTML(day,p,m)}${batchNote&&!proposal.skipped?'<p class="keto-batch-note">A prepared batch is assigned here. Review its actual ingredients before reusing it for keto.</p>':''}</div></div>`;
   }).join('');
-  return `<div class="keto-meal"><h4>${{b:'Breakfast',l:'Lunch',d:'Dinner'}[m]}</h4>${rows}</div>`;
+  return `<div class="keto-meal"><h4>${{b:'Breakfast',l:'Lunch',d:'Dinner',e:'Evening'}[m]}</h4>${rows}</div>`;
  }).join('');
  const date=state.weekKey?fmtMon(dateForDay(i)):'';
  const skipped=day.off||day.skip?.l&&day.skip?.d;
@@ -91,30 +92,27 @@ function renderKeto(){
  const opened=new Set([...root.querySelectorAll('[data-keto-day][open]')].map(x=>x.dataset.ketoDay));
  const hadDays=!!root.querySelector('[data-keto-day]');
  const persons=ketoPerson==='both'?['w','h']:[ketoPerson];
- const current=persons.map(p=>{
-  const avg=state.days.reduce((a,_,i)=>{const t=daily(i,p).total;return{k:a.k+t.k/7,p:a.p+t.p/7};},{k:0,p:0});
-  const mode={easy:'Low',medium:'Medium',hard:'High'}[personMode(p)];
-  return `<div class="keto-baseline"><h3>${PERSON_NAMES[p]} <span>${mode} plan</span></h3><p><b>${R(avg.k)} kcal</b> · ${R(avg.p)} g protein/day</p><p>${p==='w'?'Vegetarian preview. Tofu offers an alternative to increasing your evening paneer portion.':'Eggs appear only on days where your existing egg option is on. Other meals stay vegetarian.'}</p></div>`;
- }).join('');
- root.innerHTML=`<div class="keto-heading"><div><h2 id="ketoTitle" tabindex="-1">What would keto change?</h2><p>${state.weekKey?'Week of '+fmtMon(state.weekKey):'Your week template'}</p></div><div class="keto-filter" role="group" aria-label="Keto comparison for"><button data-keto-person="both" aria-pressed="${ketoPerson==='both'}">Both</button><button data-keto-person="w" aria-pressed="${ketoPerson==='w'}">Wife</button><button data-keto-person="h" aria-pressed="${ketoPerson==='h'}">Husband</button></div></div>
- <p class="keto-intro">A proposed menu to compare with your current meals. Your saved meals, shopping and prepared portions stay as they are.</p>
+ const current=persons.map(comparisonTable).join('');
+ root.innerHTML=`<div class="keto-heading"><div><h2 id="ketoTitle" tabindex="-1">Balanced vs Keto</h2><p>${state.weekKey?'Week of '+fmtMon(state.weekKey):'Your week template'}</p></div><div class="keto-filter" role="group" aria-label="Keto comparison for"><button data-keto-person="both" aria-pressed="${ketoPerson==='both'}">Both</button><button data-keto-person="w" aria-pressed="${ketoPerson==='w'}">Wife</button><button data-keto-person="h" aria-pressed="${ketoPerson==='h'}">Husband</button></div></div>
+ <p class="keto-intro">Compare your current meals with a paneer-based keto draft. The switch changes views; saved meals and shopping stay as they are.</p>
  <div class="keto-baselines">${current}</div>
- <p class="keto-caption">Current home-food estimates, cooking oil included, averaged over 7 days. Eating-out meals contribute zero here, not zero to your actual intake.</p>
- <div class="keto-budget"><div><h3>Carbs become a daily budget</h3><p>Ketogenic diets often restrict <b>total carbs to about 20–50 g/day per person</b>. This is general context, not a personal target or a guarantee of ketosis. <a href="${KETO_SOURCES.harvard}" target="_blank" rel="noopener">Harvard diet review</a></p></div><div><h3>Keto totals: not calculated yet</h3><p>The planner tracks calories, protein and some fibre, but not carbs or fat. These swaps need measured portions and carb panels before we can verify a full keto week.</p></div></div>
+ <p class="keto-caption">Cooking oil included. Keto portions are scaled to match your current weekly calories for a fair comparison, not to recommend a new calorie target. Eating-out meals are not counted.</p>
+ <details class="keto-info"><summary>How to read the numbers</summary><div><p>¹ Carbs combine packet declarations with estimated total carbohydrate from food tables. IFCT available carbs have fibre added once; packet fibre is never blindly subtracted. These are not verified net carbs.</p><p>² Sugar ranges cover undeclared sugars: known sugar is the lower bound; missing sugar is bounded above by that ingredient’s carbs. They are data-gap bounds, not statistical confidence intervals. Sugar is already inside carbs, never added twice.</p><p>³ Neither modeled recipe adds sugar; this assumes unsweetened products and spices. Drinks, sauces, snacks and restaurant meals outside this plan still count.</p><p>⁴ ≥ means a known subtotal. Undeclared fibre or saturated fat is not zero. Generic vegetables, staples and the unspecified nut mix are estimates. Legacy prepared-batch macros are estimated from saved ingredient quantities; manually edited calorie/protein labels do not also update carb/fat/sugar panels.</p><p>References: <a href="https://fdc.nal.usda.gov/download-datasets/" target="_blank" rel="noopener">USDA SR Legacy</a> · <a href="https://www.nin.res.in/ebooks/IFCT2017_16122024.pdf" target="_blank" rel="noopener">ICMR-NIN IFCT 2017</a> · matched packet audit of 4 October 2026.</p></div></details>
+ <div class="keto-budget"><div><h3>Check each day’s carbs</h3><p>General ketogenic diets often restrict carbs to about 20–50 g/day. This draft does not guarantee ketosis. ${persons.map(p=>{const days=state.days.map((d,i)=>{const t=comparisonEmpty();for(const m of ['b','l','d','e'])comparisonAdd(t,comparisonSum(ketoPortionedMeal(d,p,m)));return{day:DAYS[i],hi:t.cHi};});return '<b>'+PERSON_NAMES[p]+':</b> '+days.filter(d=>d.hi>50).map(d=>d.day+' '+F(d.hi)+' g').join(', ')+(days.some(d=>d.hi>50)?' exceed the general 50 g reference.':'all modeled home-food days stay below 50 g.');}).join(' ')} <a href="${KETO_SOURCES.harvard}" target="_blank" rel="noopener">Harvard review</a></p></div><div><h3>Paneer raises saturated fat</h3><p>This no-tofu draft uses paneer across breakfast, lunch and dinner. Its saturated-fat subtotal is high; treat it as a comparison to review with a dietitian before following it. More oil or butter does not accelerate fat loss. <a href="${KETO_SOURCES.heart}" target="_blank" rel="noopener">AHA guidance</a></p></div></div>
  <div class="keto-section-head"><h3>Your week, meal by meal</h3><button data-keto-expand>Expand all days</button></div>
- <p class="keto-caption">Draft combinations, not gram-for-gram replacements. Tofu is a new option to confirm; it is not Nutrela/Saffola chunks. Lunch and dinner may use one shared cooked batch.</p>
+ <p class="keto-caption">Draft raw quantities per person, before cooking water changes the weight. Paneer is spread across meals; Nutrela/Saffola chunks are counted dry. Lunch and dinner can share one batch. Your enabled 35 g whey scoop and 2 eggs stay unchanged; other draft portions scale to match weekly calories.</p>
  <div class="keto-week">${state.days.map(ketoDayHTML).join('')}</div>
  <section class="keto-notes"><h3>Changes that apply every day</h3><dl>
- <div><dt>Milk, curd and whey</dt><dd>Replace the usual evening glass of Heritage milk with water or unsweetened tea; any milk used still counts. Check portions of Milky Mist curd and your 35 g chocolate whey against their carb panels. Plain does not mean carb-free.</dd></div>
- <div><dt>Protein and dinner size</dt><dd>Removing dal/chillas also removes protein. Recalculate a replacement rather than just deleting those foods. Your wife can split protein across meals instead of adding a large paneer portion at night.</dd></div>
+ <div><dt>Milk, curd and whey</dt><dd>Replace the usual evening glass of Heritage milk with water or unsweetened tea; any milk used still counts. The current Milky Mist curd panel is used; Heritage curd needs its own label if you switch brands. Check portions of Milky Mist curd and your 35 g chocolate whey against their carb panels. Plain does not mean carb-free.</dd></div>
+ <div><dt>Protein and dinner size</dt><dd>Paneer is split across breakfast, lunch and dinner, with a smaller dinner portion. Dry chunks and the enabled whey/egg options replace some protein lost by removing dal and chillas.</dd></div>
  <div><dt>Oil, butter and nuts</dt><dd>Measure cooking oil once per batch. Do not add unlimited butter, cream, cheese or “fat bombs.” Prefer unsaturated fats; nuts are optional, weighed and type-specific. <a href="${KETO_SOURCES.heart}" target="_blank" rel="noopener">AHA guidance</a></dd></div>
- <div><dt>Cooking and shopping</dt><dd>Use more leafy greens, gobi, mushrooms, cabbage and cucumber, plus the chosen protein. Rice/atta/oats/poha/pasta/dal/beans would leave the regular keto shopping list or need tightly budgeted portions. Weigh the whole cooked batch once; divide into the selected date/meal/person boxes.</dd></div>
+ <div><dt>Cooking and shopping</dt><dd>Use spinach, cauliflower, mushrooms, cabbage, bhindi and cucumber, plus paneer and measured chunks. No tofu, brinjal or lauki. Rice/atta/oats/poha/pasta/dal/beans would leave the regular keto shopping list or need tightly budgeted portions. Weigh the whole cooked batch once; divide into the selected date/meal/person boxes.</dd></div>
  </dl></section>
  <details class="keto-info"><summary>Before treating this as a ready-to-follow keto plan</summary><div>
- <p><b>Already available from the earlier packet audit:</b> the printed carb/fat values below. Check that your current packet matches. These facts are not yet part of the planner’s recipe calculations.</p>
+ <p><b>Already available from the earlier packet audit:</b> the printed carb/fat values below. Check that your current packet matches. These facts now feed this comparison. Your active Balanced meal calculations are unchanged.</p>
  <div class="keto-packet-scroll"><table class="keto-packets"><thead><tr><th>Product / basis</th><th>Carbs</th><th>Fat</th><th>Fibre</th></tr></thead><tbody>${KETO_PACKETS.map(x=>`<tr><td><a href="${x.url}" target="_blank" rel="noopener">${x.name}</a><small>${x.basis}</small></td><td>${x.carbs} g</td><td>${x.fat} g</td><td>${x.fibre===null?'ND':x.fibre+' g'}</td></tr>`).join('')}</tbody></table></div>
  <p class="keto-caption">Public packet panels transcribed on 4 October 2026; your actual batch supersedes them. ND = not declared, not zero. Carbs are as printed, not a verified net-carb figure. Do not transfer dry-chunk values to cooked grams.</p>
- <p><b>What remains:</b> the chosen tofu and actual nuts/seeds, full ingredient carb profiles, agreed recipe portions and confirmation of whether fibre is included in each carb declaration. Do not subtract fibre twice. Milk measured in ml also needs a density estimate or an actual gram weight.</p>
+ <p><b>What remains:</b> your actual nuts, confirmation of paneer-heavy portions and current packet panels, and whether fibre is included in each carb declaration. Do not subtract fibre twice. Milk measured in ml also needs a density estimate or an actual gram weight.</p>
  <p><b>Calories still matter for fat loss.</b> We have not reduced either person’s target. Choose sustainable calories and adequate protein with a dietitian, then calculate the proposed recipes including oil. <a href="${KETO_SOURCES.calories}" target="_blank" rel="noopener">NHS calorie guidance</a></p>
  <p>Keto can make fibre and food variety harder to maintain and does not reliably outperform less restrictive diets long term. Review suitability with a clinician/dietitian, especially with diabetes medication, kidney/liver disease, pregnancy or breastfeeding. Do not change medications, salt or potassium supplements on the basis of these videos. <a href="${KETO_SOURCES.harvard}" target="_blank" rel="noopener">Harvard</a> · <a href="${KETO_SOURCES.diabetes}" target="_blank" rel="noopener">Diabetes UK</a></p>
  <p>These are proposed vegetarian substitutions, not claims that grains or legumes are unhealthy for everyone. <a href="${KETO_SOURCES.vegetarian}" target="_blank" rel="noopener">Cleveland Clinic: vegetarian protein choices</a></p>
@@ -128,12 +126,14 @@ function renderKeto(){
 }
 function showKetoRoute(hash){
  const keto=hash==='#keto';
+ document.querySelectorAll('[data-diet]').forEach(b=>{const active=b.dataset.diet===(keto?'keto':'balanced');b.setAttribute('aria-pressed',String(active));b.classList.toggle('active',active);});
  document.querySelector('#regularPlan').hidden=keto;
  document.querySelector('#keto').hidden=!keto;
  document.querySelectorAll('.tabs a').forEach(a=>{const active=keto?a.hash==='#keto':a.hash===(hash||'#planner');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
 }
 window.addEventListener('hashchange',()=>showKetoRoute(location.hash));
 document.addEventListener('click',e=>{
+ const diet=e.target.closest('[data-diet]');if(diet){location.hash=diet.dataset.diet==='keto'?'keto':'planner';showKetoRoute(location.hash);return;}
  const person=e.target.closest('[data-keto-person]');
  if(person){ketoPerson=person.dataset.ketoPerson;renderKeto();document.querySelector(`[data-keto-person="${ketoPerson}"]`).focus();return;}
  if(e.target.closest('[data-keto-expand]')){

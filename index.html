@@ -354,6 +354,13 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
  .keto-meal-row>div:last-child{border-color:var(--accent)}
  .keto-notes dl>div{grid-template-columns:1fr;gap:8px}
 }
+.diet-switch{display:flex;width:max-content;margin:18px auto 12px}.diet-switch button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.nutrition-compare h3{margin:0 0 12px;font-size:18px}.nutrition-compare h3 small{font-size:12px;font-weight:400;color:var(--muted);margin-left:8px}
+.nutrition-compare table{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}.nutrition-compare caption{text-align:left;color:var(--muted);font-size:12px;padding-bottom:12px}
+.nutrition-compare th,.nutrition-compare td{border-bottom:1px solid var(--line);padding:10px 6px;text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
+.nutrition-compare th:first-child{text-align:left;width:37%;font-weight:500}.nutrition-compare thead th{font-size:12px;color:var(--muted)}.nutrition-compare td:last-child{color:var(--ink);font-weight:600}
+.keto-portions{padding:10px;background:var(--tint);border-radius:8px;line-height:1.8;font-size:12px}
+@media(max-width:600px){.keto-baselines{padding:16px;gap:24px}.nutrition-compare table{font-size:12px}.nutrition-compare th:first-child{width:30%}.nutrition-compare td{font-size:11.5px;white-space:nowrap}.nutrition-compare th,.nutrition-compare td{padding:9px 3px}}
 </style>
 </head>
 <body>
@@ -366,11 +373,12 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
     </div>
   </header>
 
+  <div class="diet-switch viewseg" role="group" aria-label="Diet view"><button data-diet="balanced" aria-pressed="true">Balanced</button><button data-diet="keto" aria-pressed="false">Keto</button></div>
   <nav class="tabs">
     <a href="#planner" class="active"><span class="full">Weekly planner</span><span class="short">Planner</span></a>
     <a href="#shopping"><span class="full">Shopping</span><span class="short">Shop</span></a>
     <a href="#labels"><span class="full">Packet labels</span><span class="short">Labels</span></a>
-    <a href="#keto">Keto</a>
+    <a href="#keto" aria-label="Compare diets"><span class="full">Compare</span><span class="short">Vs</span></a>
     <button id="calBtn" class="navbtn" aria-label="Calendar" title="Lock this week to a calendar date"><span class="full">📅 Calendar</span><span class="short">📅</span></button>
     <details class="more-menu"><summary>More</summary><div class="more-items">    <button id="resetBtn" class="navbtn" title="Reset the whole week to defaults"><span class="full">Reset week</span><span class="short">Reset</span></button>
     <button id="syncBtn" class="navbtn" title="Live household sync via a shared cloud copy"><span class="full">Sync</span><span class="short">Sync</span></button>
@@ -445,7 +453,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
     <details><summary style="font-size:13px;font-weight:650;cursor:pointer">Sources: panel evidence, conversion estimates, open questions</summary>
     <div class="hintline" style="margin:8px 0">Values below are per 100 g (or per serving) <b>as printed</b>; label calories kept, never recomputed from macros. Fibre <b>ND</b> = not declared (excluded from sums, not zero); <b>0*</b> = zero by composition inference, not a printed lab value. Weigh your packet once to confirm — your batch supersedes any web panel. Full transcriptions: audit <b>package-labels.json</b>.</div>
     <div id="srcTable"></div>
-    <div class="hintline">Atta uses the DMart packet (11.3 g protein); the Pillsbury website table says 12.3 g — same energy, different formulation data. Ordinary Chakki Fresh assumed, not multigrain/Sharbati. Butter DMart 724/1.0 vs other retailers 722/0.5 — batch variation. Milk 100 ml values derive from the 100 g panel × density (editable above). Roasted chana is in the database but no current recipe uses it. Spice is an aggregate recipe estimate, not a packet. DigeZyme/amino acids are already inside whey's 136/29 — never added twice. Carbs/fats beyond kcal + protein + fibre are not tracked.</div>
+    <div class="hintline">Atta uses the DMart packet (11.3 g protein); the Pillsbury website table says 12.3 g — same energy, different formulation data. Ordinary Chakki Fresh assumed, not multigrain/Sharbati. Butter DMart 724/1.0 vs other retailers 722/0.5 — batch variation. Milk 100 ml values derive from the 100 g panel × density (editable above). Roasted chana is in the database but no current recipe uses it. Spice is an aggregate recipe estimate, not a packet. DigeZyme/amino acids are already inside whey's 136/29 — never added twice. The Keto comparison also estimates carbs, fat and sugars from these panels and generic food tables.</div>
     </details>
   </section>
 
@@ -460,6 +468,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="batch-runtime.js"></script>
 <script src="weigh-runtime.js"></script>
 <script src="cloud-runtime.js"></script>
+<script src="nutrition-runtime.js"></script>
 <script src="keto-runtime.js"></script>
 <script>
 const DB={
