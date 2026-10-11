@@ -63,6 +63,49 @@ test('palak corn counts raw corn, shared portions and shopping under every diet 
  assert.equal(run("recipeName('S3')"),'Palak paneer');
 });
 
+test('open meal cards preserve all four diet assignments and expose dry, raw and snack quantities',()=>{
+ const {run}=app(true);
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  const ledger=run('JSON.stringify(ledger())');
+  const html=run('uxDayHTML(0)');
+  assert.equal((html.match(/<section class="meal-card/g)||[]).length,4);
+  assert.match(html,/Snacks &amp; milk|Snacks & milk/);
+  assert.doesNotMatch(html,/<details[^>]*data-ux-meal/);
+  assert.match(html,/35 g powder \(1 scoop\)/);
+  assert.equal(run('JSON.stringify(ledger())'),ledger);
+ }
+ run("householdDiets={w:'balanced',h:'keto'}");
+ assert.ok(run("uxServingRows(0,'l','w').some(x=>x.label==='Moong dal')"));
+ assert.equal(run("uxServingRows(0,'l','h').some(x=>x.label==='Moong dal')"),false);
+ assert.ok(run("uxServingRows(0,'l','w').some(x=>x.label==='Roti atta'&&x.quantity.endsWith('dry'))"));
+ assert.equal(run("uxServingRows(0,'e','h').length"),0);
+ assert.ok(run("uxServingRows(0,'e','w').some(x=>x.label==='Milk')"));
+ assert.equal(run("uxFoodRow(L('chicken',250)).quantity"),'250 g raw');
+});
+
+test('meal cards reuse measured lunch and dinner portions and reject stale cooked weights',()=>{
+ const {run}=app(true);run("householdDiets={w:'balanced',h:'keto'};sharedRecipes[sharedKey(0)]={recipe:'K4'}");
+ const before=run('JSON.stringify(ledger())');
+ assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Bhindi').unweighed"));
+ run("dailyWeights[dateForDay(0)+'/sabzi']={gross:1600,tare:1000,vessel:'kadhai',scope:'all',...WeighMath.allocateFood(1600,1000,weighSpecs(0,'sabzi')),basis:weighBasis(0,'sabzi','all'),savedAt:1}");
+ for(const m of ['l','d'])for(const p of ['w','h']){
+  const expected=run(`currentWeigh(0,'sabzi').portions.find(x=>x.meal==='${m}'&&x.person==='${p}').grams`);
+  assert.equal(run(`uxServingRows(0,'${m}','${p}').find(x=>x.label==='Bhindi').quantity`),expected+' g cooked');
+ }
+ assert.equal(run('JSON.stringify(ledger())'),before);
+ run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");
+ assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Palak corn').unweighed"));
+});
+
+test('prepared batch serving appears once using its frozen cooked weight',()=>{
+ const {run}=app(true);run("householdDiets={w:'balanced',h:'keto'};savedBatches.test={recipe:'K4',cookedOn:dateForDay(0),vessel:'kadhai',tare:0,netWeight:300,createdAt:1,ingredients:[{id:'bhindi',q:175,n:{k:57.75,p:3.3775,fb:5.6}}],servings:[{date:dateForDay(0),meal:'l',person:'h',component:'sabzi',share:1,grams:300}]}");
+ const rows=run("uxServingRows(0,'l','h')");
+ assert.equal(rows.filter(x=>x.label==='Bhindi').length,1);
+ assert.equal(rows.find(x=>x.label==='Bhindi').quantity,'300 g cooked');
+ assert.equal(rows.some(x=>x.label==='Bhindi'&&x.quantity.includes('raw')),false);
+});
+
 test('keto proposals respect off meals and separate vegetarian/egg defaults',()=>{
  const {run}=app();
  assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + high-protein paneer');

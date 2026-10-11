@@ -394,11 +394,10 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <div id="cloudLoading" role="status" style="padding:40px;text-align:center"><h2>Loading your household</h2><p id="cloudLoadingText">Loading your meals…</p><button onclick="location.reload()">Retry</button></div>
 <div class="wrap">
   <div class="ux-app-header">
-    <header class="top"><h1>Our meals</h1></header>
+    <header class="top"><h1>Weekly Meal Planner</h1></header>
     <nav class="tabs ux-nav" aria-label="Main navigation">
-      <a href="#today" data-ux-nav="today"><span>Today</span></a>
-      <a href="#week" data-ux-nav="week"><span>Week</span></a>
-      <a href="#shopping" data-ux-nav="shop"><span>Shop</span></a>
+      <a href="#today" data-ux-nav="meals"><span>Meals</span></a>
+      <a href="#shopping" data-ux-nav="shop"><span>Shopping</span></a>
     </nav>
     <a href="#settings" id="settingsLink" class="ux-settings-link" aria-label="Settings" title="Settings">⚙</a>
   </div>
@@ -457,12 +456,15 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
   </section>
 
   </div>
+  <section id="mealControls" aria-label="Household diets and planner view"></section>
   <main id="todayPage" aria-label="Today’s meals"></main>
   <main id="weekPage" hidden aria-label="Weekly meals"></main>
-  <section id="settingsPage" hidden aria-label="Settings"></section>
+
   <section class="panel section" id="shopping" hidden aria-label="Weekly shopping list"></section>
-  <section id="keto" class="section" hidden aria-labelledby="ketoTitle"></section>
+
 </div>
+
+<dialog id="settingsDlg" aria-labelledby="settingsTitle"><div class="dialog-head"><h2 id="settingsTitle">Settings &amp; diet review</h2><button type="button" class="dialog-close" aria-label="Close settings" data-settings-close>×</button></div><section id="settingsPage" aria-label="Settings"></section><details id="uxDietReview" class="ux-disclosure"><summary>Diet targets &amp; review</summary><section id="keto" class="section" aria-labelledby="ketoTitle"></section></details></dialog>
 
 <dialog id="dlg" aria-labelledby="dlgTitle"><div class="dialog-head"><h2 id="dlgTitle"></h2><button type="button" class="dialog-close" aria-label="Close dialog" onclick="this.closest('dialog').close()">×</button></div><div id="dlgBody"></div></dialog>
 
