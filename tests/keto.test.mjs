@@ -253,6 +253,22 @@ test('open meal cards preserve all four diet assignments and expose dry, raw and
  assert.equal(run("uxFoodRow(L('chicken',250)).quantity"),'250 g raw');
 });
 
+test('breakfast, lunch and dinner share one action band with the same slot order',()=>{
+ const {run}=app(true);
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  const keto=[w,h].filter(x=>x==='keto').length;
+  const bands=['b','l','d'].map(m=>{const html=run(`uxMealHTML(0,'${m}')`),band=html.slice(html.indexOf('<div class="meal-actions">'),html.indexOf('>Details</button></div></div>')+29);
+   assert.ok(html.indexOf('<div class="meal-actions">')>html.indexOf('</h3>'));
+   assert.equal((band.match(/data-keto-edit=/g)||[]).length,keto);
+   assert.match(band,/data-ing="0,[bld]"[^>]*>Details<\/button><\/div><\/div>/);
+   if(m==='b')assert.match(band,/<span class="meal-action-slot" aria-hidden="true"><\/span><button class="ing meal-details-link"/);else assert.match(band,new RegExp(`data-weigh="0" data-weigh-meal="${m}">Weigh &amp; serve</button><button class="ing meal-details-link"`));
+   return band.replace(/<details[\s\S]*?<\/details>/g,'D').replace(/<button class="ing" data-weigh[^<]*<\/button>|<span class="meal-action-slot"[^<]*<\/span>/,'S').replace(/data-ing="[^"]*"/,'');});
+  assert.equal(bands[1],bands[0]);assert.equal(bands[2],bands[0]);
+  assert.doesNotMatch(run("uxMealHTML(0,'e')"),/meal-actions/);
+ }
+});
+
 test('meal cards reuse measured lunch and dinner portions and reject stale cooked weights',()=>{
  const {run}=app(true);run("householdDiets={w:'balanced',h:'keto'};sharedRecipes[sharedKey(0)]={recipe:'K4'}");
  const before=run('JSON.stringify(ledger())');
