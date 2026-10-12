@@ -91,6 +91,52 @@ test('manual partial macros cannot create verified carb/saturated-fat/added-suga
  run("state.labels={}");assert.equal(run("comparisonSum([L('spice',1)]).addedUnknown"),true);
  for(const id of ['rice','poha','chickpea','kalachana','besan','rajma','maida'])assert.equal(run(`FIB['${id}']`),run(`COMPARE_NUTRIENTS['${id}'].fb`));
 });
+test('K3 retirement is stable across calendar navigation and new batch initialization',()=>{
+ const {run}=app();run("state.weekKey='2026-10-05';sharedRecipes[sharedKey(0)]={recipe:'K3'}");
+ for(const offset of [-14,0,14]){run(`dayOff=${offset}`);assert.equal(run('sharedRecipe(state.days[0])'),'K3');assert.equal(run("personRecipe(state.days[0],'h')"),'K3');}
+ run("state.weekKey='2026-10-12';sharedRecipes[sharedKey(0)]={recipe:'K3'}");
+ for(const offset of [-14,0,14]){run(`dayOff=${offset}`);assert.equal(run('sharedRecipe(state.days[0])'),'K5');assert.equal(run("personRecipe(state.days[0],'h')"),'K5');assert.equal(run("sharedSabzi(state.days[0]).find(x=>x.id==='corn').q"),100);}
+ run("householdDiets={w:'balanced',h:'keto'};drawBatchEditor=()=>{};document.querySelector=s=>s==='#dlg'?{showModal(){}}:null;openBatch(0)");
+ assert.equal(run('batchDraft.recipe'),'K5');assert.equal(run("batchDraft.selected['2026-10-12/l/h']"),true);
+ run("batchDraft.gross=700");assert.ok(run("buildBatchPreview(true).ingredients.some(x=>x.id==='corn'&&x.q>0)"));
+});
+test('wife Keto defaults resolve exact scope recipe and preserve explicit share overrides',()=>{
+ const {run}=app();run("state.days[2].s='S3';sharedRecipes['keto/shared/2026-10-12/day/2']={recipe:'K5'}");
+ assert.equal(run("ketoConfig(state.days[2],'w','l',2,'2026-10-12').sabziFraction"),.25);
+ assert.equal(run("ketoConfig(state.days[2],'w','d',2,'2026-10-12').sabziFraction"),.2);
+ run("sharedRecipes['keto/shared/2026-10-12/day/2'].w='S3'");assert.equal(run("ketoConfig(state.days[2],'w','l',2,'2026-10-12').sabziFraction"),2/9);
+ run("ketoMeals['keto/2026-10-12/day/2/w/l']={protein:'paneer',quantity:75,soya:0,oil:0,sabziFraction:.17}");assert.equal(run("ketoConfig(state.days[2],'w','l',2,'2026-10-12').sabziFraction"),.17);
+});
+test('legacy walnut overrides neither duplicate nuts nor block unrelated edits',()=>{
+ const {run}=app();
+ for(const amount of [0,33]){run(`ketoMeals[ketoMealKey(0,'h','b')]={protein:'paneer',quantity:75,soya:0,oil:0,paneerType:'paneerHP',walnuts:${amount}}`);assert.equal(run("ketoConfig(state.days[0],'h','b').cashews"),0);assert.equal(run("ketoConfig(state.days[0],'h','b').walnuts"),amount);assert.doesNotThrow(()=>run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',80)"));}
+ run('ketoMeals={}');assert.equal(run("ketoConfig(state.days[0],'h','b').cashews"),10);
+});
+test('P and Y batches conserve default fresh oil with chilla boosts and portion modes',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'balanced'}");
+ for(const recipe of ['P','Y'])for(const breakfast of ['B1','B4'])for(const mode of ['easy','medium','hard']){
+  run(`savedBatches={};state.days[0].b='${breakfast}';state.days[0].s='S1';state.days[0].p='${recipe}';state.personModes.w='${mode}';batchDraft={recipe:'${recipe}',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:250,oil:null,roles:{'2026-10-05/d':'protein'},selected:{'2026-10-05/d/w':true}}`);
+  const before=JSON.parse(run("JSON.stringify({ledger:ledger(),n:comparisonSum(meal(state.days[0],'d','w'))})"));
+  run("savedBatches['fixture-oil']=buildBatchPreview(true)");const after=JSON.parse(run("JSON.stringify({ledger:ledger(),n:comparisonSum(meal(state.days[0],'d','w'))})"));
+  for(const [id,q]of Object.entries(before.ledger))assert.ok(Math.abs(q-(after.ledger[id]||0))<1e-8,`${recipe} ${breakfast} ${mode} ${id}`);
+  for(const field of ['k','p','c','a','oil','sat'])assert.ok(Math.abs(before.n[field]-after.n[field])<1e-8,field);
+ }
+});
+test('cross-week protein batch oil resolves the serving date rather than the viewed week',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'};lockedWeeks['2026-10-12']={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:1};lockedWeeks['2026-10-12'].days[0].s='S8';lockedWeeks['2026-10-12'].days[0].b='B1';lockedWeeks['2026-10-12'].days[0].p='P';sharedRecipes['keto/shared/2026-10-12/day/0']={recipe:'K5'};batchDraft={recipe:'P',cookedOn:'2026-10-11',vessel:'pan',includeVessel:false,gross:250,oil:null,roles:{'2026-10-12/d':'protein'},selected:{'2026-10-12/d/w':true}}");
+ const oil=run("buildBatchPreview(true).ingredients.find(x=>x.id==='oil').q");assert.ok(Math.abs(oil-4*100/275)<1e-8);
+ run("state.weekKey='2026-10-12';state.days=structuredClone(lockedWeeks['2026-10-12'].days)");assert.ok(Math.abs(run("buildBatchPreview(true).ingredients.find(x=>x.id==='oil').q")-oil)<1e-8);
+});
+test('individual paneer changes stale weights; purchasing-yield edits leave weights valid',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'};ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(state.days[0],'h','d'),protein:'paneer',paneerType:'paneerHP',quantity:75};render=()=>{}");
+ const before=run("weighBasis(0,'prot','all')");run("updateProduceYield('gobi',30)");assert.equal(run("weighBasis(0,'prot','all')"),before);
+ run("ketoMeals[ketoMealKey(0,'h','d')].paneerType='paneerMM'");assert.notEqual(run("weighBasis(0,'prot','all')"),before);
+});
+test('shopping quantity increases invalidate purchased check while retaining the record',()=>{
+ const {run}=app(true);run("householdDiets={w:'balanced',h:'keto'};sharedRecipes[sharedKey(0)]={recipe:'K2'};render=()=>{};activityRecords={};const r=householdShopping().market.find(x=>x.id==='gobi');activityRecords['buy/2026-10-05/gobi']=shoppingPurchaseRecord('gobi',true)");
+ assert.equal(run("shoppingChecked(householdShopping().market.find(x=>x.id==='gobi'))"),true);
+ run("updateProduceYield('gobi',30)");assert.equal(run("shoppingChecked(householdShopping().market.find(x=>x.id==='gobi'))"),false);assert.equal(run("activityRecords['buy/2026-10-05/gobi'].checked"),true);
+});
 test('calendar dialog shows Monday–Sunday ranges and asks before replacing or deleting a saved week',()=>{
  const {run}=app(true);
  run("lockedWeeks={'2026-10-05':{days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:1}};state.weekKey='2026-10-05';calConfirm=null");
@@ -214,9 +260,9 @@ test('prepared batch serving appears once using its frozen cooked weight',()=>{
 
 test('keto proposals respect off meals and separate vegetarian/egg defaults',()=>{
  const {run}=app();
- assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + paneer');
- assert.equal(run("ketoSuggestion({...state.days[0],eggH:true},'h','b').name"),'Ready portions + paneer');
- assert.equal(run("ketoSuggestion({...state.days[0],eggH:false},'h','b').name"),'Ready portions + paneer');
+ assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + Milky Mist paneer');
+ assert.equal(run("ketoSuggestion({...state.days[0],eggH:true},'h','b').name"),'Ready portions + Milky Mist paneer');
+ assert.equal(run("ketoSuggestion({...state.days[0],eggH:false},'h','b').name"),'Ready portions + Milky Mist paneer');
  assert.equal(run("ketoSuggestion({...state.days[0],wheyW:false},'w','b').note.includes('whey')"),false);
  assert.equal(run("ketoSuggestion({...state.days[0],off:true},'w','b').skipped"),true);
  assert.equal(run("ketoSuggestion({...state.days[0],skip:{l:true}},'h','l').skipped"),true);
@@ -483,7 +529,7 @@ test('round 2 UI: fixed theme switch, product selectors, buying assumptions and 
  assert.match(shopping.innerHTML,/data-ux-yield="corn"/);assert.match(shopping.innerHTML,/data-ux-mushroom-size/);assert.match(shopping.innerHTML,/never|always use the trimmed edible weight/);
  assert.equal(run("shoppingBuy({id:'mushroom',needed:300,buy:360,packs:2,size:180})"),'2 × 180 g<small>360 g in packets</small>');
  assert.equal(run("shoppingForm({id:'corn',yield:1,form:'Loose kernels'},{})"),'Loose kernels · 100% usable');
- assert.equal(run("addedSugarText(comparisonEmpty())"),'Unknown');
+ assert.equal(run("addedSugarText({})"),'Unknown');
  assert.equal(run("addedSugarText({added:2,addedHi:6,addedUnknown:true})"),'2–6 g · incomplete data');
  assert.equal(run("addedSugarText({added:0,addedUnknown:false})"),'0 g');
  run('renderKeto()');

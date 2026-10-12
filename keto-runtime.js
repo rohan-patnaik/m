@@ -13,7 +13,7 @@ const KETO_SOURCES={
 // Carbohydrate means the label's declaration; no net-carb subtraction is inferred.
 const KETO_PACKETS=[
  {name:'ATOM Isolate · Double Rich Chocolate',basis:'35 g powder',carbs:2.8,fat:1,fibre:null,url:'https://asitisnutrition.com/products/atomwheyproteinisolate?variant=41170886262835'},
- {name:'Milky Mist paneer · 500 g (default)',basis:'100 g',carbs:5.1,fat:22,fibre:null,url:'https://www.bbassets.com/media/uploads/p/xxl/40003150-4_5-milky-mist-paneer-premium-fresh.jpg'},
+ {name:'Milky Mist paneer · 500 g (default)',basis:'100 g',carbs:5.1,fat:22,fibre:null,url:'https://www.bbassets.com/media/uploads/p/xxl/40003150-3_5-milky-mist-paneer-premium-fresh.jpg'},
  {name:'Amul salted butter (default)',basis:'100 g',carbs:0,fat:80,fibre:null,url:'https://www.dmart.in/product/amul-butter?selectedProd=113502'},
  {name:'Heritage fresh paneer · alternative',basis:'100 g',carbs:3,fat:22,fibre:null,url:'https://www.bigbasket.com/pd/214024/heritage-paneer-500-g-pouch/'},
  {name:'Milky Mist curd · 1 kg pouch',basis:'100 g',carbs:4.8,fat:3,fibre:null,url:'https://www.bigbasket.com/pd/40262046/milky-mist-curd-fresh-no-preservatives-creamy-1-kg/'},

@@ -35,6 +35,8 @@ function householdShopping(){
  for(const rows of [market,supermarket])rows.sort((a,b)=>a.name.localeCompare(b.name));
  return {market,supermarket};
 }
+function shoppingChecked(row){const r=activityRecords[`buy/${state.weekKey||mondayOf(dayViewISO())}/${row.id}`];return !!r?.checked&&typeof r.needed==='number'&&typeof r.buy==='number'&&r.needed+1e-8>=row.needed&&r.buy+1e-8>=row.buy;}
+function shoppingPurchaseRecord(id,checked){const list=householdShopping(),row=[...list.market,...list.supermarket].find(x=>x.id===id);if(!row)throw Error('Shopping item changed; reopen the list');return {checked,updatedAt:Date.now(),needed:row.needed,buy:row.buy};}
 function shoppingQuantity(q,unit='g'){
  if(unit==='egg')return `${F(q)} eggs`;
  if(unit==='serving')return `${F(q)} scoops (${F(q*35)} g powder)`;

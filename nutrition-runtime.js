@@ -2,7 +2,7 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
- "paneerMM":{"k":283,"p":16.1,"c":5.1,"s":5.1,"added":0,"f":22,"sat":12,"fb":null,"source":"Milky Mist regular 500 g packet image, audited 2026-10-12","basis":"100 g as sold","ingredients":"Milk solids, vinegar","url":"https://www.bbassets.com/media/uploads/p/xxl/40003150-4_5-milky-mist-paneer-premium-fresh.jpg"},
+ "paneerMM":{"k":283,"p":16.1,"c":5.1,"s":5.1,"added":0,"f":22,"sat":12,"fb":null,"source":"Milky Mist regular 500 g packet image, audited 2026-10-12","basis":"100 g as sold","ingredients":"Milk solids, vinegar","url":"https://www.bbassets.com/media/uploads/p/xxl/40003150-3_5-milky-mist-paneer-premium-fresh.jpg"},
  "cashews":{"k":553,"p":18.2,"c":30.2,"s":5.91,"added":0,"f":43.8,"sat":7.783,"fb":3.3,"fdc":170162,"source":"USDA SR Legacy (plain raw generic estimate)","basis":"100 g raw","url":"https://fdc.nal.usda.gov/food-details/170162/nutrients"},
  "corn":{"source":"USDA SR Legacy (generic estimate)","fdc":169998,"basis":"100 g raw edible kernels","k":86,"p":3.27,"c":18.7,"f":1.35,"s":6.26,"fb":2,"sat":0.325,"name":"Corn, sweet, yellow, raw","url":"https://fdc.nal.usda.gov/food-details/169998/nutrients"},
  "paneerHP":{"k":202.6,"p":25,"c":5.4,"added":0,"s":5.4,"f":9,"sat":5.8,"fb":0,"source":"Heritage NOURISH+ packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/xxl/40359963-4_1-heritage-nourish-high-protein-paneer.jpg"},
@@ -86,11 +86,12 @@ function comparisonAdd(a,b,scale=1){for(const k of COMPARISON_NUMBERS)a[k]+=(b[k
 function nutrientSnapshot(x){const ref=COMPARE_NUTRIENTS[x.id]||{};return {...comparisonSum([x]),version:2,profileId:x.id,profileVersion:'2026-10-12',basis:'ingredient total',carbConvention:/USDA|IFCT/.test(ref.source||'')?'documented fibre counted once':'full declared carbs',source:ref.source||'Unverified estimate'};}
 // Explicit example portions, not a prescribed diet. All weights are raw edible or packet weights.
 function ketoMealKey(i,p,m,scope=state.weekKey||'template'){return `keto/${scope}/day/${i}/${p}/${m}`;}
-function ketoDefaultConfig(day,p,m,i){
+function ketoDefaultConfig(day,p,m,i,scope=state.weekKey||'template'){
  const h=p==='h',protein=h&&m==='d'?([1,4].includes(i)?'chicken':'eggs'):'paneer';
- return {protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare(day,p,m)};
+ const record=sharedRecipes[`keto/shared/${scope}/day/${i}`]||{},recipe=plannedRecipe(record[p]||record.recipe||day.s,scope);
+ return {protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare({...day,s:recipe},p,m)};
 }
-function ketoConfig(day,p,m,i=state.days.indexOf(day),scope=state.weekKey||'template'){i=Math.max(0,i);return {...ketoDefaultConfig(day,p,m,i),...structuredClone(ketoMeals[ketoMealKey(i,p,m,scope)]||{})};}
+function ketoConfig(day,p,m,i=state.days.indexOf(day),scope=state.weekKey||'template'){i=Math.max(0,i);const saved=structuredClone(ketoMeals[ketoMealKey(i,p,m,scope)]||{}),defaults=ketoDefaultConfig(day,p,m,i,scope);if(Object.hasOwn(saved,'walnuts')&&!Object.hasOwn(saved,'cashews'))defaults.cashews=0;return {...defaults,...saved};}
 function ketoDraftMeal(day,p,m){return typeof householdKetoBase==='function'?householdKetoBase(day,p,m):[];}
 function comparisonWeek(p){
  const balanced=comparisonEmpty(),keto=comparisonEmpty();

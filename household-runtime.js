@@ -7,22 +7,23 @@ const paneerId=()=>foodChoices.paneer;
 const butterId=()=>foodChoices.butter;
 const nutsId=()=>foodChoices.nuts;
 function updateFoodChoice(field,value){if(!cloudReady||cloudSaving)return false;const next={...foodChoices,[field]:value};MealCloud.validateRecord('setting/foodChoices',next);foodChoices=next;save();render();return true;}
-function plannedRecipe(recipe,scope){return recipe==='K3'&&(scope==='template'||scope>=mondayOf(dayViewISO()))?'K5':recipe;}
+const NUTRITION_EFFECTIVE_WEEK='2026-10-12';
+function plannedRecipe(recipe,scope){return recipe==='K3'&&(scope==='template'||scope>=NUTRITION_EFFECTIVE_WEEK)?'K5':recipe;}
 const isKeto=p=>householdDiets[p]==='keto';
 const sharedKey=i=>`keto/shared/${state.weekKey||'template'}/day/${i}`;
 const KETO_SHARED={K1:'Cabbage',K2:'Cauliflower',K3:'Spinach',K4:'Bhindi',K5:'Spinach corn sabzi'};
 // Historical recipes stay readable but are not offered for new selections.
 const KETO_RETIRED=['K3'];
-function sharedRecipe(day,date=mealDate(day)){const i=date?(new Date(date+'T12:00:00Z').getUTCDay()+6)%7:Math.max(0,state.days.indexOf(day)),scope=date?mondayOf(date):state.weekKey||'template';return sharedRecipes[`keto/shared/${scope}/day/${i}`]?.recipe||day.s;}
+function sharedRecipe(day,date=mealDate(day)){const i=date?(new Date(date+'T12:00:00Z').getUTCDay()+6)%7:Math.max(0,state.days.indexOf(day)),scope=date?mondayOf(date):state.weekKey||'template';return plannedRecipe(sharedRecipes[`keto/shared/${scope}/day/${i}`]?.recipe||day.s,scope);}
 function recipeRecordKey(day,date=mealDate(day)){const i=date?(new Date(date+'T12:00:00Z').getUTCDay()+6)%7:Math.max(0,state.days.indexOf(day));return `keto/shared/${date?mondayOf(date):state.weekKey||'template'}/day/${i}`;}
 function personRecipe(day,p,date=mealDate(day)){const scope=date?mondayOf(date):state.weekKey||'template';return plannedRecipe(sharedRecipes[recipeRecordKey(day,date)]?.[p]||sharedRecipe(day,date),scope);}
 function recipeName(recipe){return KETO_SHARED[recipe]||SABZIS[recipe]||recipe;}
 function assignedRecipesChanged(day){return ['w','h'].some(p=>personRecipe(day,p)!==day.s);}
 function differentSabzis(day){return personRecipe(day,'w')!==personRecipe(day,'h');}
-function assignedBalancedDay(day,p){return {...day,s:personRecipe(day,p)};}
+function assignedBalancedDay(day,p,date=mealDate(day)){return {...day,s:personRecipe(day,p,date)};}
 function ketoVegetableBase(recipe){if(recipe==='K5')return [L('palak',500),L('corn',100),L('onion',20),L('tomato',40)];const id={K1:'cabbage',K2:'gobi',K3:'palak',K4:'bhindi'}[recipe];return id?[L(id,500),L('onion',20),L('tomato',40)]:sabziBase(recipe);}
 function sharedSabzi(day){return [...ketoVegetableBase(sharedRecipe(day)),L('oil',oilUse().sabzi)];}
-function personSabzi(day,p){return [...ketoVegetableBase(personRecipe(day,p)),L('oil',oilUse().sabzi)];}
+function personSabzi(day,p,date=mealDate(day)){return [...ketoVegetableBase(personRecipe(day,p,date)),L('oil',oilUse().sabzi)];}
 function assignedDalShare(p){return isKeto(p)?0:dalShare(p);}
 function ketoComponent(day,p,m,component){
  if(!kept(day,m))return [];

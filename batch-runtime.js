@@ -16,11 +16,15 @@ function balancedOriginalComponent(day,m,p,component){
  return [...protein(day.p,p,day),...(oilUse().prot?[L('oil',oilUse().prot*my/denom)]:[])];
  }return[];
 }
-function subtractIngredients(lines,remove){const q={};for(const x of lines)q[x.id]=(q[x.id]||0)+x.q;for(const x of remove)q[x.id]=(q[x.id]||0)-x.q;return Object.entries(q).filter(([,v])=>v>1e-8).map(([id,v])=>L(id,v));}
-function originalComponent(day,m,p,component){
+function subtractIngredients(lines,remove){
+ const frozen=lines.filter(x=>x.n),q={};for(const x of lines)if(!x.n)q[x.id]=(q[x.id]||0)+x.q;
+ for(const x of remove){if(x.n){const i=frozen.findIndex(y=>y.id===x.id&&Math.abs(y.q-x.q)<1e-8&&JSON.stringify(y.n)===JSON.stringify(x.n));if(i>=0)frozen.splice(i,1);}else q[x.id]=(q[x.id]||0)-x.q;}
+ return [...Object.entries(q).filter(([,v])=>v>1e-8).map(([id,v])=>L(id,v)),...frozen];
+}
+function originalComponent(day,m,p,component,date=mealDate(day)){
  if(typeof isKeto==='function'&&isKeto(p))return ketoComponent(day,p,m,component);
- const effective=typeof assignedBalancedDay==='function'?assignedBalancedDay(day,p):day;
- if(component==='sabzi'&&kept(day,m)&&['l','d'].includes(m)&&typeof personSabzi==='function')return personSabzi(day,p).map(x=>L(x.id,x.q*balancedSabShare(effective,p,m)));
+ const effective=typeof assignedBalancedDay==='function'?assignedBalancedDay(day,p,date):day;
+ if(component==='sabzi'&&kept(day,m)&&['l','d'].includes(m)&&typeof personSabzi==='function')return personSabzi(day,p,date).map(x=>L(x.id,x.q*balancedSabShare(effective,p,m)));
  return balancedOriginalComponent(effective,m,p,component);
 }
 function freshBalancedMeal(day,m,p){let lines=baseMeal(day,m,p);for(const component of ['sabzi','protein'])if(coveredComponent(day,m,p,component))lines=subtractIngredients(lines,balancedOriginalComponent(day,m,p,component));return lines;}
@@ -73,7 +77,7 @@ function buildBatchPreview(requireWeight=false){const b=batchDraft,servings=[];f
  }servings.sort((a,b)=>a.date.localeCompare(b.date)||(['l','d'].indexOf(a.meal)-['l','d'].indexOf(b.meal))||a.person.localeCompare(b.person));
  if(!servings.length)throw Error('Select at least one meal and person.');
  const total=servings.reduce((n,s)=>n+s.factor,0),lines=sourceRecipe(b.recipe).map(x=>L(x.id,x.q*total));
- const estimatedOil=['P','Y','Q','C','E'].includes(b.recipe)?servings.reduce((n,s)=>n+(typeof isKeto==='function'&&isKeto(s.person)?ketoConfig(batchDay(s.date),s.person,s.meal,(new Date(s.date+'T12:00:00Z').getUTCDay()+6)%7,mondayOf(s.date)).oil:oilUse().prot*s.factor),0):oilUse().sabzi*total;const oil=b.oil===null?estimatedOil:b.oil;
+ const estimatedOil=['P','Y','Q','C','E'].includes(b.recipe)?servings.reduce((n,s)=>n+(typeof isKeto==='function'&&isKeto(s.person)?ketoConfig(batchDay(s.date),s.person,s.meal,(new Date(s.date+'T12:00:00Z').getUTCDay()+6)%7,mondayOf(s.date)).oil:originalComponent(batchDay(s.date),s.meal,s.person,'protein',s.date).filter(x=>x.id==='oil').reduce((n,x)=>n+x.q,0)),0):oilUse().sabzi*total;const oil=b.oil===null?estimatedOil:b.oil;
  if(!Number.isFinite(oil)||oil<0||oil>5000)throw Error('Enter oil between 0 and 5,000 ml.');if(oil>0)lines.push(L('oil',oil));
  const tare=b.includeVessel?state.utensils[b.vessel]||0:0;
  if(b.includeVessel&&!tare)throw Error('Set this vessel’s empty weight first, or enter food-only weight.');

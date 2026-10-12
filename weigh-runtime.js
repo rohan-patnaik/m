@@ -16,7 +16,7 @@ function weighSpecs(i,dish,scope='all'){
  }
  return servings;
 }
-function weighBasis(i,dish,scope){const d=state.days[i];return JSON.stringify({recipe:dish.startsWith('sabzi')?(dish==='sabzi'?(typeof sharedRecipe==='function'?sharedRecipe(d):d.s):personRecipe(d,dish.slice(-1))):dish==='dal'?d.dal:d.p,servings:weighSpecs(i,dish,scope),nutritionVersion:9,foodChoices:typeof foodChoices==='object'?foodChoices:null,labels:state.labels,density:milkDensity(),oil:oilUse(),soya:state.soya});}
+function weighBasis(i,dish,scope){const d=state.days[i];return JSON.stringify({recipe:dish.startsWith('sabzi')?(dish==='sabzi'?(typeof sharedRecipe==='function'?sharedRecipe(d):d.s):personRecipe(d,dish.slice(-1))):dish==='dal'?d.dal:d.p,servings:weighSpecs(i,dish,scope),components:['l','d'].filter(m=>scope==='all'||scope===m).flatMap(m=>['w','h'].filter(p=>!dish.startsWith('sabzi-')||p===dish.slice(-1)).flatMap(p=>dish==='dal'?[L(d.dal,150*assignedDalShare(p))]:originalComponent(d,m,p,dish.startsWith('sabzi')?'sabzi':'protein'))),nutritionVersion:9,foodChoices:typeof foodChoices==='object'?foodChoices:null,labels:state.labels,density:milkDensity(),oil:oilUse(),soya:state.soya});}
 function weighDishName(i,dish){return dish.startsWith('sabzi-')?PERSON_NAMES[dish.slice(-1)]+' · '+recipeName(personRecipe(state.days[i],dish.slice(-1))):DISH_NAMES[dish];}
 function currentWeigh(i,dish){if(!state.weekKey)return null;const r=dailyWeights[dateForDay(i)+'/'+dish];return r&&r.basis===weighBasis(i,dish,r.scope)?r:null;}
 function weighedNotes(i,meal){if(!state.weekKey||!['l','d'].includes(meal))return '';const rows=[];

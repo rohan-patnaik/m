@@ -15,5 +15,8 @@ export function validateActivity(key,value){
  if(!value||typeof value!=='object'||Array.isArray(value)||!Number.isFinite(value.updatedAt)||value.updatedAt<0||value.updatedAt>1e15)throw Error('Invalid activity');
  if(type==='serve'){
   if(Object.keys(value).sort().join(',')!=='basis,served,updatedAt'||typeof value.basis!=='string'||value.basis.length>8000||!Array.isArray(value.served)||value.served.length>4||new Set(value.served).size!==value.served.length||value.served.some(s=>!/[ld]\/[wh]/.test(s)||s.length!==3))throw Error('Invalid serving progress');
- }else if(Object.keys(value).sort().join(',')!==(type==='done'?'basis,complete,updatedAt':'checked,updatedAt')||typeof value[type==='done'?'complete':'checked']!=='boolean'||type==='done'&&(typeof value.basis!=='string'||value.basis.length>16000))throw Error('Invalid checklist value');
+ }else if(type==='buy'){
+  const fields=Object.keys(value).sort().join(',');
+  if(!['checked,updatedAt','buy,checked,needed,updatedAt'].includes(fields)||typeof value.checked!=='boolean'||fields.startsWith('buy,')&&[value.needed,value.buy].some(x=>typeof x!=='number'||!Number.isFinite(x)||x<0||x>1e7))throw Error('Invalid purchase checklist');
+ }else if(Object.keys(value).sort().join(',')!=='basis,complete,updatedAt'||typeof value.complete!=='boolean'||typeof value.basis!=='string'||value.basis.length>16000)throw Error('Invalid checklist value');
 }
