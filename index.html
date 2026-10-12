@@ -1024,7 +1024,7 @@ async function saveEdit(){
   d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
   state.custom=true;
-  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
+  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();copyDietScope(state.weekKey||'template',mon);lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
   save();render();if(await saveChanges())$('#dlg').close();else{let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';$('#dlgBody').append(msg);}msg.textContent=syncStatusText+' Close this editor to review your unsaved changes.';const cancel=$('#dlgBody [data-editcancel]');if(cancel)cancel.textContent='Close editor';}
 }
 function render(){
@@ -1227,7 +1227,7 @@ document.addEventListener('click',e=>{
   if(wl){const inp=$('#weekLockDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
     if(lockedWeeks[mon]&&mon!==state.weekKey&&wl.dataset.weeklock!==mon){$('#weekLockRange').innerHTML=`<span role="group" aria-labelledby="weekLockConfirm"><span id="weekLockConfirm">This replaces the saved week <b>${weekRangeText(mon)}</b>. Replace it?</span> <button class="primary" data-weeklock="${mon}">Replace saved week</button> <button data-weeklock-cancel>Cancel</button></span>`;$('#weekLockRange [data-weeklock-cancel]').focus();return;}
     ensureUtDay();ensureOilUse();
-    lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
+    copyDietScope(state.weekKey||'template',mon);lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.custom=true;save();render();saveChanges();return;}
   if(e.target.closest('[data-weeklock-cancel]')){const inp=$('#weekLockDate');$('#weekLockRange').innerHTML=calWeekRange(inp.value);inp.focus();return;}
   if(e.target.closest('[data-syncdone]')){$('#dlg').close();return;}
@@ -1239,7 +1239,7 @@ document.addEventListener('click',e=>{
     // An existing saved copy is only replaced after the inline Replace step for that same Monday.
     if(lockedWeeks[mon]&&sv.dataset.calconfirm!==mon){calPickMon=mon;calConfirm={kind:'save',mon};calRefresh('[data-calcancel]');return;}
     calConfirm=null;calPickMon=mon;
-    ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
+    ensureUtDay();ensureOilUse();copyDietScope(state.weekKey||'template',mon);lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.view='week';location.hash='#week';save();render();saveChanges();$('#dlgBody').innerHTML=calCard();$('#dlgBody [data-calload]')?.focus();return;}
   const ld=e.target.closest('[data-calload]');
   if(ld){selectWeek(ld.dataset.calload);state.view='week';location.hash='#week';render();$('#dlg').close();return;}

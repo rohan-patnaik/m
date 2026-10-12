@@ -11,6 +11,15 @@ const NUTRITION_EFFECTIVE_WEEK='2026-10-12';
 function plannedRecipe(recipe,scope){return recipe==='K3'&&(scope==='template'||scope>=NUTRITION_EFFECTIVE_WEEK)?'K5':recipe;}
 const isKeto=p=>householdDiets[p]==='keto';
 const sharedKey=i=>`keto/shared/${state.weekKey||'template'}/day/${i}`;
+function copyDietScope(source,target){
+ if(source===target)return;
+ for(const [records,prefix]of [[ketoMeals,'keto/'],[sharedRecipes,'keto/shared/']]){
+  const from=prefix+source+'/',to=prefix+target+'/';
+  const copied=Object.entries(records).filter(([k])=>k.startsWith(from)).map(([k,v])=>[to+k.slice(from.length),structuredClone(v)]);
+  for(const key of Object.keys(records))if(key.startsWith(to))delete records[key];
+  for(const [key,value]of copied)records[key]=value;
+ }
+}
 const KETO_SHARED={K1:'Cabbage',K2:'Cauliflower',K3:'Spinach',K4:'Bhindi',K5:'Spinach corn sabzi'};
 // Historical recipes stay readable but are not offered for new selections.
 const KETO_RETIRED=['K3'];

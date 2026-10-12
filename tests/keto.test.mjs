@@ -76,6 +76,15 @@ test('explicit whites and pan spinach count alongside bhurji and remain outside 
  run("batchDraft={recipe:'S12',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:400,oil:null,roles:{'2026-10-05/d':'sabzi'},selected:{'2026-10-05/d/h':true}};savedBatches['fixture-bhurji-extras']=buildBatchPreview(true)");
  const lines=JSON.parse(run("JSON.stringify(ketoActualMeal(state.days[0],'h','d'))"));assert.equal(lines.find(x=>x.id==='eggWhite').q,3);assert.equal(lines.find(x=>x.id==='palak'&&!x.n).q,100);assert.ok(Math.abs(lines.find(x=>x.id==='oil'&&!x.n).q-5)<1e-8);
 });
+test('saving a calendar week clones the actual keto portions and person recipes without rewriting history',()=>{
+ const {run}=app();run("state.weekKey=null;householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});render=()=>{};applyKetoInventoryPlan()");
+ const before=run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'h')))");
+ run("copyDietScope('template','2026-10-12');lockedWeeks['2026-10-12']={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:1};save();selectWeek('2026-10-12')");
+ assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'h')))"),before);assert.equal(run("ketoConfig(state.days[1],'h','l').whey"),.5);assert.equal(run("personRecipe(state.days[1],'w')"),'S2');assert.equal(run("personRecipe(state.days[1],'h')"),'K2');
+ run("ketoMeals[ketoMealKey(0,'h','b')].eggWhites=6");assert.equal(run("ketoMeals['keto/template/day/0/h/b'].eggWhites"),4);
+ assert.equal(run("Object.keys(ketoMeals).filter(k=>k.includes('2026-10-05')).length"),0);
+ run("snapshotDraft();ketoMeals={};sharedRecipes={};hydrateDraft()");assert.equal(run("ketoConfig(state.days[0],'h','b').eggWhites"),6);
+});
 test('audited products keep separate identities and correct scoop, milk and oil units',()=>{
  const {run}=app();
  for(const [id,q,k,p,c]of [['paneerMM',100,283,16.1,5.1],['paneerMM',500,1415,80.5,25.5],['milk',100,59.74,3.193,4.738],['whey',1,136,29,2.8],['oil',10,81.627,0,0]]){
