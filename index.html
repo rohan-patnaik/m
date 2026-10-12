@@ -400,6 +400,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
       <a href="#shopping" data-ux-nav="shop"><span>Shopping</span></a>
     </nav>
     <a href="#settings" id="settingsLink" class="ux-settings-link" aria-label="Settings" title="Settings">⚙</a>
+    <span id="uxSaveStatus" class="ux-save-status" role="status" aria-live="polite"></span>
     <button type="button" id="themeBtn" class="ux-theme-btn" aria-label="Switch theme">Theme</button>
   </div>
   <div class="ux-legacy" hidden>
@@ -600,7 +601,7 @@ if(!state||!Array.isArray(state.days)||state.days.length!==7){
 // Normalizes the loaded plan in place: fills defaults,
 // migrates legacy shapes, never drops the user's meal choices or label overrides.
 function normalizeState(){
-  state.days=state.days.map(d=>({b:d.b,s:d.s,p:d.p,dal:d.dal,off:!!d.off,skip:{b:false,l:false,d:false,...(d.skip||{})},wheyW:d.wheyW!==false,wheyH:d.wheyH!==false,eggH:d.eggH!==false,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false}));
+  state.days=state.days.map(d=>({b:d.b,s:d.s,p:d.p,dal:d.dal,off:!!d.off,skip:{b:false,l:false,d:false,...(d.skip||{})},wheyW:d.wheyW!==false,wheyH:d.wheyH!==false,eggH:d.eggH!==false,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,...(d.readyB&&(d.readyB.w||d.readyB.h)?{readyB:{w:!!d.readyB.w,h:!!d.readyB.h}}:{})}));
   if(!state.labels||typeof state.labels!=='object')state.labels={};
   state.utensils={...DEFAULT_UTENSILS,...(state.utensils||{})};
   state.utensilUpdatedAt={...(state.utensilUpdatedAt||{})};
@@ -643,6 +644,7 @@ const R=n=>Math.round(n), F=n=>+n.toFixed(1);
 
 function breakfast(id,person,day){
   const h=person==='h',oU=oilUse();let a=[];
+  if(day&&day.readyB&&day.readyB[person])return (h?day.wheyH:day.wheyW)?[L('whey',1)]:[];
   if(id==='B1')a=[L('oats',15),L('besan',10),L('onion',12.5),L('carrot',12.5)];
   if(id==='B2')a=[L('besan',25),L('onion',12.5),L('carrot',12.5)];
   if(id==='B3')a=[L('moong',25),L('onion',12.5),L('carrot',12.5)];
@@ -765,7 +767,7 @@ function mealTitle(d,m){
 const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar'};
 function ratioText(wShare,hShare,cooked){
   // Share pair rendered from the same fractions the splitter uses; cooked<1 names the smaller batch.
-  const W=Math.round(wShare*360),H=Math.round(hShare*360),g=gcd(W,H)||1;
+  const r=typeof uxParts==='function'?uxParts([wShare,hShare],12):null,W=r?r.parts[0]:Math.round(wShare*360),H=r?r.parts[1]:Math.round(hShare*360),g=gcd(W,H)||1;
   return `W : H = ${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
 }
 function splitRatio(d,m){
@@ -916,7 +918,7 @@ function freshCookRows(i){
     const bitems=Object.entries(bfMap).map(([id,v])=>`${DB[id][0]} — ${F(v)} ${DB[id][3]}`);
     const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
     if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''} (35 g each)`);
-    if(d.eggH)bitems.push('Eggs — 2');
+    if(d.eggH&&!(d.readyB&&d.readyB.h))bitems.push('Eggs — 2');
     groups.push(['Breakfast',bitems]);
   }
   const lunch=kept(d,'l'),dinner=kept(d,'d');
@@ -997,7 +999,7 @@ let editCtx=null,editSnap='',editP=null;
 // Keto breakfast recipes in Edit meals are form state only; saveEdit hands changed picks to Root's prepareKetoBreakfasts.
 function editKetoOptions(i,p){try{const o=isKeto(p)&&typeof ketoBreakfastOptions==='function'?ketoBreakfastOptions(i,p):null;return Array.isArray(o)?o:[];}catch{return[];}}
 function editKetoRecipe(i,p){const r=isKeto(p)&&ketoConfig(state.days[i],p,'b',i).breakfastRecipe;return r&&editKetoOptions(i,p).some(o=>o.id===r)?r:'';}
-function editValsFromState(i){const d=state.days[i];return{b:d.b,bw:editKetoRecipe(i,'w'),bh:editKetoRecipe(i,'h'),s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
+function editValsFromState(i){const d=state.days[i];return{readyW:!!(d.readyB&&d.readyB.w),readyH:!!(d.readyB&&d.readyB.h),b:d.b,bw:editKetoRecipe(i,'w'),bh:editKetoRecipe(i,'h'),s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
 function editFormHTML(v,i=editCtx?editCtx.i:0){
   // Protein sabzis already include protein: the Dinner protein field is hidden, and collectEdit keeps its last value.
   const noExtra=NO_EXTRA(v.s);
@@ -1010,6 +1012,7 @@ function editFormHTML(v,i=editCtx?editCtx.i:0){
     ${noExtra?'':`<label>Dinner protein<select data-ek="p">${opts(PROTEINS,v.p)}</select></label>`}
     <label>Dal<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>
     <div><div class="lbl">For the day</div><div class="tglrow">${tgl('wheyW','W whey')}${tgl('wheyH','H whey')}${tgl('eggH','H eggs')}${tgl('cardioW','W cardio')}</div></div>
+    <div><div class="lbl">No cooked breakfast</div><div class="tglrow">${tgl('readyW','Wife')}${tgl('readyH','Husband')}</div><small class="hintline">Whey (if ticked) and ready foods like nuts or curd only — nothing is cooked.</small></div>
     <div><div class="lbl">Skip</div><div class="tglrow">${tgl('skipB','Breakfast')}${tgl('skipL','Lunch')}${tgl('skipD','Dinner')}${tgl('off','Eat out (whole day)')}</div></div>
     <div class="editbtns"><button data-editcancel>Cancel</button><button class="primary" data-editsave disabled>Save</button></div>
   </div>`;
@@ -1019,7 +1022,7 @@ function collectEdit(){
   const t=k=>{const el=document.querySelector(`[data-et="${k}"]`);return el?el.checked:false;};
   const p=g('p');if(p!==null)editP=p;else if(editP===null&&editSnap)editP=JSON.parse(editSnap).p;
   const snap=editSnap?JSON.parse(editSnap):{};
-  return{b:g('b')??snap.b??null,bw:g('bw')??'',bh:g('bh')??'',s:g('s'),p:editP,dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
+  return{readyW:t('readyW'),readyH:t('readyH'),b:g('b')??snap.b??null,bw:g('bw')??'',bh:g('bh')??'',s:g('s'),p:editP,dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
@@ -1027,7 +1030,8 @@ function openEdit(i,iso){
   editCtx={i,iso:iso||null};
   const v=editValsFromState(i);editSnap=JSON.stringify(v);editP=v.p;
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
-  $('#dlgBody').innerHTML=editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
+  const mon=iso?mondayOf(iso):null,scope=iso?(lockedWeeks[mon]?`Changes apply to the week of ${weekRangeText(mon)} only.`:`Saving creates the week of ${weekRangeText(mon)} from your template; the template itself stays unchanged.`):state.weekKey?`Changes apply to the week of ${weekRangeText(state.weekKey)} only.`:'You are editing the weekly template: every week without its own saved plan changes too.';
+  $('#dlgBody').innerHTML=`<p class="ux-scope${!iso&&!state.weekKey?' ux-scope-template':''}">${esc(scope)}</p>`+editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
 }
 function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
@@ -1041,6 +1045,7 @@ async function saveEdit(){
   if(v.p&&!NO_EXTRA(d.s))d.p=v.p;
   d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
+  if(v.readyW||v.readyH)d.readyB={w:!!v.readyW,h:!!v.readyH};else delete d.readyB;
   // Only changed picks are prepared, so re-saving keeps hand-tuned portions of an unchanged recipe.
   const snap=editSnap?JSON.parse(editSnap):{},sel={h:v.bh&&v.bh!==snap.bh?v.bh:undefined,w:v.bw&&v.bw!==snap.bw?v.bw:undefined};
   let prepared=null;
@@ -1048,7 +1053,7 @@ async function saveEdit(){
     if(typeof prepareKetoBreakfasts!=='function')return editMessage('Breakfast recipes need the latest update.');
     try{prepared=prepareKetoBreakfasts(editCtx.i,sel,d);}catch(e){return editMessage(e&&e.message||String(e));}
   }
-  Object.assign(state.days[editCtx.i],d);
+  Object.assign(state.days[editCtx.i],d);if(!d.readyB)delete state.days[editCtx.i].readyB;
   if(prepared)Object.assign(ketoMeals,prepared);
   state.custom=true;
   if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();copyDietScope(state.weekKey||'template',mon);lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
@@ -1227,7 +1232,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('click',e=>{
   const c=e.target.closest('[data-cook]');
-  if(c){const i=+c.dataset.cook;$('#dlgTitle').textContent=DAYS[i]+' · For the cook';$('#dlgBody').innerHTML=cookCard(i);$('#dlg').showModal();return;}
+  if(c){const i=+c.dataset.cook;$('#dlgTitle').textContent=DAYS[i]+' · For the cook';$('#dlgBody').innerHTML=cookCard(i)+`<div class="editbtns ux-cook-actions"><button data-batch-add="${i}">Cook a batch for several days…</button><button class="primary" data-weigh="${i}">Next: serve</button></div>`;$('#dlg').showModal();return;}
   const b=e.target.closest('[data-ing]');
   if(b){
     const[i,m]=b.dataset.ing.split(',').map((x,j)=>j===0?+x:x);

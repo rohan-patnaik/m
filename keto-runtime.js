@@ -63,20 +63,8 @@ function ketoEditHTML(day,i,p,m){
  const baseWeight=ketoVegetableBase(personRecipe(day,p)).reduce((n,x)=>n+x.q,0);
  // Breakfast recipe raw vegetables (Root's optional cfg fields): shown when saved or a recipe is set, never invented.
  const raw=m!=='b'?'':[['avocado','Avocado'],['mushroom','Mushroom'],['tomato','Tomato'],['onion','Onion']].filter(([f])=>cfg.breakfastRecipe||typeof cfg[f]==='number').map(([f,l])=>field(f,l+' (raw g)',0,f==='onion'?200:500)).join('');
- const recipe=m==='b'?ketoBreakfastRecipeHTML(i,p,cfg,name):'';
+ const recipe=m!=='b'?'':`<p class="keto-hint keto-recipe-hint">${day.readyB&&day.readyB[p]?'No cooked breakfast today: only whey, curd, milk and nuts below are counted. ':''}Change the breakfast recipe in <b>Edit meals</b>. Portion changes here save automatically.</p>`;
  return `<details class="keto-adjust" data-keto-edit="${key}"><summary>Adjust portions</summary>${recipe}<div class="keto-fields">${proteinInside?'<span>Paneer is in the bhurji; no separate protein top-up.</span>':p==='h'?choice('protein',[['paneer','Paneer'],['eggs','Eggs'],['chicken','Chicken']],'Protein'):'<span>Vegetarian protein · paneer / measured chunks</span>'}${proteinInside?'':field('quantity',cfg.protein==='eggs'?'Egg count':'Protein (raw g)',0,cfg.protein==='eggs'?6:1000)}${proteinInside?'':field('soya','Chunks (dry g)',0,100)}${protein}${!proteinInside&&cfg.protein==='paneer'?choice('paneerType',paneers,'Paneer variant'):''}${m!=='b'?field('sabziFraction','Sabzi ingredients (raw g)',0,1000,.1,F(cfg.sabziFraction*baseWeight)):''}${raw}${field('cucumber','Cucumber (raw g)',0,1000)}${field('curd','Curd (g)',0,500)}${choice('curdType',[['curdH','Heritage Total'],['curd','Milky Mist']],'Curd variant')}${field('milk','Optional milk (ml)',0,500)}${field('butter',`Optional ${butterName} butter (g)`,0,50)}${nuts}${field('flax','Ground flaxseed (optional, historical)',0,50)}${proteinInside?'':field('oil','Self-cooking oil (ml)',0,50,.1)}</div><p>Shared sabzi oil is allocated automatically. Self-cooking oil is additional and counted once. Grams here are raw/packet weights; use Weigh food for cooked grams. Saved prepared portions stay frozen.</p></details>`;
-}
-// Breakfast recipe picker from Root's ketoBreakfastOptions(i,p). "Current / Custom" stays selected until the person picks;
-// a pick calls applyKetoBreakfast (ux-runtime change handler). Nothing renders while the helper is absent.
-function ketoBreakfastRecipeHTML(i,p,cfg,name){
- let options;try{options=typeof ketoBreakfastOptions==='function'?ketoBreakfastOptions(i,p):null;}catch{options=null;}
- if(!Array.isArray(options)||!options.length)return '';
- const macros=n=>n&&typeof n.k==='number'?[`${R(n.k)} kcal`,typeof n.p==='number'?`${F(n.p)} g protein`:'',typeof n.aHi==='number'?`${comparisonRange(n.a??n.aHi,n.aHi)} g carbs`:''].filter(Boolean).join(' · '):'';
- const day=n=>n&&typeof n.aHi==='number'?`day ${typeof n.k==='number'?R(n.k)+' kcal · ':''}${comparisonRange(n.a??n.aHi,n.aHi)} g of ${ketoOptions.carbBudget} g carbs`:'';
- const current=options.find(o=>o.id===cfg.breakfastRecipe&&o.eligible!==false)?.id||'';
- const chosen=options.find(o=>o.id===current);
- const preview=chosen?[macros(chosen.nutrition),day(chosen.dayNutrition),chosen.reason].filter(Boolean).join(' · '):'Pick a recipe to replace this breakfast’s ingredients.';
- return `<div class="keto-recipe-field"><label>Breakfast recipe<select aria-label="${name} Breakfast recipe" data-keto-breakfast="${i},${p}" data-current="${esc(current)}"><option value=""${current?'':' selected'}>Current / Custom</option>${options.map(o=>{const off=o.eligible===false,title=[day(o.dayNutrition),o.reason].filter(Boolean).join(' · ');return `<option value="${esc(o.id)}"${o.id===current?' selected':''}${off?' disabled':''}${title?` title="${esc(title)}"`:''}>${esc([o.name,macros(o.nutrition)].filter(Boolean).join(' · '))}${off&&o.reason?' — '+esc(o.reason):''}</option>`;}).join('')}</select></label><p class="keto-recipe-preview">${esc(preview)}</p><p class="keto-recipe-error" role="alert" data-keto-breakfast-error hidden></p></div>`;
 }
 function ketoDayHTML(day,i){
  const persons=ketoPerson==='both'?['w','h']:[ketoPerson];

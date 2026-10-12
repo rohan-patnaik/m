@@ -63,6 +63,7 @@ export function validateRecord(key,value){
  if(key.includes('/day/')){const d=value.meal;if(!d||!/^B[1-5]$/.test(d.b)||!/^S(?:[1-9]|10|11|12)$/.test(d.s)||!['P','Y'].includes(d.p)||!['moong','masoor','arhar'].includes(d.dal)||!selection(value.utensils))throw Error('Invalid day');
  for(const k of ['off','wheyW','wheyH','eggH','cardioW','cardioH'])if(typeof d[k]!=='boolean')throw Error('Invalid meal flag');
  if(!d.skip||!['b','l','d'].every(k=>typeof d.skip[k]==='boolean'))throw Error('Invalid skipped meal');
+ if(d.readyB!==undefined&&(!d.readyB||Array.isArray(d.readyB)||Object.keys(d.readyB).sort().join(',')!=='h,w'||!['w','h'].every(k=>typeof d.readyB[k]==='boolean')||!d.readyB.w&&!d.readyB.h))throw Error('Invalid no-cooking breakfast');
  }else if(key.startsWith('week/')){if(!number(value.savedAt,0,1e15))throw Error('Invalid week');}
  else if(key.startsWith('setting/utensils/')){if(!number(value,0,50000))throw Error('Invalid utensil weight');}
  else if(key==='setting/density'){if(!number(value,0.5,2))throw Error('Invalid milk density');}

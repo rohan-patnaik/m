@@ -47,6 +47,8 @@ function ketoComponent(day,p,m,component,cfg=ketoConfig(day,p,m)){
 function householdKetoBase(day,p,m,cfg=ketoConfig(day,p,m)){
  if(!kept(day,m)||m==='e')return [];
  const h=p==='h';
+ // No cooked breakfast: only the ticked whey and ready-to-eat foods (curd, milk, nuts) from that breakfast's portions.
+ if(m==='b'&&day.readyB&&day.readyB[p])return [...(cfg.whey&&(h?day.wheyH:day.wheyW)?[L('whey',cfg.whey)]:[]),...(cfg.curd?[L(cfg.curdType,cfg.curd)]:[]),...(cfg.milk?[L('milk',cfg.milk)]:[]),...['almonds','cashews','walnuts'].filter(id=>cfg[id]>0).map(id=>L(id,cfg[id]))];
  const a=[...ketoComponent(day,p,m,'protein',cfg),...ketoComponent(day,p,m,'sabzi',cfg),L('cucumber',cfg.cucumber)];
  if(m==='b'&&cfg.avocado)a.push(L('avocado',cfg.avocado));
  if(cfg.whey&&(m!=='b'||(h?day.wheyH:day.wheyW)))a.push(L('whey',cfg.whey));
