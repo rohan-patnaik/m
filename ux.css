@@ -1,253 +1,310 @@
-/* Quiet, task-focused household UI matching the approved mockups. */
-:root{--bg:#f6f8fa;--ink:#192b3a;--muted:#64748b;--accent:#087e72;--tint:#eaf6f3;--line:#dfe7ee;--shadow:none;--radius:12px}
-html[data-theme=dark]{--bg:#101820;--paper:#18232d;--paper2:#1e2c37;--ink:#edf4f8;--muted:#a1b3c2;--line:#344553;--accent:#65d4c6;--accent-ink:#0c2824;--tint:#1b3a34;--shadow:none}
+/* Compact household UI: open meal cards, one Wife | Husband quantity table per meal, two primary pages. */
+:root{--bg:#f4f6f8;--paper:#ffffff;--paper2:#f7f9fb;--ink:#192b3a;--muted:#64748b;--accent:#087e72;--accent-ink:#ffffff;--tint:#e8f4f1;--line:#dfe6ec;--warn:#8f5805;--shadow:none;--radius:10px;--tap:36px}
+html[data-theme=dark]{--bg:#101820;--paper:#18232d;--paper2:#1d2934;--ink:#edf4f8;--muted:#a1b3c2;--line:#34444f;--accent:#65d4c6;--accent-ink:#0c2824;--tint:#1b3a34;--warn:#f4c77f;--shadow:none}
 [hidden]{display:none!important}
-body{font-family:"Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.5}
-.wrap{max-width:1120px;padding:0 28px 70px}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1280px;margin:auto;padding:0 20px 36px}
 .panel{box-shadow:none}
-button,select,input{font:inherit}
-button,a,select,input{touch-action:manipulation}
-button{min-height:40px;border-radius:8px;font-weight:600}
+button,select,input{font:inherit;color:inherit}
+button,a,select,input,summary{touch-action:manipulation}
+button{min-height:var(--tap);border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer}
+button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 button:disabled{opacity:.55;cursor:wait}
-button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-button.text-btn,.text-btn{background:none;border:0;color:var(--accent);padding:4px 0;text-decoration:underline;text-underline-offset:3px;min-height:36px}
+select,input[type=number],input[type=date]{min-height:var(--tap);border:1px solid var(--line);border-radius:8px;background:var(--paper);padding:5px 9px;font-size:14px}
+button.text-btn,.text-btn{background:none;border:0;color:var(--accent);padding:4px 0;text-decoration:underline;text-underline-offset:3px;min-height:32px}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 a{color:var(--accent)}
-h2{font-size:24px;line-height:1.3;letter-spacing:-.5px;margin:0}
-h3{font-size:18px;line-height:1.4;margin:0 0 8px}
-h4{font-size:16px}
-.ux-warning{color:#8f5805;font-size:14px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:12px 0}
-.ux-warning a{color:inherit;font-weight:600;margin-left:6px}
-html[data-theme=dark] .ux-warning,html[data-theme=dark] .ux-recipe-warning{color:#f4c77f}
-.ux-note{font-size:14px;color:var(--muted);margin:10px 0}
-.ux-disclosure{border-top:1px solid var(--line);padding:18px 0;margin:0}
-.ux-disclosure>summary{font-size:16px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:15px}
-.ux-disclosure>summary:after{content:'›';font-size:22px;line-height:1.1;color:var(--muted)}
-.ux-disclosure[open]>summary:after{content:'⌄'}
+h2{font-size:20px;line-height:1.3;letter-spacing:-.3px;margin:0}
+h3{font-size:16px;line-height:1.35;margin:0 0 6px}
+h4{font-size:14px;margin:0}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Notes, warnings and disclosures */
+.ux-warning{color:var(--warn);font-size:13px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.ux-warning a{color:inherit;font-weight:600}
+.ux-note{font-size:13px;color:var(--muted);margin:8px 0}
+.ux-foot{margin:12px 0 0}
+.ux-disclosure{border-top:1px solid var(--line);padding:10px 0;margin:0}
+.ux-disclosure>summary{font-size:14px;font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px;min-height:28px;align-items:center}
+.ux-disclosure>summary:after{content:'›';font-size:20px;line-height:1;color:var(--muted);transform:rotate(90deg)}
+.ux-disclosure[open]>summary:after{transform:rotate(-90deg)}
 .ux-disclosure>summary::-webkit-details-marker{display:none}
-.ux-disclosure>summary+*{margin-top:18px}
+.ux-disclosure>summary+*{margin-top:12px}
 .ux-disclosure p{max-width:75ch}
-.ux-nutrition{display:grid;grid-template-columns:1fr 1fr;gap:30px;padding:16px 0}
-.ux-nutrition strong{font-size:24px}
-.ux-nutrition p,.ux-nutrition ul{font-size:14px}
-#settingsPage{max-width:940px;margin:auto}
-#settingsPage>h2{margin-bottom:28px}
-#settingsPage .panel{background:none;border:0;padding:0}
-#settingsPage .panel h2{display:none}
-#settingsPage #uxOtherSettings{display:flex;align-items:center;flex-wrap:wrap;gap:16px}
-#settingsPage .portion-controls{display:flex;gap:20px;flex-wrap:wrap}
-#settingsPage .portion-field{display:flex;gap:10px;align-items:center}
-#settingsPage .portion-field select{min-width:110px}
-#settingsPage #themeBtn{width:auto;font-size:16px;min-width:48px}
-#settingsPage .ut-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.shopping-groups{display:block}
-#shopping{background:none;border:0;padding:0;margin:0}
-.shophead{margin:0 0 16px}
-.shophead h2{font-size:26px}
-.shophead p{margin:6px 0;color:var(--muted);font-size:14px}
-.ux-shop-tools{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:28px}
-.shopping-diets{gap:14px;display:flex;flex-wrap:wrap}
-.shopping-diets span{font-size:14px;border:0;background:none;padding:0}
-.shopping-diets b{font-weight:400;margin-left:4px;color:var(--muted)}
-.shopping-groups section{margin-bottom:28px;background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden;padding:0}
-.shopping-groups h3{font-size:18px;padding:14px 20px;margin:0;background:var(--paper2)}
-.shopping-groups h3 small{font-size:13px;font-weight:400;color:var(--muted);margin-left:10px}
-.shopping-groups .ux-note{margin:8px 20px}
-.shopping-table{font-size:15px;table-layout:fixed;width:100%;border-collapse:collapse}
-.shopping-table th,.shopping-table td{padding:15px 16px;text-transform:none;letter-spacing:0;font-size:15px;vertical-align:top;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
-.shopping-table th{font-weight:500;text-align:left}
-.shopping-table th:first-child{width:44px}
-.shopping-table th:nth-child(2){width:38%}
-.shopping-table thead th{font-size:13px;color:var(--muted)}
-.shopping-table th.num,.shopping-table td.num{text-align:left}
-.shopping-table tbody tr:last-child th,.shopping-table tbody tr:last-child td{border-bottom:0}
-.shopping-table input[type=checkbox],.ux-checkbox input{width:19px;height:19px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
-.shopping-table .ux-buy-check{padding-right:0}
-.shopping-table td small{display:block;margin-top:4px;color:var(--muted);font-size:12px;font-weight:400}
-.ux-checkbox{display:flex;align-items:center;gap:8px;font-size:14px;white-space:nowrap}
-.ux-buy-note{font-size:12px;color:var(--muted);margin-top:4px}
-.ux-buy-note summary{cursor:pointer;font-size:12px}
-.ux-buy-note p{line-height:1.5}
-.ux-bought{opacity:.55}
-.ux-bought>th{text-decoration:line-through}
+.ux-nutrition{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:4px 0 10px}
+.ux-nutrition h3{font-size:14px;margin-bottom:4px}
+.ux-nutrition p,.ux-nutrition ul{font-size:13px;margin:4px 0}
+.ux-nutrition ul{padding-left:18px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-#dlg{border:1px solid var(--line);box-shadow:0 20px 80px #14283233;border-radius:14px;padding:24px;color:var(--ink);background:var(--paper);max-height:88dvh;max-width:min(850px,calc(100vw - 32px));overflow-y:auto}
-#dlg::backdrop{background:#192b3a66}
-#dlg .dialog-head{align-items:center;padding-bottom:18px;gap:16px}
-#dlg .dialog-head h2{font-size:20px}
-#dlg.ux-serve-dialog{width:490px}
-.ux-serve-step{font-size:13px;color:var(--muted);text-align:right;margin:16px 0}
-.ux-dish-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px}
-.ux-dish-tabs button{flex-shrink:0;padding:8px 12px;font-size:13px}
-.ux-dish-tabs [aria-pressed=true]{border-color:var(--accent);background:var(--tint);color:var(--accent)}
-.ux-weigh-card.weigh-card{border:0;padding:0;background:none;box-shadow:none;margin:0 0 20px}
-.ux-weight-entry{display:block;font-size:16px;margin-top:26px}
-.ux-weight-entry>div{border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;margin-top:10px;padding:12px 16px}
-.ux-weight-entry input{min-width:0;width:100%;font-size:34px;font-weight:650;border:0;background:transparent;outline-offset:0;padding:0;box-shadow:none;color:var(--ink)}
-.ux-weight-entry>div>span{color:var(--muted)}
-.ux-subtraction{font-size:19px;margin:20px 0}
-.ux-weigh-card .ux-disclosure label{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:14px 0}
-.ux-weigh-card .ux-disclosure select{min-width:0;max-width:65%}
-.ux-serve-portions{border:1px solid var(--line);border-radius:10px;padding:6px 16px;margin:20px 0}
-.ux-serve-portions>div{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
-.ux-serve-portions>div:last-child{border:0}
-.ux-serve-portions strong{font-size:24px;margin-left:auto;white-space:nowrap}
-.ux-serve-portions small{display:block;font-size:12px;color:var(--muted)}
-.ux-serve-portions button{font-size:13px;padding:6px 10px}
-.ux-serve-portions h4{color:var(--muted);margin:18px 0 0;font-weight:400}
-.ux-served>span:before{content:'✓ ';color:var(--accent)}
-.ux-food-left{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;background:var(--paper2);padding:16px;border-radius:10px}
-.ux-food-left strong{font-size:30px}
-.ux-food-left small{width:100%;color:var(--muted)}
-.ux-serve-footer{border-top:1px solid var(--line);margin-top:24px;padding-top:16px;text-align:right}
-.ux-serve-footer button{padding:7px 18px}
-.keto-review,.keto-baselines,.keto-day{box-shadow:none}
-/* Familiar open cards: meals and shopping are the only primary pages. */
-:root{--bg:#f4f6f8}
-.wrap{max-width:1280px;padding:0 24px 40px}
-.ux-app-header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:22px 0;margin-bottom:20px}
+
+/* App header: title, two destinations, settings */
+.ux-app-header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:14px}
 .ux-app-header header.top{display:block;margin:0;text-align:left}
-.ux-app-header h1{font-size:25px;margin:0}
-.tabs.ux-nav{display:flex;gap:8px;margin:0 0 0 auto;padding:0;background:none;position:static;overflow:visible}
-.tabs.ux-nav a{display:flex;align-items:center;gap:8px;padding:9px 18px;border:1px solid var(--line);border-radius:22px;text-decoration:none;color:var(--ink);background:var(--paper);font-size:15px;font-weight:600}
+.ux-app-header h1{font-size:20px;letter-spacing:-.3px;margin:0}
+.tabs.ux-nav{display:flex;gap:6px;margin:0 0 0 auto;padding:0;background:none;position:static;overflow:visible;border:0;flex-wrap:nowrap}
+.tabs.ux-nav a{display:flex;align-items:center;gap:6px;min-height:var(--tap);padding:6px 16px;border:1px solid var(--line);border-radius:999px;text-decoration:none;color:var(--ink);background:var(--paper);font-size:14px;font-weight:600}
 .tabs.ux-nav a.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .tabs.ux-nav svg{display:none}
-.ux-settings-link{display:flex;justify-content:center;align-items:center;width:40px;height:40px;color:var(--ink);border-radius:8px}
+.ux-settings-link{display:flex;justify-content:center;align-items:center;width:var(--tap);height:var(--tap);color:var(--ink);border-radius:8px}
 .ux-settings-link:hover{background:var(--tint)}
 #regularPlan{display:none!important}
-#syncBar{position:relative;top:auto;margin:0 0 16px;font-size:14px}
-.meal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
-.meal-view-switch{display:flex;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--paper)}
-.meal-view-switch a{padding:8px 17px;color:var(--ink);font-size:14px;text-decoration:none;font-weight:600}
+#syncBar{position:sticky;top:0;z-index:30;margin:0 0 12px;font-size:13px;padding:8px 12px}
+#syncBar button{min-height:32px;padding:4px 10px}
+
+/* Planner toolbar: Day/Week switch plus the two independent diet assignments */
+.meal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.meal-view-switch{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--paper)}
+.meal-view-switch a{display:flex;align-items:center;min-height:var(--tap);padding:5px 15px;color:var(--ink);font-size:13px;text-decoration:none;font-weight:600}
 .meal-view-switch a[aria-current=page]{background:var(--accent);color:var(--accent-ink)}
-.meal-assignments{display:flex;gap:18px;flex-wrap:wrap}
-.meal-assignments>div{display:flex;align-items:center;gap:8px}
-.meal-assignments b{font-size:14px}
-.meal-assignments select{font-size:14px;min-height:38px;padding:6px 9px;min-width:0;border-radius:8px}
-.ux-day-heading{display:flex;align-items:center;gap:12px;margin:0 0 16px;flex-wrap:wrap}
-.ux-day-heading h2{font-size:22px;margin-right:auto}
-.ux-day-heading>button:first-child,.ux-day-heading>button:nth-child(3){font-size:23px;padding:2px 12px}
-.ux-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
-.ux-week-nav{display:flex;align-items:center;gap:12px}
-.ux-week-nav h2{font-size:22px}
-.ux-week-nav>button{font-size:23px;padding:2px 12px}
-.meal-day.panel{padding:18px;margin:0 0 22px;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 7px #192b3a09}
-.meal-day-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
-.meal-day-head h2{font-size:21px;margin:0}
-.meal-day-head h2 small{font-size:13px;font-weight:400;color:var(--muted);margin-left:8px}
-.day-actions{display:flex;flex-wrap:wrap;gap:8px}
-.day-actions button{padding:7px 12px;font-size:13px}
-.meal-day-totals{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 14px}
-.meal-day-totals>div{background:var(--paper2);border-radius:8px;padding:10px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.meal-day-totals span{font-size:14px}
-.meal-day-totals span:first-child{font-weight:600}
+.meal-assignments{display:flex;gap:14px;flex-wrap:wrap}
+.meal-assignments>div{display:flex;align-items:center;gap:6px}
+.meal-assignments b{font-size:13px}
+.meal-assignments select{font-size:13px;min-height:34px;padding:4px 8px;min-width:0;border-radius:8px}
+
+/* Day / week headings */
+.ux-day-heading{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
+.ux-day-heading h2{font-size:19px;margin-right:auto}
+.ux-day-heading>button{min-height:var(--tap)}
+.ux-day-heading>button:first-child,.ux-day-heading>button:nth-child(3){font-size:20px;line-height:1;padding:0 12px;min-width:var(--tap)}
+.ux-day-heading+.ux-note{margin:-2px 0 10px}
+.ux-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.ux-week-nav{display:flex;align-items:center;gap:8px}
+.ux-week-nav h2{font-size:19px}
+.ux-week-nav>button{font-size:20px;line-height:1;padding:0 12px;min-width:var(--tap)}
+.ux-section-heading+.ux-note{margin:0 0 12px}
+
+/* Day card */
+.meal-day.panel{padding:14px;margin:0 0 14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 4px #192b3a0a}
+.meal-day-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.meal-day-head h2{font-size:18px;margin:0}
+.meal-day-head h2 small{font-size:13px;font-weight:400;color:var(--muted);margin-left:6px}
+.day-actions{display:flex;flex-wrap:wrap;gap:6px}
+.day-actions button{padding:5px 11px;font-size:13px}
+.meal-day-totals{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.meal-day-head .meal-day-totals{margin:0;flex:1 1 360px}
+.meal-day-totals>div{flex:1 1 200px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;background:var(--paper2);border-radius:8px;padding:6px 12px;min-height:var(--tap)}
+.meal-day-totals span{font-size:13px;color:var(--muted)}
+.meal-day-totals span:first-child{color:var(--ink);font-weight:600}
 .meal-day-totals small{font-size:12px;font-weight:400;color:var(--muted)}
-.meal-day-totals strong{font-size:23px;line-height:1.3}
-.meal-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch}
-.meal-card{background:var(--paper2);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
-.meal-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.meal-card-head h3{font-size:17px;margin:0}
-.meal-card .ing{min-height:32px;font-size:12px;padding:3px 0;text-decoration:underline;text-underline-offset:3px}
-.meal-people{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.meal-person{min-width:0}
-.meal-person+section{border-left:1px solid var(--line);padding-left:14px}
-.meal-person h4{font-size:14px;margin:0 0 11px}
-.meal-person h4 small{display:block;font-size:11px;color:var(--muted);font-weight:400}
-.meal-food-list{padding:0;margin:0;list-style:none}
-.meal-food-list li{margin:0 0 11px;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
-.meal-food-list span{display:block;color:var(--ink)}
-.meal-food-list strong{display:block;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
-.meal-food-list small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
-.meal-unweighed strong{color:var(--muted);font-weight:500}
-.meal-macros{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:9px;margin:12px 0 0}
-.meal-macros b{color:var(--ink);display:block;font-size:14px}
-.meal-details-link{margin-top:10px}
-.meal-note{font-size:12px;line-height:1.5;color:var(--muted);margin:12px 0}
-.meal-none{font-size:13px;color:var(--muted);margin:0 0 12px}
+.meal-day-totals strong{font-size:18px;line-height:1.2;font-variant-numeric:tabular-nums}
+.meal-day .ux-warning{margin:0 0 10px}
+.meal-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+.meal-card{background:var(--paper2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px 8px;min-width:0}
 .meal-snacks{grid-column:1/-1}
-.meal-snacks .meal-food-list{display:flex;gap:20px;flex-wrap:wrap}
-.meal-snacks .meal-macros{max-width:300px}
-.meal-recipe-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.meal-recipe-fields label{font-size:13px;display:block}
-.meal-recipe-fields select{width:100%;font-size:14px;margin-top:6px}
-.meal-day .ut-use{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 0}
-.meal-day .ut-use label{font-size:13px}
-.meal-day .ux-disclosure{padding:13px 0}
-.meal-day .ux-disclosure>summary{font-size:14px}
-.meal-person .keto-adjust{font-size:12px;margin:12px 0 0}
-.meal-person .keto-adjust>summary{font-size:12px}
-.meal-person .keto-fields{display:flex;flex-direction:column;gap:10px}
-.meal-person .keto-fields input{width:100%;font-size:14px;padding:5px}
-.meal-person .keto-protein-choices{gap:4px;flex-wrap:wrap}
-.meal-person .keto-protein-choices button{font-size:11px;padding:5px;min-height:32px}
-#settingsDlg{width:920px;max-width:calc(100vw - 32px);max-height:88dvh;overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);padding:22px}
+.meal-snacks .meal-table{max-width:620px}
+.meal-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:30px}
+.meal-card-head h3{font-size:15px;margin:0}
+.meal-card-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.meal-card .ing{min-height:30px;font-size:12px;padding:2px 0;text-decoration:underline;text-underline-offset:3px;font-weight:600}
+
+/* The quantity table: Food | Wife | Husband */
+.meal-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.meal-table th,.meal-table td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left;font-size:13px;text-transform:none;letter-spacing:0;line-height:1.35}
+.meal-table th:first-child,.meal-table td:first-child{padding-left:0}
+.meal-table th:last-child,.meal-table td:last-child{padding-right:0}
+.meal-table thead th{font-size:12px;color:var(--muted);font-weight:600;padding-top:2px;padding-bottom:6px;width:31%}
+.meal-table thead th:first-child{width:auto}
+.meal-table thead th small{display:block;font-size:11px;font-weight:400}
+.meal-table tbody th{font-weight:500;color:var(--ink);overflow-wrap:anywhere}
+.meal-table td{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.meal-table td b{font-weight:650}
+.meal-table td small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+.meal-table .meal-empty{color:var(--muted)}
+.meal-table .meal-unweighed b{color:var(--muted);font-weight:500}
+.meal-menu{font-size:12px;line-height:1.4;color:var(--muted);margin:0 0 6px}
+.meal-menu b{color:var(--ink);font-weight:600}
+.meal-menu span{margin:0 4px}
+.meal-table tfoot th,.meal-table tfoot td{border-bottom:0;padding-top:4px;padding-bottom:1px;font-size:12px;color:var(--muted)}
+.meal-table tfoot tr:first-child th,.meal-table tfoot tr:first-child td{padding-top:6px}
+.meal-table tfoot tr:first-child td{font-size:14px;font-weight:650;color:var(--ink)}
+.meal-table .meal-none{padding:8px 0;color:var(--muted);border:0}
+.meal-foot{font-size:11px;color:var(--muted);margin:6px 0 0}
+.meal-note{font-size:12px;line-height:1.45;color:var(--muted);margin:8px 0 0}
+.meal-none{font-size:13px;color:var(--muted);margin:4px 0 8px}
+
+/* Keto per-person adjustments stay inside the card, closed by default */
+.meal-adjust{font-size:12px;margin:6px 0 0}
+.meal-adjust::after{content:'';display:block;clear:both}
+.meal-adjust>span{float:left;color:var(--muted);font-weight:600;white-space:nowrap;line-height:28px;margin-right:8px}
+.meal-adjust .keto-adjust{margin:0;border:0;padding:0}
+.meal-adjust .keto-adjust>summary{font-size:12px;min-height:28px;display:flex;align-items:center}
+.meal-adjust .keto-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.meal-adjust .keto-fields label{font-size:12px}
+.meal-adjust .keto-fields input,.meal-adjust .keto-fields select{width:100%;font-size:13px;padding:5px 7px;min-height:32px}
+.meal-adjust .keto-protein-field{grid-column:1/-1}
+.meal-adjust .keto-protein-choices{gap:4px;flex-wrap:wrap}
+.meal-adjust .keto-protein-choices button{font-size:11px;padding:4px 7px;min-height:30px}
+.meal-adjust .keto-adjust p{font-size:11px;margin:8px 0 0}
+
+/* Secondary per-day controls */
+.meal-day-more{margin-top:8px}
+.meal-day-more .ux-disclosure{padding:8px 0}
+.meal-day-more .ux-disclosure:last-child{padding-bottom:0}
+.meal-day-more .ux-disclosure>summary{font-size:13px}
+.meal-recipe-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.meal-recipe-fields label{font-size:12px;display:block;color:var(--muted)}
+.meal-recipe-fields select{width:100%;font-size:13px;margin-top:4px;color:var(--ink)}
+.meal-day .ut-use{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 0;padding:0}
+.meal-day .ut-use label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px;flex:1 1 150px}
+.meal-day .ut-use select{font-size:13px;color:var(--ink);width:100%}
+
+/* Shopping */
+.shopping-groups{display:block}
+#shopping{background:none;border:0;padding:0;margin:0}
+.shophead{margin:0 0 10px}
+.shophead h2{font-size:20px}
+.shophead p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.ux-shop-tools{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.shopping-diets{gap:12px;display:flex;flex-wrap:wrap}
+.shopping-diets span{font-size:13px;border:0;background:none;padding:0}
+.shopping-diets b{font-weight:400;margin-left:4px;color:var(--muted)}
+.shopping-groups section{margin-bottom:16px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;padding:0}
+.shopping-groups h3{font-size:15px;padding:9px 14px;margin:0;background:var(--paper2);border-bottom:1px solid var(--line)}
+.shopping-groups h3 small{font-size:12px;font-weight:400;color:var(--muted);margin-left:8px}
+.shopping-groups .ux-note{margin:6px 14px}
+.shopping-table{font-size:14px;table-layout:fixed;width:100%;border-collapse:collapse}
+.shopping-table th,.shopping-table td{padding:8px 10px;text-transform:none;letter-spacing:0;font-size:14px;vertical-align:top;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;line-height:1.35}
+.shopping-table th{font-weight:500;text-align:left}
+.shopping-table th:first-child{width:40px}
+.shopping-table th:nth-child(2){width:40%}
+.shopping-table thead th{font-size:12px;color:var(--muted);padding-top:6px;padding-bottom:6px}
+.shopping-table th.num,.shopping-table td.num{text-align:left}
+.shopping-table tbody tr:last-child th,.shopping-table tbody tr:last-child td{border-bottom:0}
+.shopping-table input[type=checkbox],.ux-checkbox input{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;margin:0}
+.shopping-table .ux-buy-check{padding-right:0;padding-left:12px}
+.shopping-table .ux-buy-check input{display:block;margin-top:1px}
+.shopping-table td small{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:400}
+.ux-checkbox{display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap;min-height:var(--tap);cursor:pointer}
+.ux-buy-note{font-size:12px;color:var(--muted);margin-top:2px}
+.ux-buy-note summary{cursor:pointer;font-size:12px}
+.ux-buy-note p{line-height:1.45;margin:4px 0 0}
+.ux-bought{opacity:.55}
+.ux-bought>th{text-decoration:line-through}
+
+/* Dialogs: weigh & serve, cook list, editors */
+#dlg{border:1px solid var(--line);box-shadow:0 20px 80px #14283233;border-radius:14px;padding:20px;color:var(--ink);background:var(--paper);max-height:88dvh;max-width:min(850px,calc(100vw - 32px));overflow-y:auto}
+#dlg::backdrop{background:#192b3a66}
+#dlg .dialog-head{align-items:center;padding-bottom:12px;gap:12px;margin-bottom:8px}
+#dlg .dialog-head h2{font-size:18px}
+#dlg.ux-serve-dialog{width:490px}
+.ux-serve-step{font-size:12px;color:var(--muted);text-align:right;margin:10px 0}
+.ux-dish-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+.ux-dish-tabs button{flex-shrink:0;padding:6px 11px;font-size:13px}
+.ux-dish-tabs [aria-pressed=true]{border-color:var(--accent);background:var(--tint);color:var(--accent)}
+.ux-weigh-card.weigh-card{border:0;padding:0;background:none;box-shadow:none;margin:0 0 16px}
+.ux-weight-entry{display:block;font-size:14px;margin-top:16px}
+.ux-weight-entry>div{border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;margin-top:8px;padding:8px 14px}
+.ux-weight-entry input{min-width:0;width:100%;font-size:30px;font-weight:650;border:0;background:transparent;outline-offset:0;padding:0;box-shadow:none;color:var(--ink);min-height:0}
+.ux-weight-entry>div>span{color:var(--muted)}
+.ux-subtraction{font-size:17px;margin:14px 0}
+.ux-weigh-card .ux-disclosure label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0;font-size:14px}
+.ux-weigh-card .ux-disclosure select{min-width:0;max-width:65%}
+.ux-serve-portions{border:1px solid var(--line);border-radius:10px;padding:2px 14px;margin:14px 0}
+.ux-serve-portions>div{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.ux-serve-portions>div:last-child{border:0}
+.ux-serve-portions strong{font-size:22px;margin-left:auto;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ux-serve-portions small{display:block;font-size:12px;color:var(--muted)}
+.ux-serve-portions button{font-size:13px;padding:5px 10px}
+.ux-serve-portions h4{color:var(--muted);margin:12px 0 0;font-weight:400}
+.ux-served>span:before{content:'✓ ';color:var(--accent)}
+.ux-food-left{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;background:var(--paper2);padding:12px 14px;border-radius:10px}
+.ux-food-left strong{font-size:28px;font-variant-numeric:tabular-nums}
+.ux-food-left small{width:100%;color:var(--muted)}
+.ux-reserved{font-size:14px;margin:10px 0}
+.ux-serve-footer{border-top:1px solid var(--line);margin-top:16px;padding-top:12px;text-align:right}
+.ux-serve-footer button{padding:6px 16px}
+
+/* Settings dialog and the diet review inside it */
+#settingsDlg{width:920px;max-width:calc(100vw - 32px);max-height:88dvh;overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink);padding:20px}
 #settingsDlg::backdrop{background:#192b3a66}
-#settingsDlg .dialog-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:12px}
-#settingsDlg .dialog-head h2{font-size:21px}
+#settingsDlg .dialog-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:10px}
+#settingsDlg .dialog-head h2{font-size:18px}
+#settingsPage{max-width:940px;margin:auto}
+#settingsPage .panel{background:none;border:0;padding:0}
+#settingsPage .panel h2{display:none}
 #settingsPage #labels,#settingsPage #utensils{display:block!important}
-#settingsPage .ux-disclosure{padding:15px 0}
-#settingsDlg #keto{padding:0}
-#settingsDlg .keto-heading h2{font-size:22px}
+#settingsPage .ux-disclosure{padding:12px 0}
+#settingsPage #uxOtherSettings{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+#settingsPage .portion-controls{display:flex;gap:16px;flex-wrap:wrap}
+#settingsPage .portion-field{display:flex;gap:8px;align-items:center;font-size:13px}
+#settingsPage .portion-field select{min-width:110px}
+#settingsPage #themeBtn{width:auto;font-size:16px;min-width:44px}
+#settingsPage .ut-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#settingsDlg #keto{padding:0;margin-top:0}
+#settingsDlg .keto-heading h2{font-size:20px}
 #settingsDlg .keto-heading,#settingsDlg .household-assignments{flex-wrap:wrap}
 #settingsDlg input,#settingsDlg select{max-width:100%}
-@media(max-width:1000px){.meal-cards{grid-template-columns:1fr}.meal-food-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:baseline}.meal-food-list small{grid-column:1/-1}.meal-snacks{grid-column:auto}.meal-macros b{display:inline}.meal-card{padding:16px}.meal-card .keto-fields{display:grid;grid-template-columns:1fr 1fr}.meal-card .keto-protein-field{grid-column:1/-1}}
+.keto-review,.keto-baselines,.keto-day{box-shadow:none}
+
+/* Tablet: one meal card per row, table keeps three columns */
+@media(max-width:1000px){
+ .meal-cards{grid-template-columns:1fr}
+ .meal-snacks .meal-table{max-width:none}
+ .meal-table thead th{width:26%}
+}
+/* Phone */
 @media(max-width:600px){
- .wrap{padding:0 12px 28px}
- .ux-app-header{gap:10px;padding:16px 0;margin-bottom:16px}
- .ux-app-header header.top{width:calc(100% - 50px)}
- .ux-app-header h1{font-size:22px}
+ .wrap{padding:0 12px 24px}
+ .ux-app-header{gap:8px;padding:12px 0;margin-bottom:12px}
+ .ux-app-header header.top{width:calc(100% - 44px)}
+ .ux-app-header h1{font-size:18px}
  .ux-settings-link{position:relative;margin-left:auto;order:0}
- .tabs.ux-nav{order:1;width:100%;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
- .tabs.ux-nav a{justify-content:center;font-size:14px;padding:8px}
- .meal-toolbar{gap:14px;margin-bottom:16px}
- .meal-view-switch{margin:auto}
- .meal-assignments{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
- .meal-assignments>div{display:flex;flex-wrap:wrap;gap:6px;align-content:start}
- .meal-assignments b{width:100%}
- .meal-assignments select{max-width:100%;flex:1;font-size:13px;padding:6px}
- .ux-day-heading{gap:8px}
- .ux-day-heading h2{font-size:19px;width:calc(100% - 100px)}
- .ux-day-heading>button:last-child{margin-left:auto;font-size:13px}
- .meal-day.panel{padding:12px;margin-bottom:16px}
- .meal-day-head h2{font-size:19px}
- .day-actions{gap:6px;width:100%}
- .day-actions button{padding:6px 9px;font-size:12px}
- .meal-day-totals{gap:8px}
- .meal-day-totals>div{padding:9px;display:block}
- .meal-day-totals span{display:block;font-size:12px}
- .meal-day-totals strong{display:block;font-size:22px;margin:3px 0}
- .meal-cards{gap:10px}
- .meal-card{padding:12px}
- .meal-people{gap:10px}
- .meal-person+section{padding-left:10px}
- .meal-food-list li{display:block;font-size:13px;margin-bottom:10px}
- .meal-food-list small{font-size:11px}
- .meal-macros b{display:block}
- .meal-card .keto-fields{display:flex}
- .meal-snacks .meal-food-list{display:block}
+ .tabs.ux-nav{order:1;width:100%;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ .tabs.ux-nav a{justify-content:center;font-size:14px;padding:6px}
+ .meal-toolbar{gap:10px;margin-bottom:10px}
+ .meal-view-switch{width:100%}
+ .meal-view-switch a{flex:1;justify-content:center}
+ .meal-assignments{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+ .meal-assignments>div{display:flex;flex-wrap:wrap;gap:4px 6px;align-content:start}
+ .meal-assignments b{width:100%;font-size:12px}
+ .meal-assignments select{max-width:100%;flex:1;font-size:13px;padding:4px 6px}
+ .ux-day-heading{gap:6px}
+ .ux-day-heading h2{font-size:17px}
+ .ux-day-heading>button:last-child{font-size:13px;padding:0 10px}
+ .ux-day-heading .text-btn{font-size:13px}
+ .meal-day.panel{padding:10px;margin-bottom:12px}
+ .meal-day-head{gap:8px}
+ .meal-day-head h2{font-size:17px}
+ .day-actions{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+ .day-actions button{padding:5px 6px;font-size:13px;white-space:nowrap}
+ .meal-day-totals{gap:6px}
+ .meal-day-totals>div{flex:1 1 0;display:grid;gap:0;padding:6px 10px;align-content:start}
+ .meal-day-totals span{font-size:12px}
+ .meal-day-totals strong{font-size:17px}
+ .meal-cards{gap:8px}
+ .meal-card{padding:8px 10px 6px}
+ .meal-table th,.meal-table td{padding:5px 4px}
+ .meal-table thead th{width:29%}
+ .meal-table td b{font-size:13px}
+ .meal-adjust .keto-fields{grid-template-columns:1fr 1fr}
  .meal-recipe-fields{grid-template-columns:1fr}
- .meal-day .ut-use label{width:100%}
- .meal-day .ut-use select{width:100%;margin-top:6px}
- .ux-nutrition{grid-template-columns:1fr}
- .ux-section-heading{gap:12px}
+ .meal-day .ut-use label{flex-basis:100%}
+ .ux-nutrition{grid-template-columns:1fr;gap:10px}
+ .ux-section-heading{gap:8px}
  .ux-week-nav{width:100%;justify-content:space-between}
- .ux-week-nav h2{font-size:19px}
- .ux-shop-tools{flex-wrap:wrap;gap:12px;margin-bottom:16px}
+ .ux-week-nav h2{font-size:17px}
+ .ux-section-heading .day-actions{display:flex}
+ .ux-shop-tools{gap:10px;margin-bottom:10px}
  .shopping-table{table-layout:auto}
- .shopping-table th,.shopping-table td{font-size:12px;padding:10px 6px}
- .shopping-table th:first-child{width:26px}
- .shopping-table th:nth-child(2){width:40%}
- .shopping-groups h3{padding:12px;font-size:17px}
- #settingsDlg{padding:16px;max-width:calc(100vw - 20px)}
- #settingsDlg .dialog-head h2{font-size:18px}
+ .shopping-table th,.shopping-table td{font-size:13px;padding:8px 6px}
+ .shopping-table th:first-child{width:30px}
+ .shopping-table th:nth-child(2){width:38%}
+ .shopping-table .ux-buy-check{padding-left:8px}
+ .shopping-groups h3{padding:8px 10px;font-size:15px}
+ #settingsDlg{padding:14px;max-width:calc(100vw - 20px)}
+ #settingsDlg .dialog-head h2{font-size:17px}
  #settingsPage .ut-grid{grid-template-columns:1fr}
  #settingsDlg .household-assignments{grid-template-columns:1fr}
- #dlg{padding:18px;max-width:calc(100vw - 20px)}
+ #dlg{padding:16px;max-width:calc(100vw - 20px)}
  .ux-dish-tabs button{font-size:12px}
- .ux-serve-portions{padding:4px 12px}
+ .ux-serve-portions{padding:2px 10px}
  .ux-serve-portions>div{gap:8px}
- .ux-serve-portions strong{font-size:22px}
+ .ux-serve-portions strong{font-size:20px}
  .ux-weigh-card .ux-disclosure select{max-width:60%}
 }
-
-.meal-breakfast-name{font-size:13px;line-height:1.4;margin:0 0 12px;font-weight:600}
+@media(max-width:360px){
+ .meal-table th,.meal-table td{font-size:12px;padding:4px 3px}
+ .day-actions button{font-size:12px}
+}

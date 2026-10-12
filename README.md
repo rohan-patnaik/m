@@ -100,6 +100,14 @@ field ordering. Existing wire formats remain accepted for their original records
 Recipe and settings edits autosave; modal editors still have explicit save actions.
 The sync status bar appears only for pending edits, disconnection or errors.
 
+The compact layout (October 12) keeps Meals and Shopping as the two primary pages
+with Day and Week inside Meals. Each open meal card is one Wife | Husband table: a
+shared dish appears once with both amounts beside it, prepared or weighed portions
+keep their cooked grams, un-weighed batch shares stay muted until weighed, and kcal
+and protein close the table. Day totals sit in a single strip beside the actions,
+weight/oil notes appear once per page, and keto portion adjustments stay behind a
+per-person disclosure inside the card. No quantities, records or math changed.
+
 Shopping distinguishes raw edible need from purchase weight. Cauliflower still
 uses a clearly identified 60% trimming estimate, now rounded in 100 g increments
 (575 g edible need suggests about 1 kg whole). Mushroom packets are conservatively
