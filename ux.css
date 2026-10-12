@@ -60,79 +60,92 @@ h4{font-size:14px;margin:0}
 #syncBar{position:sticky;top:0;z-index:30;margin:0 var(--theme-reserve) 12px 0;font-size:13px;padding:8px 12px}
 #syncBar button{min-height:32px;padding:4px 10px}
 
-/* Planner toolbar: Day/Week switch plus the two independent diet assignments */
-.meal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-.meal-view-switch{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--paper)}
-.meal-view-switch a{display:flex;align-items:center;min-height:var(--tap);padding:5px 15px;color:var(--ink);font-size:13px;text-decoration:none;font-weight:600}
+/* Planner toolbar: Day/Week switch plus the two independent diet assignments, one 36 px row */
+.meal-toolbar{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;margin-bottom:14px}
+.meal-view-switch{display:flex;height:var(--tap);border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--paper)}
+.meal-view-switch a{display:flex;align-items:center;padding:0 16px;color:var(--ink);font-size:13px;text-decoration:none;font-weight:600}
 .meal-view-switch a[aria-current=page]{background:var(--accent);color:var(--accent-ink)}
-.meal-assignments{display:flex;gap:14px;flex-wrap:wrap}
-.meal-assignments>div{display:flex;align-items:center;gap:6px}
-.meal-assignments b{font-size:13px}
-.meal-assignments select{font-size:13px;min-height:34px;padding:4px 8px;min-width:0;border-radius:8px}
+.meal-assignments{display:flex;gap:8px;flex-wrap:wrap}
+.meal-assignments>div{display:flex;align-items:center;gap:4px;height:var(--tap);padding:0 3px 0 12px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
+.meal-assignments b{font-size:13px;font-weight:600;margin-right:4px}
+.meal-assignments select{font-size:13px;height:28px;min-height:28px;padding:2px 8px;min-width:0;border-radius:999px;background:var(--paper2)}
 
 /* Day / week headings */
-.ux-day-heading{display:flex;align-items:center;gap:8px;margin:0 0 8px;flex-wrap:wrap}
-.ux-day-heading h2{font-size:19px;margin-right:auto}
-.ux-day-heading>button{min-height:var(--tap)}
-.ux-day-heading>button:first-child,.ux-day-heading>button:nth-child(3){font-size:20px;line-height:1;padding:0 12px;min-width:var(--tap)}
-.ux-day-heading+.ux-note{margin:-2px 0 10px}
+/* ‹ date › travel together; Today / Calendar sit in a separate right-hand group */
+.ux-day-heading{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;margin:0 0 6px;flex-wrap:wrap}
+.ux-day-nav,.ux-week-nav{display:flex;align-items:center;gap:6px;min-width:0}
+.ux-day-nav h2{font-size:19px;min-width:13em;text-align:center}
+.ux-day-nav>button,.ux-week-nav>button{width:var(--tap);min-width:var(--tap);padding:0;font-size:20px;line-height:1}
+.ux-day-tools{display:flex;align-items:center;gap:8px;margin-left:auto}
+.ux-day-heading+.ux-note{margin:0 0 12px}
 .ux-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px}
-.ux-week-nav{display:flex;align-items:center;gap:8px}
 .ux-week-nav h2{font-size:19px}
-.ux-week-nav>button{font-size:20px;line-height:1;padding:0 12px;min-width:var(--tap)}
 .ux-section-heading+.ux-note{margin:0 0 12px}
 
 /* Day card */
-.meal-day.panel{padding:14px;margin:0 0 14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 4px #192b3a0a}
-.meal-day-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.meal-day.panel{padding:16px;margin:0 0 14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 4px #192b3a0a}
+.meal-day-head{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;flex-wrap:wrap;margin-bottom:12px}
 .meal-day-head h2{font-size:18px;margin:0}
 .meal-day-head h2 small{font-size:13px;font-weight:400;color:var(--muted);margin-left:6px}
-.day-actions{display:flex;flex-wrap:wrap;gap:6px}
-.day-actions button{padding:5px 11px;font-size:13px}
-.meal-day-totals{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
-.meal-day-head .meal-day-totals{margin:0;flex:1 1 360px}
-.meal-day-totals>div{flex:1 1 200px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;background:var(--paper2);border-radius:8px;padding:6px 12px;min-height:var(--tap)}
+.day-actions{display:flex;flex-wrap:wrap;gap:8px}
+.day-actions button{padding:0 12px;font-size:13px}
+/* Day page: totals strip on its own row, the four day actions right-aligned below it */
+.meal-day-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.meal-day-head .meal-day-totals{margin:0;flex:1 1 100%}
+.meal-day-today .day-actions{margin-left:auto}
+.meal-day-totals>div{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap;background:var(--paper2);border-radius:8px;padding:7px 12px;min-height:var(--tap)}
 .meal-day-totals span{font-size:13px;color:var(--muted)}
 .meal-day-totals span:first-child{color:var(--ink);font-weight:600}
 .meal-day-totals small{font-size:12px;font-weight:400;color:var(--muted)}
 .meal-day-totals strong{font-size:18px;line-height:1.2;font-variant-numeric:tabular-nums}
-.meal-day .ux-warning{margin:0 0 10px}
-.meal-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
-.meal-card{background:var(--paper2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px 8px;min-width:0}
+.meal-day .ux-warning{margin:0 0 12px}
+.meal-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.meal-card{background:var(--paper2);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;min-width:0}
 .meal-snacks{grid-column:1/-1}
 .meal-snacks .meal-table{max-width:620px}
-.meal-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:30px}
-.meal-card-head h3{font-size:15px;margin:0}
+.meal-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;min-height:32px}
+.meal-card-head h3{font-size:15px;font-weight:650;margin:0}
 .meal-card-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
 .meal-card .ing{min-height:30px;font-size:12px;padding:2px 0;text-decoration:underline;text-underline-offset:3px;font-weight:600}
 
 /* The quantity table: Food | Wife | Husband */
 .meal-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
-.meal-table th,.meal-table td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left;font-size:13px;text-transform:none;letter-spacing:0;line-height:1.35}
+.meal-table th,.meal-table td{padding:6px;border-bottom:1px solid var(--line);vertical-align:baseline;text-align:left;font-size:13px;text-transform:none;letter-spacing:0;line-height:18px}
 .meal-table th:first-child,.meal-table td:first-child{padding-left:0}
 .meal-table th:last-child,.meal-table td:last-child{padding-right:0}
-.meal-table thead th{font-size:12px;color:var(--muted);font-weight:600;padding-top:2px;padding-bottom:6px;width:31%}
+.meal-table thead th{font-size:12px;line-height:16px;color:var(--muted);font-weight:600;padding-top:0;padding-bottom:6px;vertical-align:bottom;width:31%}
 .meal-table thead th:first-child{width:auto}
-.meal-table thead th small{display:block;font-size:11px;font-weight:400}
+.meal-table thead th small{display:block;font-size:12px;font-weight:400}
 .meal-table tbody th{font-weight:500;color:var(--ink);overflow-wrap:anywhere}
 .meal-table td{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .meal-table td b{font-weight:650}
-.meal-table td small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:1px}
+.meal-table td small{display:block;font-size:12px;line-height:16px;color:var(--muted);font-weight:400;margin-top:1px}
 .meal-table .meal-empty{color:var(--muted)}
 .meal-table .meal-unweighed b{color:var(--muted);font-weight:500}
-.meal-menu{font-size:12px;line-height:1.4;color:var(--muted);margin:0 0 6px}
+.meal-menu{font-size:12px;line-height:17px;color:var(--muted);margin:0 0 6px}
 .meal-menu b{color:var(--ink);font-weight:600}
 .meal-menu span{margin:0 4px}
-.meal-table tfoot th,.meal-table tfoot td{border-bottom:0;padding-top:4px;padding-bottom:1px;font-size:12px;color:var(--muted)}
-.meal-table tfoot tr:first-child th,.meal-table tfoot tr:first-child td{padding-top:6px}
+.meal-table tfoot th,.meal-table tfoot td{border-bottom:0;padding-top:2px;padding-bottom:0;font-size:12px;color:var(--muted)}
+.meal-table tfoot tr:first-child th,.meal-table tfoot tr:first-child td{padding-top:8px}
 .meal-table tfoot tr:first-child td{font-size:14px;font-weight:650;color:var(--ink)}
 .meal-table .meal-none{padding:8px 0;color:var(--muted);border:0}
-.meal-foot{font-size:11px;color:var(--muted);margin:6px 0 0}
+.meal-foot{font-size:12px;color:var(--muted);margin:8px 0 0}
 .meal-note{font-size:12px;line-height:1.45;color:var(--muted);margin:8px 0 0}
-.meal-none{font-size:13px;color:var(--muted);margin:4px 0 8px}
+.meal-none{font-size:13px;color:var(--muted);margin:4px 0 0}
+/* Laptop: when Breakfast shows its menu line, Lunch and Dinner reserve the same slot so the
+   Wife | Husband headers line up across the row. Cards keep their natural heights. */
+@media(min-width:1001px){
+ .meal-cards:has(.meal-menu) .meal-menu{min-height:34px}
+ .meal-cards:has(.meal-menu)>.meal-card:not(.meal-snacks)>.meal-card-head+.meal-table{margin-top:44px}
+ .meal-snacks{display:grid;grid-template-columns:minmax(0,620px) minmax(0,1fr);column-gap:28px;align-items:start}
+ .meal-snacks>*{grid-column:1}
+ .meal-snacks>.meal-card-head{grid-column:1/-1}
+ .meal-snacks>.meal-note{grid-column:2;grid-row:2;margin:0;padding-left:14px;border-left:2px solid var(--line);max-width:60ch}
+}
 
 /* Keto per-person adjustments stay inside the card, closed by default */
-.meal-adjust{font-size:12px;margin:6px 0 0}
+.meal-adjust{font-size:12px;margin:10px 0 0;padding-top:6px;border-top:1px solid var(--line)}
+.meal-adjust+.meal-adjust{margin-top:2px;padding-top:0;border-top:0}
 .meal-adjust::after{content:'';display:block;clear:both}
 .meal-adjust>span{float:left;color:var(--muted);font-weight:600;white-space:nowrap;line-height:28px;margin-right:8px}
 .meal-adjust .keto-adjust{margin:0;border:0;padding:0}
@@ -142,11 +155,11 @@ h4{font-size:14px;margin:0}
 .meal-adjust .keto-fields input,.meal-adjust .keto-fields select{width:100%;font-size:13px;padding:5px 7px;min-height:32px}
 .meal-adjust .keto-protein-field{grid-column:1/-1}
 .meal-adjust .keto-protein-choices{gap:4px;flex-wrap:wrap}
-.meal-adjust .keto-protein-choices button{font-size:11px;padding:4px 7px;min-height:30px}
-.meal-adjust .keto-adjust p{font-size:11px;margin:8px 0 0}
+.meal-adjust .keto-protein-choices button{font-size:12px;padding:4px 8px;min-height:30px}
+.meal-adjust .keto-adjust p{font-size:12px;margin:8px 0 0}
 
 /* Secondary per-day controls */
-.meal-day-more{margin-top:8px}
+.meal-day-more{margin-top:12px}
 .meal-day-more .ux-disclosure{padding:8px 0}
 .meal-day-more .ux-disclosure:last-child{padding-bottom:0}
 .meal-day-more .ux-disclosure>summary{font-size:13px}
@@ -305,17 +318,17 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .ux-settings-link{position:relative;order:0}
  .tabs.ux-nav{order:1;width:calc(100% + var(--theme-reserve));margin:0 calc(-1*var(--theme-reserve)) 0 0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
  .tabs.ux-nav a{justify-content:center;font-size:14px;padding:6px}
- .meal-toolbar{gap:10px;margin-bottom:10px}
+ .meal-toolbar{gap:8px;margin-bottom:12px}
  .meal-view-switch{width:100%}
  .meal-view-switch a{flex:1;justify-content:center}
  .meal-assignments{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
- .meal-assignments>div{display:flex;flex-wrap:wrap;gap:4px 6px;align-content:start}
- .meal-assignments b{width:100%;font-size:12px}
- .meal-assignments select{max-width:100%;flex:1;font-size:13px;padding:4px 6px}
+ .meal-assignments>div{height:auto;flex-wrap:wrap;gap:4px;padding:6px 6px 6px 8px;border-radius:10px;align-content:start}
+ .meal-assignments b{width:100%;font-size:12px;margin:0}
+ .meal-assignments select{flex:1 1 0;max-width:100%;height:32px;min-height:32px;padding:2px 6px;border-radius:8px}
  .ux-day-heading{gap:6px}
- .ux-day-heading h2{font-size:17px}
- .ux-day-heading>button:last-child{font-size:13px;padding:0 10px}
- .ux-day-heading .text-btn{font-size:13px}
+ .ux-day-nav{flex:1 1 100%}
+ .ux-day-nav h2{flex:1;min-width:0;font-size:16px}
+ .ux-day-tools button{font-size:13px;padding:0 10px}
  .meal-day.panel{padding:10px;margin-bottom:12px}
  .meal-day-head{gap:8px}
  .meal-day-head h2{font-size:17px}
@@ -326,7 +339,7 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .meal-day-totals span{font-size:12px}
  .meal-day-totals strong{font-size:17px}
  .meal-cards{gap:8px}
- .meal-card{padding:8px 10px 6px}
+ .meal-card{padding:10px 12px}
  .meal-table th,.meal-table td{padding:5px 4px}
  .meal-table thead th{width:29%}
  .meal-table td b{font-size:13px}
@@ -357,6 +370,9 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .ux-weigh-card .ux-disclosure select{max-width:60%}
 }
 @media(max-width:360px){
+ .meal-assignments{grid-template-columns:1fr}
+ .meal-assignments>div{flex-wrap:nowrap;align-items:center}
+ .meal-assignments b{width:auto;margin-right:4px}
  .meal-table th,.meal-table td{font-size:12px;padding:4px 3px}
  .day-actions button{font-size:12px}
 }
