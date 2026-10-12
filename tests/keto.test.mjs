@@ -311,6 +311,19 @@ test('compact quantity tables retain every person’s food and distinguish share
  assert.ok(different.find(r=>r.label==='Cabbage').h);assert.equal(different.find(r=>r.label==='Cabbage').w,undefined);
 });
 
+test('meal cards show generic food names while product surfaces keep brands',()=>{
+ const {run,shopping}=app(true);run("householdDiets={w:'keto',h:'keto'}");
+ const days=Array.from({length:7},(_,i)=>run(`uxDayHTML(${i})`)).join(''),cards=days.match(/<p class="meal-menu">[\s\S]*?<\/p>|<table class="meal-table">[\s\S]*?<\/table>/g).join('');
+ assert.match(days,/data-keto-value="paneerMM" aria-pressed="true">Milky Mist<\/button>/);
+ assert.match(cards,/<p class="meal-menu">Ready portions \+ Paneer/);assert.match(cards,/<th scope="row">Paneer<\/th>/);
+ assert.doesNotMatch(cards,/Heritage|Milky Mist|Nutrela|Saffola|Amul|ATOM|Pillsbury|Tata|Borges|DMart/);
+ assert.deepEqual(['curd','curdH','paneer','paneerMM','paneerHP','soyN','soyS','butter','butterH','milk','whey','atta','oats','arhar','oil','pasta','egg','eggWhite','almonds'].map(id=>run(`uxFoodRow(L('${id}',1)).label`)),['Curd','Curd','Paneer','Paneer','High-protein paneer','Soya chunks','Soya chunks','Butter','Butter','Milk','Whey','Roti atta','Oats','Toor dal','Oil','Pasta','Whole eggs','Extra whites','Almonds']);
+ assert.equal(run("uxMealText('Ready portions + high-protein paneer')"),'Ready portions + High-protein paneer');assert.equal(run("uxMealText('Soya sabzi · Nutrela')"),'Soya sabzi');
+ assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + Milky Mist paneer');
+ assert.match(run('uxProductChoicesHTML()'),/Milky Mist paneer[\s\S]*Amul salted butter/);assert.equal(run('UX_FOOD_NAMES.curdH'),'Heritage curd');
+ run('renderShopping()');assert.match(shopping.innerHTML,/Milky Mist regular paneer|Heritage/);
+});
+
 test('prepared batch serving appears once using its frozen cooked weight',()=>{
  const {run}=app(true);run("householdDiets={w:'balanced',h:'keto'};savedBatches.test={recipe:'K4',cookedOn:dateForDay(0),vessel:'kadhai',tare:0,netWeight:300,createdAt:1,ingredients:[{id:'bhindi',q:175,n:{k:57.75,p:3.3775,fb:5.6}}],servings:[{date:dateForDay(0),meal:'l',person:'h',component:'sabzi',share:1,grams:300}]}");
  const rows=run("uxServingRows(0,'l','h')");
