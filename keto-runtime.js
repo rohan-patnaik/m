@@ -112,6 +112,7 @@ function updateKetoPortion(key,field,value){
  if(field==='protein'){cfg.protein=value;cfg.quantity=value==='eggs'?4:value==='chicken'?250:75;cfg.soya=0;cfg.oil=value==='paneer'?0:3;}
  else if(['paneerType','curdType'].includes(field))cfg[field]=value;
  else cfg[field]=field==='sabziFraction'?Number(value)/ketoVegetableBase(personRecipe(state.days[i],p)).reduce((n,x)=>n+x.q,0):Number(value);
+ if(field==='cashews'&&cfg.cashews>0)cfg.walnuts=0;
  MealCloud.validateRecord(key,cfg);ketoMeals[key]=cfg;save();render();return true;
 }
 document.addEventListener('change',e=>{const el=e.target.closest('[data-keto-field]');if(!el)return;el.setCustomValidity('');if(!el.checkValidity()){el.reportValidity();return;}try{updateKetoPortion(el.dataset.ketoKey,el.dataset.ketoField,el.value);}catch(error){el.setCustomValidity(error.message);el.reportValidity();}});

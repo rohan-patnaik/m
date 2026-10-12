@@ -110,6 +110,7 @@ test('wife Keto defaults resolve exact scope recipe and preserve explicit share 
 test('legacy walnut overrides neither duplicate nuts nor block unrelated edits',()=>{
  const {run}=app();
  for(const amount of [0,33]){run(`ketoMeals[ketoMealKey(0,'h','b')]={protein:'paneer',quantity:75,soya:0,oil:0,paneerType:'paneerHP',walnuts:${amount}}`);assert.equal(run("ketoConfig(state.days[0],'h','b').cashews"),0);assert.equal(run("ketoConfig(state.days[0],'h','b').walnuts"),amount);assert.doesNotThrow(()=>run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',80)"));}
+ run("ketoMeals[ketoMealKey(0,'h','b')]={protein:'paneer',quantity:75,soya:0,oil:0,walnuts:33};updateKetoPortion(ketoMealKey(0,'h','b'),'cashews',10)");assert.equal(run("ketoConfig(state.days[0],'h','b').walnuts"),0);
  run('ketoMeals={}');assert.equal(run("ketoConfig(state.days[0],'h','b').cashews"),10);
 });
 test('P and Y batches conserve default fresh oil with chilla boosts and portion modes',()=>{
@@ -554,7 +555,7 @@ test('round 3 UI: retired K3 pickers, resolved selections, purchase records, mil
  run("delete globalThis.plannedRecipe;state.weekKey='2026-10-05'");
  assert.match(run('uxWeekRow(state.days[2],2)'),/value="K3" selected/);
  // Purchase state: fallback reads the stored record; Root's helper can force a re-check.
- run("householdDiets={w:'balanced',h:'keto'};activityRecords={'buy/2026-10-05/gobi':{checked:true,updatedAt:1}};renderShopping()");
+ run("householdDiets={w:'balanced',h:'keto'};activityRecords={'buy/2026-10-05/gobi':shoppingPurchaseRecord('gobi',true)};renderShopping()");
  assert.match(shopping.innerHTML,/data-ux-buy="gobi"[^>]*checked/);assert.doesNotMatch(shopping.innerHTML,/re-check/);
  run("globalThis.shoppingChecked=row=>false;renderShopping();delete globalThis.shoppingChecked");
  assert.doesNotMatch(shopping.innerHTML,/data-ux-buy="gobi"[^>]*checked/);assert.match(shopping.innerHTML,/quantity changed — re-check/);
