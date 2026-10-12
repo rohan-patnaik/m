@@ -141,3 +141,13 @@ New cooked batches snapshot complete macro totals, ranges, flags and profile met
 The retained mixed household template remains a **Keto draft requiring portion review**: approximately 1,473 kcal, 105 g protein and 51–53 g counted available carbohydrate per husband day. Passing tests verifies calculations, not dietary adequacy, actual oil consumption, trimming yield or ketosis. The app does not add fat or paneer to fill calorie gaps. Trial targets remain editable estimates.
 
 Run `npm test` plus both `MEAL_TEST_URL=https://stoic-weasel-242.convex.cloud node tests/convex-integration.mjs` and `node tests/convex-nutrition-integration.mjs` with the same environment variable. The latter configures development format9 defaults, preserves existing data, restores changed fixture values, and tests old-client protection, complete snapshots and transactional rollback. Production accepts reads from old clients but requires writer format9 once its nutrition-version setting is installed.
+Round 3 polish (October 12). New cooked batches no longer offer retired K3.
+Sabzi pickers select the recipe the math counts (`plannedRecipe(raw, scope)`),
+so a stored current/future K3 shows its K5 replacement while saved historical
+weeks keep K3 readable. Product, yield and mushroom-packet changes autosave like
+Settings. Shopping checkboxes use `shoppingChecked(row)` and save
+`shoppingPurchaseRecord(id, checked)`; a stored tick whose quantities no longer
+cover the row renders unchecked with a muted "quantity changed — re-check" hint.
+The milk carb evidence derives from the 100 g panel × the density in Settings.
+An explicit old walnut-only keto meal shows a one-line review note with a "Use
+cashews instead" button; walnut grams are never renamed silently.

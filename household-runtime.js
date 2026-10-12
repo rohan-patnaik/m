@@ -80,7 +80,8 @@ function assignedBalancedTitle(day,p,m){
  return (prepared?batchName(prepared.batch):recipeName(recipe))+' + '+DALNAMES[day.dal]+' dal + '+(m==='l'&&p==='h'?'rice':'roti')+(m==='l'?' + curd':NO_EXTRA(recipe)?'':' + dinner protein');
 }
 function recipeSelectorsHTML(day,i){
- const record=sharedRecipes[sharedKey(i)]||{};
+ // Show the recipe the math counts for this week, not a retired raw value.
+ const record=Object.fromEntries(Object.entries(sharedRecipes[sharedKey(i)]||{}).map(([k,v])=>[k,v&&typeof plannedRecipe==='function'?plannedRecipe(v,state.weekKey||'template'):v]));
  const options=selected=>`<optgroup label="All sabzis">${Object.entries(SABZIS).map(([id,n])=>`<option value="${id}"${selected===id?' selected':''}>${esc(n)}</option>`).join('')}</optgroup><optgroup label="Vegetable bases">${Object.entries(KETO_SHARED).filter(([id])=>!KETO_RETIRED.includes(id)||id===selected).map(([id,n])=>`<option value="${id}"${selected===id?' selected':''}>${esc(n)}</option>`).join('')}</optgroup>`;
  return `<div class="keto-fields recipe-selectors"><label>Shared sabzi<select aria-label="${DAYS[i]} shared sabzi" data-recipe-day="${i}" data-recipe-person="shared"><option value="original"${record.recipe?'':' selected'}>Saved menu: ${esc(SABZIS[day.s])}</option>${options(record.recipe)}</select></label>${['w','h'].map(p=>`<label>${PERSON_NAMES[p]} sabzi<select aria-label="${DAYS[i]} ${PERSON_NAMES[p]} sabzi" data-recipe-day="${i}" data-recipe-person="${p}"><option value="shared"${record[p]?'':' selected'}>Use shared: ${esc(recipeName(sharedRecipe(day)))}</option>${options(record[p])}</select></label>`).join('')}</div>`;
 }
