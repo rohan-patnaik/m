@@ -47,6 +47,7 @@ function shoppingBuy(row){
  if(row.id==='mushroom')return row.packs&&row.size?`${row.packs} × ${shoppingQuantity(row.size)}<small>${shoppingQuantity(row.buy)} in packets</small>`:`${shoppingQuantity(row.buy)}<small>in packets</small>`;
  if(row.id==='whey')return shoppingQuantity(row.buy)+' powder';
  if(row.id==='chicken')return `${row.packs} × 250 g or ${row.largePacks} × 500 g${row.largeLeftover>1e-8?`<small>${shoppingQuantity(row.largeLeftover)} left with 500 g packs</small>`:''}`;
+ if(row.id==='egg')return shoppingQuantity(row.buy,row.unit)+'<small class="ux-buy-note">Whole eggs plus any extra eggs bought only for their whites; those yolks go unused</small>';
  if(row.packs)return `${row.packs} × ${shoppingQuantity(row.size,row.unit)}`;
  return shoppingQuantity(row.buy,row.unit);
 }
