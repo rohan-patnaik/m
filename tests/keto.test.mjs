@@ -870,7 +870,7 @@ test('Edit meals breakfast recipes: per-assignment selects, form-only until Save
  // Both Balanced: single "Breakfast", no keto selects.
  let f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Breakfast<select data-ek="b">/);assert.doesNotMatch(f,/data-ek="b[hw]"/);
  // Husband Keto: Balanced select labelled for Wife plus the Husband recipe select from the real helper.
- run("householdDiets={w:'balanced',h:'keto'}");const n=run("ketoBreakfastOptions(0,'h').length");assert.ok(n>=5);
+ run("householdDiets={w:'balanced',h:'keto'}");const n=run("ketoBreakfastOptions(0,'h').length");assert.equal(n,7);
  f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Wife breakfast<select data-ek="b">/);
  const bh=f.match(/<label>Husband breakfast<select data-ek="bh">[\s\S]*?<\/select>/)[0];assert.equal(optCount(bh),n+1);assert.match(bh,/^<label>Husband breakfast<select data-ek="bh"><option value="" selected>Current \/ Custom<\/option><option value="omelette"[^>]*>Mushroom omelette · \d+ kcal/);assert.match(bh,/<option value="eggAvocado">Eggs &amp; avocado · \d+ kcal<\/option>/);assert.doesNotMatch(f,/data-ek="bw"/);
  // Both Keto: no common select; chicken disabled with the reason once two chicken meals exist.
@@ -889,7 +889,7 @@ test('Edit meals breakfast recipes: per-assignment selects, form-only until Save
  run("els['[data-ek=\"s\"]'].value='S12'");assert.match(run('editFormHTML(collectEdit())'),/data-ek="bh">[\s\S]*<option value="eggAvocado" selected>/);
  assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before,'selecting is pure form state; Cancel leaves nothing behind');
  // Helper absent: inline message, no mutation.
- run("els['[data-et=\"wheyH\"]']={checked:false};var box={dataset:{},textContent:''};els['#dlgBody .editbtns']={after(m){els['#dlgBody [data-editmessage]']=m}};document.createElement=()=>box");
+ run("globalThis.prepareKetoBreakfasts=undefined;els['[data-et=\"wheyH\"]']={checked:false};var box={dataset:{},textContent:''};els['#dlgBody .editbtns']={after(m){els['#dlgBody [data-editmessage]']=m}};document.createElement=()=>box");
  await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);assert.equal(run('dlg.open'),true);assert.equal(run('order.length'),0);
  // Helper throws: message shown, dialog open, nothing changed.
  run("globalThis.prepareKetoBreakfasts=(i,sel,day)=>{calls.push({i,sel,day:structuredClone(day),sNow:state.days[0].s});throw Error('This would exceed 3 whey scoops today.')}");

@@ -54,3 +54,8 @@ test('Edit breakfast validation uses tentative flags without touching the draft 
  const cfg=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'}))"));assert.equal(Object.values(cfg)[0].quantity,3);assert.equal(run('JSON.stringify({days:state.days,ketoMeals,cloudDraft})'),before);
  run("ketoMeals[ketoMealKey(0,'h','l')]={...ketoConfig(state.days[0],'h','l'),whey:2.5}");assert.throws(()=>run("prepareKetoBreakfasts(0,{h:'boiledEggs'},{...state.days[0],wheyH:true})"),/3 whey/);run('ketoOptions.carbBudget=100');const without=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'},{...state.days[0],wheyH:false}))"));assert.equal(Object.values(without)[0].quantity,3);
 });
+
+test('a selected breakfast shows the saved portions and their actual macros',()=>{
+ const run=ready();run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoBreakfastOptions(0,'h').find(x=>x.id==='boiledEggs').config,avocado:160}");
+ const offered=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h').find(x=>x.id==='boiledEggs'))"));near(offered.nutrition.k,run("comparisonSum(meal(state.days[0],'b','h')).k"));assert.equal(offered.config.avocado,160);
+});
