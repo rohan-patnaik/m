@@ -536,12 +536,12 @@ test('round 2 UI: fixed theme switch, product selectors, buying assumptions and 
  run('renderKeto()');
  assert.doesNotMatch(root.innerHTML,/<td>0 g<\/td><td>0 g<\/td>/);assert.doesNotMatch(run('trialHTML()+ketoReviewHTML()'),/walnut/i);
  const evidence=root.innerHTML.slice(root.innerHTML.indexOf('Packaged products and evidence'));assert.doesNotMatch(evidence.slice(0,evidence.indexOf('Five doctor')),/walnut/i);
- run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:10}");assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Planned cashews \(g\)/);assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','b')"),/walnut/i);
+ run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:10}");assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Cashews \(g\)<input[^>]*value="10"/);assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Walnuts \(g\)<input[^>]*data-keto-field="walnuts"/);
  assert.match(root.innerHTML,/my\.clevelandclinic\.org\/health\/treatments\/24003-ketosis/);assert.ok(root.innerHTML.includes(`${run('F(COMPARE_NUTRIENTS.milk.c*milkDensity())')} g carbs per 100 ml (the 4.6 g per 100 g panel × the 1.03 g/ml density set in Settings)`));
  assert.match(root.innerHTML,/Milky Mist paneer \(500 g pouch\) 283 kcal/);assert.match(root.innerHTML,/Keto draft/);
 });
 
-test('round 3 UI: retired K3 pickers, resolved selections, purchase records, milk density and legacy walnuts',()=>{
+test('round 3 UI: retired K3 pickers, resolved selections, purchase records, milk density and editable walnuts',()=>{
  const {run,shopping}=app(true);
  // New batches never offer retired K3; a historical K3 draft stays readable.
  run("var dlg={innerHTML:'',textContent:''};const q=document.querySelector;document.querySelector=s=>s==='#dlgBody'||s==='#dlgTitle'?dlg:q(s)");
@@ -561,7 +561,27 @@ test('round 3 UI: retired K3 pickers, resolved selections, purchase records, mil
  assert.doesNotMatch(shopping.innerHTML,/data-ux-buy="gobi"[^>]*checked/);assert.match(shopping.innerHTML,/quantity changed — re-check/);
  // Milk evidence follows the editable density.
  run("state.density=1.1;renderKeto()");assert.match(run('document.querySelector("#keto").innerHTML'),/5\.1 g carbs per 100 ml \(the 4\.6 g per 100 g panel × the 1\.1 g\/ml/);
- // An explicit old walnut record stays visible with a review note.
+ // An explicit old walnut record stays visible as an editable field; no separate legacy note.
  run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:0,walnuts:20}");
- const edit=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(edit,/Older record: 20 g walnuts are still counted/);assert.match(edit,/data-keto-use-cashews="keto\/2026-10-05\/day\/0\/h\/b" data-keto-value="20"/);
+ const edit=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(edit,/Walnuts \(g\)<input[^>]*value="20" data-keto-key="keto\/2026-10-05\/day\/0\/h\/b" data-keto-field="walnuts"/);assert.doesNotMatch(edit,/Older record|data-keto-use-cashews/);
+});
+
+test('husband keto controls: whey scoops, extra egg whites, almonds and guarded Root helpers',()=>{
+ const {run}=app(true);run("householdDiets={w:'keto',h:'keto'};state.days[0].wheyH=true;state.days[0].off=false;state.days[0].skip={}");
+ const h=run("ketoEditHTML(state.days[0],0,'h','b')"),w=run("ketoEditHTML(state.days[0],0,'w','b')");
+ assert.match(h,/Whey scoops<input[^>]*min="0" max="3" step="0.5" value="1"[^>]*data-keto-field="whey"><small class="keto-hint">today 1 of 3 scoops<\/small>/);
+ assert.match(h,/Extra egg whites<input[^>]*min="0" max="12" step="1" value="0"[^>]*data-keto-field="eggWhites"><small class="keto-hint">whole eggs keep yolks/);
+ assert.match(h,/Almonds \(g\)<input[^>]*max="150"[^>]*data-keto-field="almonds"/);assert.match(h,/Ground flaxseed \(optional, historical\)/);
+ assert.doesNotMatch(w,/eggWhites/);assert.match(w,/data-keto-field="whey"/);
+ assert.match(run("ketoSuggestion(state.days[0],'h','b').note"),/plus 1 scoop whey with water\./);
+ // Root's per-meal scoops and daily total drive the text; over 3 is flagged, not blocked.
+ run("ketoMeals[ketoMealKey(0,'h','l')]={...ketoConfig(state.days[0],'h','l'),whey:1.5};globalThis.ketoWheyDailyTotal=()=>3.5");
+ const lunch=run("ketoEditHTML(state.days[0],0,'h','l')");assert.match(lunch,/value="1.5"[^>]*data-keto-field="whey"><small class="keto-hint keto-over">today 3.5 of 3 scoops · over 3/);
+ assert.match(run("ketoSuggestion(state.days[0],'h','l').note"),/Plus 1\.5 scoops whey with water\./);
+ run('delete globalThis.ketoWheyDailyTotal');assert.match(run("ketoEditHTML(state.days[0],0,'h','l')"),/today 2\.5 of 3 scoops/);
+ // Apply button appears only when Root provides an available plan.
+ assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
+ run("globalThis.applyKetoInventoryPlan=()=>true;globalThis.ketoInventoryPlanAvailable=()=>false");assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
+ run("globalThis.ketoInventoryPlanAvailable=()=>true");assert.match(run('ketoReviewHTML()'),/data-keto-apply-plan>Apply suggested husband plan to draft<\/button><small>Fills the draft only; review each day, then save\./);
+ const trial=run('trialHTML()');assert.match(trial,/4–5 strength sessions\/week/);assert.doesNotMatch(trial,/45 min|flax/);assert.match(trial,/maintenance is unconfirmed/);
 });
