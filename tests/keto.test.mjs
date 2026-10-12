@@ -315,11 +315,11 @@ test('meal cards show generic food names while product surfaces keep brands',()=
  const {run,shopping}=app(true);run("householdDiets={w:'keto',h:'keto'}");
  const days=Array.from({length:7},(_,i)=>run(`uxDayHTML(${i})`)).join(''),cards=days.match(/<p class="meal-menu">[\s\S]*?<\/p>|<table class="meal-table">[\s\S]*?<\/table>/g).join('');
  assert.match(days,/data-keto-value="paneerMM" aria-pressed="true">Milky Mist<\/button>/);
- assert.match(cards,/<p class="meal-menu">Ready portions \+ Paneer/);assert.match(cards,/<th scope="row">Paneer<\/th>/);
+ assert.match(cards,/<p class="meal-menu">Paneer breakfast/);assert.match(cards,/<th scope="row">Paneer<\/th>/);
  assert.doesNotMatch(cards,/Heritage|Milky Mist|Nutrela|Saffola|Amul|ATOM|Pillsbury|Tata|Borges|DMart/);
  assert.deepEqual(['curd','curdH','paneer','paneerMM','paneerHP','soyN','soyS','butter','butterH','milk','whey','atta','oats','arhar','oil','pasta','egg','eggWhite','almonds'].map(id=>run(`uxFoodRow(L('${id}',1)).label`)),['Curd','Curd','Paneer','Paneer','High-protein paneer','Soya chunks','Soya chunks','Butter','Butter','Milk','Whey','Roti atta','Oats','Toor dal','Oil','Pasta','Whole eggs','Extra whites','Almonds']);
  assert.equal(run("uxMealText('Ready portions + high-protein paneer')"),'Ready portions + High-protein paneer');assert.equal(run("uxMealText('Soya sabzi · Nutrela')"),'Soya sabzi');
- assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + Milky Mist paneer');
+ assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Paneer breakfast');
  assert.match(run('uxProductChoicesHTML()'),/Milky Mist paneer[\s\S]*Amul salted butter/);assert.equal(run('UX_FOOD_NAMES.curdH'),'Heritage curd');
  run('renderShopping()');assert.match(shopping.innerHTML,/Milky Mist regular paneer|Heritage/);
 });
@@ -334,9 +334,9 @@ test('prepared batch serving appears once using its frozen cooked weight',()=>{
 
 test('keto proposals respect off meals and separate vegetarian/egg defaults',()=>{
  const {run}=app();
- assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + Milky Mist paneer');
- assert.equal(run("ketoSuggestion({...state.days[0],eggH:true},'h','b').name"),'Ready portions + Milky Mist paneer');
- assert.equal(run("ketoSuggestion({...state.days[0],eggH:false},'h','b').name"),'Ready portions + Milky Mist paneer');
+ assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Paneer breakfast');
+ assert.equal(run("ketoSuggestion({...state.days[0],eggH:true},'h','b').name"),'Paneer breakfast');
+ assert.equal(run("ketoSuggestion({...state.days[0],eggH:false},'h','b').name"),'Paneer breakfast');
  assert.equal(run("ketoSuggestion({...state.days[0],wheyW:false},'w','b').note.includes('whey')"),false);
  assert.equal(run("ketoSuggestion({...state.days[0],off:true},'w','b').skipped"),true);
  assert.equal(run("ketoSuggestion({...state.days[0],skip:{l:true}},'h','l').skipped"),true);
@@ -840,7 +840,7 @@ test('details popup, dinner-protein field, carb banner threshold, breakfast reci
  run("globalThis.assignedDayNutrition=(i,p)=>({...realDay(i,p),aHi:ketoOptions.carbBudget,carbUnknown:false})");assert.match(run('uxWarning(0)'),/Husband: carb budget needs review <button type="button" class="text-btn" data-ux-carbs="0,h">View carbs<\/button>/);
  run("globalThis.assignedDayNutrition=realDay");
  // Breakfast recipe picker: nothing without Root's helper; "Current / Custom" first; ineligible options disabled with the reason.
- run("householdDiets={w:'keto',h:'keto'};state.days[0].off=false;state.days[0].skip={}");
+ run("householdDiets={w:'keto',h:'keto'};state.days[0].off=false;state.days[0].skip={};globalThis.ketoBreakfastOptions=undefined");
  assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','b')"),/data-keto-breakfast|data-keto-field="avocado"/);
  run(`globalThis.ketoBreakfastOptions=(i,p)=>[{id:'omelette',name:'Mushroom omelette',nutrition:{k:520,p:38,a:5,aHi:7},dayNutrition:{a:40,aHi:46},eligible:true},{id:'chickenBowl',name:'Chicken & mushroom bowl',nutrition:{k:610,p:55,a:4,aHi:6},dayNutrition:{a:39,aHi:45},eligible:false,reason:'Chicken already planned twice this week'}]`);
  let b=run("ketoEditHTML(state.days[0],0,'h','b')");
