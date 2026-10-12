@@ -444,6 +444,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 
   <section class="panel section" id="labels">
     <h2>Packet labels</h2>
+    <div id="productRow"></div>
     <div id="labelTable"></div>
     <p class="hintline" id="labelStatus"></p>
     <div id="soyaRow" style="margin:10px 0"></div>
@@ -1088,7 +1089,8 @@ function render(){
   renderBatchList();
   renderShopping();
   // labels
-  const keys=['whey','paneer','paneerHP','curd','curdH','milk','butterH'];
+  const productRow=$('#productRow');if(productRow&&typeof uxProductChoicesHTML==='function')productRow.innerHTML=uxProductChoicesHTML();
+  const keys=['whey','paneerMM','paneer','paneerHP','curd','curdH','milk','butter','butterH'].filter(id=>DB[id]);
   $('#labelTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">kcal</th><th class="num">Protein g</th></tr></thead><tbody>${keys.map(id=>{
     const n=nut(id),basis=id==='milk'?'100 ml (58/3.1 per 100 g × density)':DB[id][3]==='serving'?'serving':DB[id][3]==='egg'?'egg':'100 '+DB[id][3];
     return`<tr><td>${DB[id][0]}<div style="font-size:11px;color:var(--muted)">per ${basis}</div></td>

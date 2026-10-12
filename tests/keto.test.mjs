@@ -21,7 +21,9 @@ test('UX progress round trips without changing ingredients and lists every sabzi
  run("sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
  assert.match(run('uxWeekRow(state.days[5],5)'),/Paneer bhurji/);
  assert.match(run("uxRecipeOptions('S12')"),/value="S12" selected/);
- assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,17);
+ assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,16);
+ assert.doesNotMatch(run("uxRecipeOptions('S12')"),/value="K3"/);assert.match(run("uxRecipeOptions('K3')"),/value="K3" selected/);
+ assert.doesNotMatch(run('recipeSelectorsHTML(state.days[5],5)'),/value="K3"/);
 });
 
 function app(withUX=false){
@@ -79,7 +81,7 @@ test('palak corn counts raw corn, shared portions and shopping under every diet 
   assert.ok(expected>0);assert.ok(Math.abs(after.corn-expected)<1e-8);
   for(const [id,q] of Object.entries(before))assert.ok(Math.abs(after[id]-q)<1e-8,`${w}/${h}: ${id} unchanged`);
   assert.equal(run("householdShopping().market.find(x=>x.id==='corn').buy"),Math.ceil(expected/100-1e-8)*100);
-  assert.match(run('uxWeekRow(state.days[1],1)'),/Palak corn/);
+  assert.match(run('uxWeekRow(state.days[1],1)'),/Spinach corn sabzi/);
   run('snapshotDraft();sharedRecipes={};hydrateDraft()');
   assert.equal(run("personRecipe(state.days[1],'w')"),'K5');
  }
@@ -121,7 +123,7 @@ test('meal cards reuse measured lunch and dinner portions and reject stale cooke
  }
  assert.equal(run('JSON.stringify(ledger())'),before);
  run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");
- assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Palak corn').unweighed"));
+ assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Spinach corn sabzi').unweighed"));
 });
 
 test('compact quantity tables retain every person’s food and distinguish shared from individual portions',()=>{
@@ -411,4 +413,33 @@ test('separate sabzis have separate weighing records and recipe-matched batch se
  run("Object.keys(batchDraft.selected).forEach(k=>{if(!k.startsWith('2026-10-10/'))batchDraft.selected[k]=false})");const b=JSON.parse(run('JSON.stringify(buildBatchPreview(true))'));math.validateBatch(b);assert.ok(b.servings.every(s=>s.person==='w'));assert.ok(math.claimsFor(b,b.servings.find(s=>s.meal==='d')).some(k=>k.endsWith('/protein')));
  const before=JSON.parse(run('JSON.stringify(ledger())'));run("savedBatches['fixture-bhurji']=buildBatchPreview(true)");const after=JSON.parse(run('JSON.stringify(ledger())'));for(const id of Object.keys(before))assert.ok(Math.abs(before[id]-(after[id]||0))<1e-7,id);
  run("sharedRecipes[sharedKey(5)].w='S5'");assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='paneer')"),true);assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='soyN')"),false);
+});
+
+test('round 2 UI: fixed theme switch, product selectors, buying assumptions and honest unknowns',()=>{
+ const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8'),html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(css,/\.ux-theme-btn\{position:fixed;top:var\(--theme-top\);right:var\(--theme-right\);z-index:35/);
+ assert.match(css,/#syncBar\{position:sticky;top:0;z-index:30;margin:0 var\(--theme-reserve\)/);assert.match(css,/\.ux-app-header\{padding-right:var\(--theme-reserve\)\}/);
+ assert.match(html,/id="themeBtn"/);assert.match(html,/id="settingsLink"/);assert.match(html,/id="productRow"/);
+ const {run,shopping,root}=app(true);
+ const products=run('uxProductChoicesHTML()');
+ assert.match(products,/<option value="paneerMM" selected>Milky Mist paneer · 500 g \(default\)/);assert.match(products,/<option value="butter" selected>Amul salted butter \(default\)/);
+ assert.match(products,/value="paneerHP">Heritage NOURISH\+ high-protein paneer/);assert.match(products,/value="butterH">Heritage table butter/);
+ run("foodChoices={paneer:'paneerHP',butter:'butterH',nuts:'cashews'}");assert.match(run('uxProductChoicesHTML()'),/value="paneerHP" selected/);
+ run("householdDiets={w:'balanced',h:'keto'}");
+ assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Optional Heritage butter/);
+ run("foodChoices.butter='butter'");assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Optional Amul butter/);
+ run('renderShopping()');
+ assert.match(shopping.innerHTML,/<details class="ux-disclosure ux-buying" data-shopping-assumptions><summary>Buying assumptions<\/summary>/);
+ assert.match(shopping.innerHTML,/data-ux-yield="corn"/);assert.match(shopping.innerHTML,/data-ux-mushroom-size/);assert.match(shopping.innerHTML,/never|always use the trimmed edible weight/);
+ assert.equal(run("shoppingBuy({id:'mushroom',needed:300,buy:360,packs:2,size:180})"),'2 × 180 g<small>360 g in packets</small>');
+ assert.equal(run("shoppingForm({id:'corn',yield:1,form:'Loose kernels'},{})"),'Loose kernels · 100% usable');
+ assert.equal(run("addedSugarText(comparisonEmpty())"),'Unknown');
+ assert.equal(run("addedSugarText({added:2,addedHi:6,addedUnknown:true})"),'2–6 g · incomplete data');
+ assert.equal(run("addedSugarText({added:0,addedUnknown:false})"),'0 g');
+ run('renderKeto()');
+ assert.doesNotMatch(root.innerHTML,/<td>0 g<\/td><td>0 g<\/td>/);assert.doesNotMatch(run('trialHTML()+ketoReviewHTML()'),/walnut/i);
+ const evidence=root.innerHTML.slice(root.innerHTML.indexOf('Packaged products and evidence'));assert.doesNotMatch(evidence.slice(0,evidence.indexOf('Five doctor')),/walnut/i);
+ run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:10}");assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Planned cashews \(g\)/);assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','b')"),/walnut/i);
+ assert.match(root.innerHTML,/my\.clevelandclinic\.org\/health\/treatments\/24003-ketosis/);assert.match(root.innerHTML,/4\.74 g carbs per 100 ml/);
+ assert.match(root.innerHTML,/Milky Mist paneer \(500 g pouch\) 283 kcal/);assert.match(root.innerHTML,/Keto draft/);
 });

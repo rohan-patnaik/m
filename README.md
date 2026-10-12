@@ -115,3 +115,19 @@ uses a clearly identified 60% trimming estimate, now rounded in 100 g increments
 counted at 180 g each, with 180–200 g sizes shown. Pantry packet estimates and the
 absence of home-stock subtraction are disclosed. No planned food portions were
 changed by the interface redesign.
+
+Round 2 controls (October 12). The light/dark switch is fixed at the top right
+(safe-area aware, above content and the sticky sync bar, below modal dialogs);
+the header and sync bar reserve its width so nothing sits under it on laptop or
+a 320 px phone. Settings → Food labels has Paneer (Milky Mist 500 g default,
+Heritage regular / NOURISH+ alternatives) and Butter (Amul salted default,
+Heritage alternative) selectors wired to `updateFoodChoice`. Shopping has a
+closed-by-default **Buying assumptions** panel with per-produce edible-yield %
+(`updateProduceYield`) and a 180/200 g mushroom packet setting
+(`updateMushroomPacketSize`); each produce row shows its buying form and the
+yield used. Yield affects purchase quantities only, never recipe grams or
+nutrition. Mushroom rows display the computed `packs × size` and total buy.
+Keto portions offer a cashews control (walnuts remain only in historical
+records), K5 is named "Spinach corn sabzi", plain-spinach K3 is hidden from new
+dropdowns, added sugar shows as unknown or a range (never an assumed 0 g), and
+saturated fat stays a lower bound with an incomplete-data note.

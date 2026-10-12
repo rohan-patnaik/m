@@ -10,7 +10,7 @@ function uxCurrentIndex(){return (new Date(dayViewISO()+'T12:00:00').getDay()+6)
 function uxMealName(i,p,m){const day=state.days[i];return m==='e'?'Planned snacks & milk':isKeto(p)?ketoSuggestion(day,p,m).name:assignedBalancedTitle(day,p,m);}
 function uxMealBasis(i,m){return JSON.stringify(['w','h'].map(p=>meal(state.days[i],m,p)));}
 function uxMealDone(i,m){const r=activityRecords[`done/${dateForDay(i)}/${m}`];return !!r?.complete&&r.basis===uxMealBasis(i,m);}
-const UX_FOOD_NAMES={atta:'Roti atta',rice:'Rice',oats:'Oats',besan:'Besan',poha:'Poha',whey:'Whey',egg:'Eggs',paneer:'Regular paneer',paneerHP:'High-protein paneer',soyN:'Nutrela chunks',soyS:'Saffola chunks',curd:'Milky Mist curd',curdH:'Heritage curd',milk:'Milk',nuts:'Mixed nuts',walnuts:'Walnuts',flax:'Ground flaxseed',butter:'Amul butter',butterH:'Heritage butter',chicken:'Chicken breast',corn:'Sweetcorn kernels'};
+const UX_FOOD_NAMES={atta:'Roti atta',rice:'Rice',oats:'Oats',besan:'Besan',poha:'Poha',whey:'Whey',egg:'Eggs',paneer:'Heritage paneer',paneerHP:'Heritage high-protein paneer',paneerMM:'Milky Mist paneer',soyN:'Nutrela chunks',soyS:'Saffola chunks',curd:'Milky Mist curd',curdH:'Heritage curd',milk:'Milk',nuts:'Mixed nuts',cashews:'Cashews',walnuts:'Walnuts',flax:'Ground flaxseed',butter:'Amul butter',butterH:'Heritage butter',chicken:'Chicken breast',corn:'Sweetcorn kernels'};
 const UX_DRY_FOODS=new Set(['atta','rice','oats','besan','poha','soyN','soyS','moong','masoor','arhar','rajma','chickpea','kalachana','pasta','maida']);
 const UX_RAW_FOODS=new Set(['chicken','onion','tomato','carrot','potato','gobi','bhindi','palak','arbi','mushroom','cucumber','beans','cabbage','corn']);
 function uxFoodRow(x){const unit=DB[x.id]?.[3]||'g',label=UX_FOOD_NAMES[x.id]||DB[x.id]?.[0]||x.id;if(unit==='serving')return {label,quantity:`${F(x.q)} ${F(x.q)>1?'scoops':'scoop'}`,detail:`${F(x.q*35)} g powder`};const quantity=unit==='egg'?`${F(x.q)} ${x.q===1?'egg':'eggs'}`:`${F(x.q)} ${unit}${UX_DRY_FOODS.has(x.id)?' dry':UX_RAW_FOODS.has(x.id)?' raw':''}`;return {label,quantity};}
@@ -61,7 +61,13 @@ function uxMealHTML(i,m){
  return `<section class="meal-card${m==='e'?' meal-snacks':''}" data-ux-meal="${m}"><div class="meal-card-head"><h3>${UX_MEALS[m]}</h3>${actions?`<div class="meal-card-actions">${actions}</div>`:''}</div>${planned?uxMealTable(i,m)+adjust+(m==='e'&&['w','h'].some(isKeto)?'<p class="meal-note">Keto nuts and seeds are listed with meals; a snack from those portions is not extra food.</p>':''):'<p class="meal-none">Eating out / skipped. Home-food quantities excluded.</p>'}</section>`;
 }
 function uxWeekRow(day,i){const r=sharedRecipes[sharedKey(i)]||{};return `<div class="meal-recipe-fields" data-ux-week-day="${i}"><label>Shared sabzi<select aria-label="${DAYS[i]} shared sabzi" data-ux-recipe="${i}" data-ux-person="shared"><option value="original"${!r.recipe?' selected':''}>${esc(SABZIS[day.s])}</option>${uxRecipeOptions(r.recipe)}</select></label>${['w','h'].map(p=>`<label>${PERSON_NAMES[p]} sabzi<select aria-label="${DAYS[i]} ${PERSON_NAMES[p]} sabzi" data-ux-recipe="${i}" data-ux-person="${p}"><option value="shared"${!r[p]?' selected':''}>Use shared</option>${uxRecipeOptions(r[p])}</select></label>`).join('')}</div>`;}
-function uxRecipeOptions(selected){return Object.entries({...SABZIS,...KETO_SHARED}).map(([id,name])=>`<option value="${id}"${selected===id?' selected':''}>${esc(name)}</option>`).join('');}
+function uxRecipeOptions(selected){return Object.entries({...SABZIS,...KETO_SHARED}).filter(([id])=>!KETO_RETIRED.includes(id)||id===selected).map(([id,name])=>`<option value="${id}"${selected===id?' selected':''}>${esc(name)}</option>`).join('');}
+// Product identities for paneer and butter. Root's foodChoices/updateFoodChoice own the saved choice and the math.
+const UX_PRODUCTS={paneer:{label:'Paneer',options:[['paneerMM','Milky Mist paneer · 500 g'],['paneer','Heritage regular paneer'],['paneerHP','Heritage NOURISH+ high-protein paneer']]},butter:{label:'Butter',options:[['butter','Amul salted butter'],['butterH','Heritage table butter']]}};
+const UX_PRODUCT_DEFAULTS={paneer:'paneerMM',butter:'butter'};
+function uxProductChoice(field){return typeof foodChoices!=='undefined'&&foodChoices?.[field]||UX_PRODUCT_DEFAULTS[field];}
+function uxProductName(id){for(const f of Object.values(UX_PRODUCTS))for(const [v,n] of f.options)if(v===id)return n;return UX_FOOD_NAMES[id]||id;}
+function uxProductChoicesHTML(){const ready=typeof updateFoodChoice==='function';return `<div class="ux-products">${Object.entries(UX_PRODUCTS).map(([f,{label,options}])=>`<label>${label}<select data-ux-food-choice="${f}"${ready?'':' disabled'}>${options.map(([v,n])=>`<option value="${v}"${uxProductChoice(f)===v?' selected':''}>${esc(n)}${v===UX_PRODUCT_DEFAULTS[f]?' (default)':''}</option>`).join('')}</select></label>`).join('')}<p class="ux-note">The product you buy. Its label nutrition is used for new meals; saved prepared batches keep the values they were cooked with.</p></div>`;}
 const UX_WEIGHT_NOTE='Dry / raw weights are before cooking; cooked grams appear after weighing. Calories include planned cooking oil.';
 function uxDayHTML(i,today=false){
  const d=state.days[i],date=dateForDay(i);
@@ -86,6 +92,15 @@ function showUXRoute(hash,refresh=true){
 }
 function queueUXSave(){clearTimeout(uxSaveTimer);uxSaveTimer=setTimeout(async()=>{if(cloudSaving){queueUXSave();return;}if(cloudReady)await saveChanges();},450);}
 async function uxSaveActivity(key,value){MealCloud.validateRecord(key,value);activityRecords[key]=value;save();const ok=await saveChanges();render();return ok;}
+document.addEventListener('change',e=>{const t=e.target;if(!t.matches?.('[data-ux-food-choice],[data-ux-yield],[data-ux-mushroom-size]'))return;
+ if(!cloudReady||cloudSaving){render();return;}
+ t.setCustomValidity?.('');
+ try{
+  if(t.matches('[data-ux-food-choice]')&&typeof updateFoodChoice==='function')updateFoodChoice(t.dataset.uxFoodChoice,t.value);
+  if(t.matches('[data-ux-yield]')&&typeof updateProduceYield==='function'){if(!t.checkValidity()){t.reportValidity();return;}updateProduceYield(t.dataset.uxYield,Number(t.value));}
+  if(t.matches('[data-ux-mushroom-size]')&&typeof updateMushroomPacketSize==='function')updateMushroomPacketSize(Number(t.value));
+ }catch(error){t.setCustomValidity?.(error.message);t.reportValidity?.();}
+});
 document.addEventListener('change',e=>{const t=e.target;if(!cloudReady)return;if(t.matches('[data-ux-diet]')){householdDiets[t.dataset.uxDiet]=t.value;save();render();queueUXSave();}if(t.matches('[data-ux-portion]')){state.personModes[t.dataset.uxPortion]=t.value;state.custom=true;save();render();queueUXSave();}if(t.matches('[data-ux-recipe]')){updateRecipe(+t.dataset.uxRecipe,t.dataset.uxPerson,t.value);queueUXSave();}if(t.closest('#settingsDlg,#todayPage,#weekPage')&&!t.closest('#dlg'))queueUXSave();});
 document.addEventListener('click',async e=>{if(e.target.closest('[data-settings-close]'))document.querySelector('#settingsDlg').close();const cal=e.target.closest('[data-ux-calendar]');if(cal)openCal(cal.dataset.uxCalendar||null);if(e.target.closest('[data-ux-template]')){selectWeek(null);render();}const shift=e.target.closest('[data-ux-week-shift]');if(shift){const mon=addDate(state.weekKey||mondayOf(dayViewISO()),7*Number(shift.dataset.uxWeekShift));if(lockedWeeks[mon]){selectWeek(mon);render();}else openCal(mon);}if(e.target.closest('[data-keto-choice],[data-person-diet]')&&!e.target.closest('#dlg'))queueUXSave();});
 document.addEventListener('DOMContentLoaded',()=>{document.querySelector('#settingsDlg').addEventListener('close',()=>{if(['#settings','#labels','#utensils','#keto'].includes(location.hash))location.hash=uxRoute==='shop'?'shopping':uxRoute;});});
