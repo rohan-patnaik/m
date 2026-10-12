@@ -27,11 +27,13 @@ function uxMealText(s){return String(s).replace(/(?:Heritage |Milky Mist )?high-
 const UX_DRY_FOODS=new Set(['atta','rice','oats','besan','poha','soyN','soyS','moong','masoor','arhar','rajma','chickpea','kalachana','pasta','maida']);
 const UX_RAW_FOODS=new Set(['chicken','onion','tomato','carrot','potato','gobi','bhindi','palak','arbi','mushroom','cucumber','beans','cabbage','corn','avocado']);
 function uxFoodRow(x){const unit=x.id==='eggWhite'?'egg':DB[x.id]?.[3]||'g',label=uxMealLabel(x.id);if(unit==='serving')return {label,quantity:`${F(x.q)} ${F(x.q)>1?'scoops':'scoop'}`,detail:`${F(x.q*35)} g powder`};if(x.id==='eggWhite')return {label,quantity:`${F(x.q)} ${x.q===1?'white':'whites'}`,detail:'extra eggs needed'};const quantity=unit==='egg'?`${F(x.q)} ${x.q===1?'egg':'eggs'}`:`${F(x.q)} ${unit}${UX_DRY_FOODS.has(x.id)?' dry':UX_RAW_FOODS.has(x.id)?' raw':''}`;return {label,quantity};}
-function uxParts(shares,maxTotal=24){const sum=shares.reduce((n,x)=>n+x,0);if(!(sum>0))return null;const frac=shares.map(x=>x/sum);let best=null;
- for(let total=shares.length;total<=maxTotal;total++){let parts=frac.map(f=>Math.max(1,Math.round(f*total)));const t=parts.reduce((n,x)=>n+x,0),err=Math.max(...parts.map((x,k)=>Math.abs(x/t-frac[k])));if(!best||err<best.err-1e-9)best={parts,total:t,err};if(err<=0.02)break;}
- const g=best.parts.reduce((a,b)=>gcd(a,b));return {parts:best.parts.map(x=>x/g),total:best.total/g};}
-function uxPotParts(i,dish){const specs=weighSpecs(i,dish),r=uxParts(specs.map(x=>x.factor));return r?specs.map((x,k)=>({...x,parts:r.parts[k],total:r.total})):[];}
-function uxPartsText(n,total){return total===2&&n===1?'Half the pot':n===total?'Whole pot':`${n} of ${total} parts`;}
+// Whole-number parts for a shared pot. Zero shares stay 0. The first exact ratio within the cap wins; otherwise the
+// smallest error is used and the result is flagged approximate so the display can mark it (≈).
+function uxParts(shares,maxTotal=24){const sum=shares.reduce((n,x)=>n+(x>0?x:0),0);if(!(sum>0))return null;const frac=shares.map(x=>x>0?x/sum:0),live=frac.filter(f=>f>0).length;let best=null;
+ for(let total=live;total<=maxTotal;total++){const parts=frac.map(f=>f>0?Math.max(1,Math.round(f*total)):0),t=parts.reduce((n,x)=>n+x,0),err=Math.max(...parts.map((x,k)=>Math.abs(x/t-frac[k])));if(!best||err<best.err-1e-12)best={parts,total:t,err};if(err<1e-9)break;}
+ const g=best.parts.filter(x=>x>0).reduce((a,b)=>gcd(a,b));return {parts:best.parts.map(x=>x/g),total:best.total/g,exact:best.err<1e-9};}
+function uxPotParts(i,dish){const specs=weighSpecs(i,dish),r=uxParts(specs.map(x=>x.factor));return r?specs.map((x,k)=>({...x,parts:r.parts[k],total:r.total,exact:r.exact})):[];}
+function uxPartsText(n,total,exact=true){const a=exact?'':'≈ ';return n===total?'Whole pot':exact&&total===2&&n===1?'Half the pot':`${a}${n} of ${total} parts`;}
 function uxDishRow(i,m,p,component,lines){
  const d=state.days[i],date=mealDate(d),link=date&&batchLink(date,m,p,component);
  if(link)return {label:uxMealText(batchName(link.batch)),quantity:`${link.serving.grams} g cooked`,detail:'Prepared '+fmtMon(link.batch.cookedOn)};
@@ -42,7 +44,7 @@ function uxDishRow(i,m,p,component,lines){
  if(portion)return {label,quantity:`${portion.grams} g cooked`,detail:m==='d'&&r.scope==='all'?'Reserved from the same daily batch':''};
  if(component==='protein')return null;
  const mine=uxPotParts(i,dish).find(x=>x.meal===m&&x.person===p);
- return {label,quantity:mine?uxPartsText(mine.parts,mine.total):'Weigh to get cooked grams',detail:'Split the whole pot (lunch + dinner) into equal parts',unweighed:true};
+ return {label,quantity:mine?uxPartsText(mine.parts,mine.total,mine.exact):'Weigh to get cooked grams',detail:'Split the whole pot (lunch + dinner) into equal parts',unweighed:true};
 }
 function uxServingRows(i,m,p){
  const day=state.days[i];let remaining=meal(day,m,p);const rows=[];
@@ -84,7 +86,7 @@ function uxMealTable(i,m){
  // The footer is its own table (same columns) so laptop cards can pin it to the bottom at one height.
  const metrics=[['k','<th scope="row">kcal</th>',x=>R(x.k)],['p','<th scope="row">Protein</th>',x=>F(x.p)+' g'],['c','<th scope="row" title="Counted available carbs">Carbs<span class="sr-only"> (counted available)</span></th>',x=>comparisonRange(x.a,x.aHi)+' g']].filter(([k])=>['w','h'].some(p=>uxMacroOn(p,k)));
  const foot=metrics.length?`<table class="meal-table meal-table-foot"><caption class="sr-only">${UX_MEALS[m]} totals: ${PERSON_NAMES.w}, ${PERSON_NAMES.h}</caption><colgroup><col><col class="meal-col"><col class="meal-col"></colgroup><tfoot>${metrics.map(([k,th,f])=>`<tr class="meal-${k}-row">${th}${t.map((x,n)=>`<td>${!uxMacroOn('wh'[n],k)?'':x.k?f(x):'—'}</td>`).join('')}</tr>`).join('')}</tfoot></table>`:'';
- return `${menu}<table class="meal-table">${head}<tbody>${body}</tbody></table>${unweighed?'<p class="meal-foot">Parts: split each shared pot into equal ladles for lunch + dinner. Weighing is optional.</p>':''}${foot}`;
+ return `${menu}<table class="meal-table">${head}<tbody>${body}</tbody></table>${unweighed?'<p class="meal-foot">Parts: stir the shared pot well, share paneer/soya pieces evenly, then split it into equal ladles for lunch + dinner. ≈ marks a rounded ratio; ladles are an even split, not measured nutrition. Weighing gives exact grams.</p>':''}${foot}`;
 }
 // Details popup: every planned ingredient of meal() (frozen batch portions included), one row per generic food,
 // both people's raw amounts side by side. Oil and spices are summarised separately by inspect().
@@ -230,8 +232,8 @@ function drawServe(){
  if(serveStep===1)refreshServeCard(document.querySelector('[data-weigh-dish]'));
 }
 // Serve by parts first: water changes cooked weight, so equal ladles of the whole pot are the plan. Weighing is optional.
-function uxServePartsHTML(i,dish,meal){const parts=uxPotParts(i,dish);if(!parts.length)return '';const total=parts[0].total,row=m=>parts.filter(x=>x.meal===m);
- return `<section class="ux-serve-parts"><p><b>No scale needed:</b> stir well and split the whole pot into <b>${total}</b> equal parts (ladles).</p><div class="ux-serve-portions">${['l','d'].filter(m=>row(m).length).map(m=>`<h4>${UX_MEALS[m]}${m===meal?' · now':''}</h4>${row(m).map(x=>`<div><span>${PERSON_NAMES[x.person]}<small>${uxDietName(x.person)}</small></span><strong>${x.parts} ${x.parts===1?'part':'parts'}</strong></div>`).join('')}`).join('')}</div><p class="ux-note">Optional: weigh the pot below to turn parts into cooked grams and track what's left.</p></section>`;}
+function uxServePartsHTML(i,dish,meal){const parts=uxPotParts(i,dish);if(!parts.length)return '';const total=parts[0].total,exact=parts[0].exact,a=exact?'':'≈ ',row=m=>parts.filter(x=>x.meal===m);
+ return `<section class="ux-serve-parts"><p><b>No scale needed:</b> stir the pot well, share any paneer/soya pieces evenly, then split it into <b>${a}${total}</b> equal parts (ladles).${exact?'':' These parts are rounded from the plan.'}</p><div class="ux-serve-portions">${['l','d'].filter(m=>row(m).length).map(m=>`<h4>${UX_MEALS[m]}${m===meal?' · now':''}</h4>${row(m).map(x=>`<div><span>${PERSON_NAMES[x.person]}<small>${uxDietName(x.person)}</small></span><strong>${exact?'':'≈ '}${x.parts} ${x.parts===1?'part':'parts'}</strong></div>`).join('')}`).join('')}</div><p class="ux-note">Ladles are an even split, not measured nutrition. Optional: weigh the pot below for exact cooked grams and to track what's left.</p></section>`;}
 function refreshServeCard(card){
  const vessel=card.querySelector('[data-weigh-vessel]').value,inc=card.querySelector('[data-weigh-includes]').checked;
  const tare=inc?Number(card.dataset.originalTare??state.utensils[vessel]??0):0;

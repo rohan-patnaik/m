@@ -912,13 +912,18 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  // Parts: small whole numbers, only for shared pots, never decimals or percentages.
  const r=JSON.parse(run('JSON.stringify(uxParts([0.217,0.304,0.174,0.304]))'));
  assert.ok(r.parts.every(Number.isInteger)&&r.total<=24&&r.parts.reduce((a,b)=>a+b,0)===r.total);
- assert.deepEqual(JSON.parse(run('JSON.stringify(uxParts([1,1]))')),{parts:[1,1],total:2});
- assert.equal(run("uxPartsText(1,2)"),'Half the pot');assert.equal(run("uxPartsText(5,23)"),'5 of 23 parts');
+ assert.deepEqual(JSON.parse(run('JSON.stringify(uxParts([1,1]))')),{parts:[1,1],total:2,exact:true});
+ // Zero shares stay zero; exact simple ratios win; otherwise the best rounding is flagged approximate and still sums.
+ assert.deepEqual(JSON.parse(run('JSON.stringify(uxParts([0,1]))')),{parts:[0,1],total:1,exact:true});assert.equal(run('ratioText(0,1,1)'),'W : H = 0 : 1');
+ assert.deepEqual(JSON.parse(run('JSON.stringify(uxParts([.25,.2,.3,.3]))')),{parts:[5,4,6,6],total:21,exact:true});
+ const ap=JSON.parse(run('JSON.stringify(uxParts([0.217,0.304,0.174,0.305]))'));assert.equal(ap.exact,false);assert.equal(ap.parts.reduce((a,b)=>a+b,0),ap.total);assert.ok(ap.total<=24&&ap.parts.every(Number.isInteger));
+ assert.equal(run(`uxPartsText(${ap.parts[0]},${ap.total},false)`),`≈ ${ap.parts[0]} of ${ap.total} parts`);assert.match(run('ratioText(0.217,0.304,1)'),/^W : H = (≈ )?\d+ : \d+$/);
+ assert.equal(run("uxPartsText(1,2)"),'Half the pot');assert.equal(run("uxPartsText(1,2,false)"),'≈ 1 of 2 parts');assert.equal(run("uxPartsText(5,23)"),'5 of 23 parts');
  for(const [w,h] of [['balanced','keto'],['keto','keto'],['balanced','balanced']]){
   run(`householdDiets={w:'${w}',h:'${h}'}`);
   for(const m of ['l','d'])for(const p of ['w','h'])for(const row of JSON.parse(run(`JSON.stringify(uxServingRows(0,'${m}','${p}'))`))){
    assert.doesNotMatch(row.quantity,/%|\d\.\d+ (of|parts)/,`${w}/${h} ${m} ${p} ${row.label}`);
-   if(row.unweighed)assert.match(row.quantity,/^(\d+ of \d+ parts|Half the pot|Whole pot)$/);
+   if(row.unweighed)assert.match(row.quantity,/^((≈ )?\d+ of \d+ parts|Half the pot|Whole pot)$/);
   }
  }
  assert.doesNotMatch(run("uxMealTable(0,'l')"),/% of batch|Batch shares become/);
