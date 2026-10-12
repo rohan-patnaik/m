@@ -39,6 +39,56 @@ function app(withUX=false){
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
  return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
 }
+test('audited products keep separate identities and correct scoop, milk and oil units',()=>{
+ const {run}=app();
+ for(const [id,q,k,p,c]of [['paneerMM',100,283,16.1,5.1],['paneerMM',500,1415,80.5,25.5],['milk',100,59.74,3.193,4.738],['whey',1,136,29,2.8],['oil',10,81.627,0,0]]){
+  const n=JSON.parse(run(`JSON.stringify(comparisonSum([L('${id}',${q})]))`));for(const [field,wanted]of Object.entries({k,p,c}))assert.ok(Math.abs(n[field]-wanted)<1e-8,`${id} ${field}`);
+ }
+ assert.equal(run("comparisonSum([L('paneerHP',100)]).p"),25);
+ assert.equal(run("comparisonSum([L('paneer',100)]).k"),274);
+ assert.equal(run("state.days.reduce((q,d)=>q+['b','l','d'].reduce((a,m)=>a+ketoDraftMeal(d,'h',m).filter(x=>x.id==='cashews').reduce((n,x)=>n+x.q,0),0),0)"),70);
+ assert.equal(run("state.days.flatMap(d=>['w','h'].flatMap(p=>['b','l','d','e'].flatMap(m=>meal(d,m,p)))).some(x=>['walnuts','nuts'].includes(x.id)&&x.q>0)"),false);
+ run("ketoMeals[ketoMealKey(0,'h','l')]={...ketoConfig(state.days[0],'h','l'),butter:10}");
+ assert.equal(run("ketoDraftMeal(state.days[0],'h','l').find(x=>x.id==='butter').q"),10);
+ assert.equal(run("ketoDraftMeal(state.days[0],'h','l').some(x=>x.id==='butterH')"),false);
+});
+test('purchase yield changes only buying; mushroom packets use one exact net size',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'};sharedRecipes[sharedKey(0)]={recipe:'K2'};render=()=>{}");
+ const before=run('JSON.stringify({meals:state.days.map((d,i)=>assignedDayNutrition(i,"h")),ledger:ledger(),batch:sharedSabzi(state.days[0])})');
+ assert.equal(run("householdShopping().market.find(x=>x.id==='gobi').needed"),run("ledger().gobi"));
+ run("state.days.forEach((d,i)=>{if(i!==0)d.off=true})");
+ assert.equal(run("ledger().gobi"),575);
+ assert.equal(run("householdShopping().market.find(x=>x.id==='gobi').buy"),1000);
+ const meals=run('JSON.stringify({ledger:ledger(),n:assignedDayNutrition(0,"h")})');
+ run("updateProduceYield('gobi',30)");assert.equal(run("householdShopping().market.find(x=>x.id==='gobi').buy"),2000);
+ assert.equal(run('JSON.stringify({ledger:ledger(),n:assignedDayNutrition(0,"h")})'),meals);
+ run("updateProduceYield('gobi',100)");assert.equal(run("householdShopping().market.find(x=>x.id==='gobi').buy"),600);
+ run("sharedRecipes[sharedKey(0)]={recipe:'S5'}");
+ for(const size of [180,200]){run(`updateMushroomPacketSize(${size})`);const r=JSON.parse(run("JSON.stringify(householdShopping().market.find(x=>x.id==='mushroom'))"));assert.equal(r.needed,460);assert.equal(r.packs,3);assert.equal(r.buy,3*size);assert.equal(r.leftover,r.buy*r.yield-r.needed);}
+ assert.throws(()=>run("updateProduceYield('gobi',0)"));assert.throws(()=>run('updateMushroomPacketSize(190)'));
+});
+test('effective K recipes determine Balanced shares and dinner top-up before allocation',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'};state.days[1].s='S8';state.days[1].b='B4';state.days[1].p='P';sharedRecipes[sharedKey(1)]={recipe:'K5'}");
+ assert.equal(run("meal(state.days[1],'d','w').find(x=>x.id==='paneerMM').q"),80);
+ assert.equal(run("meal(state.days[1],'l','w').find(x=>x.id==='corn').q"),25);
+ run("state.days[1].s='S3'");assert.equal(run("meal(state.days[1],'l','w').find(x=>x.id==='palak').q"),125);
+ assert.equal(run("meal(state.days[1],'d','w').find(x=>x.id==='paneerMM').q"),80);
+});
+test('complete nutrient snapshots freeze all macros while legacy missing macros stay unknown',()=>{
+ const {run}=app();run("householdDiets={w:'balanced',h:'keto'};sharedRecipes[sharedKey(0)]={recipe:'K2'};batchDraft={recipe:'K2',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:600,oil:10,roles:{'2026-10-05/l':'sabzi'},selected:{'2026-10-05/l/h':true}}");
+ const b=JSON.parse(run('JSON.stringify(buildBatchPreview(true))'));math.validateBatch(b);assert.ok(b.ingredients.every(x=>x.n.version===2));
+ run("savedBatches['fixture-nutrients']=buildBatchPreview(true)");const before=run("JSON.stringify(comparisonSum(BatchMath.portionLines(savedBatches['fixture-nutrients'],savedBatches['fixture-nutrients'].servings[0])))");
+ run("COMPARE_NUTRIENTS.gobi.c=99;COMPARE_NUTRIENTS.gobi.f=99;COMPARE_NUTRIENTS.gobi.sat=99;state.labels.gobi=[999,99];foodChoices.paneer='paneerHP'");
+ assert.equal(run("JSON.stringify(comparisonSum(BatchMath.portionLines(savedBatches['fixture-nutrients'],savedBatches['fixture-nutrients'].servings[0])))"),before);
+ const legacy=JSON.parse(run("JSON.stringify(comparisonSum([{id:'gobi',q:500,n:{k:125,p:9.6,fb:10}}]))"));assert.equal(legacy.k,125);assert.equal(legacy.c,0);assert.equal(legacy.cHi,500);assert.equal(legacy.carbUnknown,true);assert.equal(legacy.satUnknown,true);
+ assert.throws(()=>math.validateBatch({...b,ingredients:b.ingredients.map((x,i)=>i?x:{...x,n:{...x.n,cHi:-1}})}));
+});
+test('manual partial macros cannot create verified carb/saturated-fat/added-sugar passes',()=>{
+ const {run}=app();run("state.labels.paneerMM=[283,16.1]");const n=JSON.parse(run("JSON.stringify(comparisonSum([L('paneerMM',100)]))"));
+ assert.equal(n.carbUnknown,true);assert.equal(n.satUnknown,true);assert.equal(n.addedUnknown,true);assert.equal(n.cHi,100);
+ run("state.labels={}");assert.equal(run("comparisonSum([L('spice',1)]).addedUnknown"),true);
+ for(const id of ['rice','poha','chickpea','kalachana','besan','rajma','maida'])assert.equal(run(`FIB['${id}']`),run(`COMPARE_NUTRIENTS['${id}'].fb`));
+});
 test('calendar dialog shows Monday–Sunday ranges and asks before replacing or deleting a saved week',()=>{
  const {run}=app(true);
  run("lockedWeeks={'2026-10-05':{days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:1}};state.weekKey='2026-10-05';calConfirm=null");
@@ -162,9 +212,9 @@ test('prepared batch serving appears once using its frozen cooked weight',()=>{
 
 test('keto proposals respect off meals and separate vegetarian/egg defaults',()=>{
  const {run}=app();
- assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + high-protein paneer');
- assert.equal(run("ketoSuggestion({...state.days[0],eggH:true},'h','b').name"),'Ready portions + high-protein paneer');
- assert.equal(run("ketoSuggestion({...state.days[0],eggH:false},'h','b').name"),'Ready portions + high-protein paneer');
+ assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Ready portions + paneer');
+ assert.equal(run("ketoSuggestion({...state.days[0],eggH:true},'h','b').name"),'Ready portions + paneer');
+ assert.equal(run("ketoSuggestion({...state.days[0],eggH:false},'h','b').name"),'Ready portions + paneer');
  assert.equal(run("ketoSuggestion({...state.days[0],wheyW:false},'w','b').note.includes('whey')"),false);
  assert.equal(run("ketoSuggestion({...state.days[0],off:true},'w','b').skipped"),true);
  assert.equal(run("ketoSuggestion({...state.days[0],skip:{l:true}},'h','l').skipped"),true);
@@ -194,7 +244,7 @@ test('comparison uses unscaled raw portions, oil units and one scoop/egg allocat
  for(const p of ['w','h']){
   const t=JSON.parse(run(`JSON.stringify(comparisonWeek('${p}'))`));
   assert.equal(t.scale,1);
-  assert.ok(Math.abs(t.balanced.k-t.keto.k)>100);
+  assert.equal(t.keto.k,run(`state.days.reduce((n,d)=>n+['b','l','d','e'].reduce((a,m)=>a+comparisonSum(ketoActualMeal(d,'${p}',m)).k,0)/7,0)`));
   assert.ok(t.balanced.c>t.keto.c);
   assert.ok(t.keto.sHi>=t.keto.s);
   for(const n of Object.values(t.keto))if(typeof n==='number')assert.ok(Number.isFinite(n));
@@ -316,7 +366,7 @@ test('keto chicken and high-protein paneer batches freeze exact raw quantities a
  assert.equal(run("meal(state.days[1],'d','h').find(x=>x.id==='chicken').q"),250);
  assert.ok(run("ketoSuggestion(state.days[1],'h','d').name.includes('Chicken breast')"));
  run("ketoMeals[ketoMealKey(1,'h','d')]={...ketoConfig(state.days[1],'h','d'),quantity:125,oil:20}");assert.equal(run("meal(state.days[1],'d','h').find(x=>x.id==='chicken').q"),250);
- run("batchDraft={recipe:'Q',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:60,oil:null,roles:{'2026-10-05/d':'protein'},selected:{'2026-10-05/d/h':true}};ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(state.days[0],'h','d'),protein:'paneer',quantity:75,oil:0};");
+ run("batchDraft={recipe:'Q',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:60,oil:null,roles:{'2026-10-05/d':'protein'},selected:{'2026-10-05/d/h':true}};ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(state.days[0],'h','d'),protein:'paneer',paneerType:'paneerHP',quantity:75,oil:0};");
  const q=JSON.parse(run('JSON.stringify(buildBatchPreview(true))'));math.validateBatch(q);assert.equal(q.ingredients.find(x=>x.id==='paneerHP').q,75);assert.ok(!q.ingredients.some(x=>x.id==='paneer'));
 });
 test('mixed prep lists account for every fresh ingredient and oil once',()=>{
@@ -378,9 +428,9 @@ test('wife bhurji replaces cabbage and dinner soya without changing husband or s
  const husband=run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'h')))"),menu=run('JSON.stringify(state.days)'),before=JSON.parse(run('JSON.stringify(ledger())'));
  run("sharedRecipes[sharedKey(5)].w='S12'");
  assert.equal(run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'h')))"),husband);assert.equal(run('JSON.stringify(state.days)'),menu);
- const wife=JSON.parse(run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'w')))"));assert.ok(wife.some(x=>x.id==='paneer'));assert.ok(!wife.some(x=>['cabbage','soyN','soyS'].includes(x.id)));assert.ok(wife.some(x=>x.id==='arhar'));
+ const wife=JSON.parse(run("JSON.stringify(['l','d'].flatMap(m=>meal(state.days[5],m,'w')))"));assert.ok(wife.some(x=>x.id==='paneerMM'));assert.ok(!wife.some(x=>['cabbage','soyN','soyS'].includes(x.id)));assert.ok(wife.some(x=>x.id==='arhar'));
  const after=JSON.parse(run('JSON.stringify(ledger())'));
- assert.ok(Math.abs(after.cabbage-before.cabbage+225)<1e-8);assert.ok(Math.abs(after.paneer-before.paneer-101.25)<1e-8);assert.ok(Math.abs(after.soyN-before.soyN+48)<1e-8);
+ assert.ok(Math.abs(after.cabbage-before.cabbage+225)<1e-8);assert.ok(Math.abs(after.paneerMM-before.paneerMM-101.25)<1e-8);assert.ok(Math.abs(after.soyN-before.soyN+48)<1e-8);
  assert.equal(run("householdShopping().market.find(x=>x.id==='cabbage').buy"),500);
  assert.match(run("assignedBalancedTitle(state.days[5],'w','d')"),/Paneer bhurji/);assert.doesNotMatch(run("assignedBalancedTitle(state.days[5],'w','d')"),/dinner protein/);
  run('renderKeto()');assert.match(root.innerHTML,/Wife: Paneer bhurji · Husband: Cabbage/);
@@ -410,5 +460,5 @@ test('separate sabzis have separate weighing records and recipe-matched batch se
  assert.equal(run("batchDraft.selected['2026-10-10/l/w']"),true);assert.equal(run("batchDraft.selected['2026-10-10/l/h']"),false);
  run("Object.keys(batchDraft.selected).forEach(k=>{if(!k.startsWith('2026-10-10/'))batchDraft.selected[k]=false})");const b=JSON.parse(run('JSON.stringify(buildBatchPreview(true))'));math.validateBatch(b);assert.ok(b.servings.every(s=>s.person==='w'));assert.ok(math.claimsFor(b,b.servings.find(s=>s.meal==='d')).some(k=>k.endsWith('/protein')));
  const before=JSON.parse(run('JSON.stringify(ledger())'));run("savedBatches['fixture-bhurji']=buildBatchPreview(true)");const after=JSON.parse(run('JSON.stringify(ledger())'));for(const id of Object.keys(before))assert.ok(Math.abs(before[id]-(after[id]||0))<1e-7,id);
- run("sharedRecipes[sharedKey(5)].w='S5'");assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='paneer')"),true);assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='soyN')"),false);
+ run("sharedRecipes[sharedKey(5)].w='S5'");assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='paneerMM')"),true);assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='soyN')"),false);
 });

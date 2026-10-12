@@ -481,31 +481,32 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="ux-runtime.js"></script>
 <script>
 const DB={
+ paneerMM:['Paneer · Milky Mist regular 500 g',283,16.1,'g'],cashews:['Kaju · plain raw cashews (estimate)',553,18.2,'g'],
  chicken:['Chicken breast · raw boneless skinless',120,22.5,'g'],paneerHP:['Heritage NOURISH+ high protein paneer',202.6,25,'g'],curdH:['Heritage Total Curd',58,3.3,'g'],butterH:['Heritage table butter',723.2,.4,'g'],walnuts:['Planned walnuts · generic estimate',654,15.23,'g'],flax:['Ground flaxseed · generic estimate',534,18.29,'g'],cabbage:['Cabbage · raw',25,1.28,'g'],
  atta:['Atta · Pillsbury Chakki Fresh (DMart packet)',364,11.3,'g'],rice:['Rice (uncooked)',360,7,'g'],
- oats:['Oats · Saffola plain',369,12.6,'g'],besan:['Besan',387,22,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
+ oats:['Oats · Saffola plain',369,12.6,'g'],besan:['Besan',387,22.39,'g'],moong:['Moong dal (dry)',326,23.88,'g'],
  masoor:['Masoor dal (dry)',322,24.35,'g'],arhar:['Toor dal · Tata Sampann unpolished',364,18.2,'g'],poha:['Poha (dry)',350,7,'g'],
  chana:['Roasted chana',380,20,'g'],whey:['Whey · ATOM Isolate DRC (35 g)',136,29,'serving'],
   egg:['Egg',72,6.3,'egg'],curd:['Curd · Milky Mist',61,3.5,'g'],
   milk:['Milk · Heritage green toned',59.74,3.193,'ml'],paneer:['Paneer · Heritage',274,16,'g'],
  soyN:['Soya chunks · Nutrela',354.14,53.19,'g'],soyS:['Soya chunks · Saffola',312,53,'g'],nuts:['Nuts (mixed)',600,20,'g'],
- oil:['Oil · Tata Simply Better mustard',816.27,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.9,'g'],
- carrot:['Carrot',41,.9,'g'],potato:['Potato',77,2,'g'],gobi:['Cauliflower',25,1.9,'g'],
- bhindi:['Bhindi',33,1.9,'g'],palak:['Palak',23,2.9,'g'],
-  arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.1,'g'],cucumber:['Cucumber',15,.7,'g'],corn:['Sweetcorn kernels (raw)',86,3.27,'g'],
-   rajma:['Rajma (dry)',330,24,'g'],chickpea:['Chickpea (dry)',364,20,'g'],spice:['Spices',300,10,'g'],
-  kalachana:['Kala chana (dry)',360,19,'g'],
+ oil:['Oil · Tata Simply Better mustard',816.27,0,'ml'],onion:['Onion',40,1.1,'g'],tomato:['Tomato',18,.88,'g'],
+ carrot:['Carrot',41,.93,'g'],potato:['Potato',77,2.05,'g'],gobi:['Cauliflower',25,1.92,'g'],
+ bhindi:['Bhindi',33,1.93,'g'],palak:['Palak',23,2.86,'g'],
+  arbi:['Arbi (raw)',112,1.5,'g'],mushroom:['Mushroom',22,3.09,'g'],cucumber:['Cucumber',15,.65,'g'],corn:['Sweetcorn kernels (raw)',86,3.27,'g'],
+   rajma:['Rajma (dry)',337,22.53,'g'],chickpea:['Chickpea (dry)',378,20.47,'g'],spice:['Spices',300,10,'g'],
+  kalachana:['Kala chana (dry)',378,20.47,'g'],
   pasta:['Pasta · Borges penne durum',359.3,13,'g'],maida:['Maida',364,10,'g'],butter:['Butter · Amul salted (DMart panel)',724,1,'g'],
-  beans:['Green beans',31,1.8,'g']
+  beans:['Green beans',31,1.83,'g']
 };
 // Fibre g per 100 g (per serving / egg / ml where the DB unit says so).
 // null = not declared on the matched panel: excluded from sums and flagged in the UI, NOT counted as zero.
 // Dals use ICMR-NIN IFCT 2017 reference means (kJ/4.184); atta uses the Pillsbury Chakki Fresh table
 // (its page shows a stray 333 kcal line beside the structured 364 kcal/100 g table — table value used).
-const FIB={chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:1.3,oats:10.4,besan:11,moong:9.37,masoor:10.43,arhar:11.6,poha:1.5,chana:17,
+const FIB={paneerMM:null,cashews:3.3,chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:2.81,oats:10.4,besan:10.8,moong:9.37,masoor:10.43,arhar:11.6,poha:3.46,chana:17,
   whey:null,egg:0,curd:0,milk:0,paneer:0,soyN:null,soyS:15.5,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
-  potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,corn:2,rajma:15,chickpea:17,spice:20,
-  kalachana:17,pasta:2.9,maida:2.7,butter:0,beans:2.7};
+  potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,corn:2,rajma:15.2,chickpea:12.2,spice:null,
+  kalachana:12.2,pasta:2.9,maida:2.76,butter:0,beans:2.7};
 function fibUnk(a){return a.some(x=>FIB[x.id]===null||FIB[x.id]===undefined);}
 // Independent portion levels; Low also scales dinner sabzi and separate protein to 80%.
 const PORTIONS={
@@ -523,7 +524,8 @@ const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chi
 const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo',S12:'Paneer bhurji'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const YIELDS={gobi:180,arbi:650,palak:400,bhindi:475};
+// Raw edible recipe grams. Purchasing yields are separate in shopping-runtime.js.
+const RECIPE_RAW={gobi:180,arbi:650,palak:400,bhindi:475};
 const OIL=33.33; // household calibration: ~1000 ml per 30 days on average (not measured per dish)
 const DEFAULT_OILUSE={sabzi:14,dal:8,bf:6,prot:4,egg:2}; // editable recipe-oil estimates, ml; a full day with eggs ≈ 34 ml
 function oilUse(){return {...DEFAULT_OILUSE,...(state.oilUse||{})};}
@@ -649,19 +651,20 @@ function breakfast(id,person,day){
   return a;
 }
 function sabziBase(id){
+  if(/^K[1-5]$/.test(id))return ketoVegetableBase(id);
   // Household lunch+dinner batch (dry/raw). S8 is packaged chunks (Nutrela/Saffola brand profile), dry-weight basis.
-  return({S1:[L('bhindi',YIELDS.bhindi),L('onion',100)],
-   S2:[L('gobi',YIELDS.gobi),L('carrot',350),L('potato',150),L('onion',100)],
-   S3:[L('palak',YIELDS.palak),L('onion',100),L('tomato',150),L('paneer',225)],
-   S4:[L('arbi',YIELDS.arbi),L('onion',100),L('tomato',100)],
+  return({S1:[L('bhindi',RECIPE_RAW.bhindi),L('onion',100)],
+   S2:[L('gobi',RECIPE_RAW.gobi),L('carrot',350),L('potato',150),L('onion',100)],
+   S3:[L('palak',RECIPE_RAW.palak),L('onion',100),L('tomato',150),L(paneerId(),225)],
+   S4:[L('arbi',RECIPE_RAW.arbi),L('onion',100),L('tomato',100)],
    S5:[L('mushroom',400),L('onion',150),L('tomato',100)],
    S6:[L('rajma',100),L('onion',100),L('tomato',150)],
    S7:[L('chickpea',100),L('onion',100),L('tomato',150)],
    S8:[L(soyaId(),100),L('onion',100),L('tomato',150)],
    S9:[L('kalachana',100),L('onion',100),L('tomato',150)],
-   S10:[L('pasta',200),L('maida',30),L('milk',200),L('butter',15),L('onion',100),L('tomato',150)],
+   S10:[L('pasta',200),L('maida',30),L('milk',200),L(butterId(),15),L('onion',100),L('tomato',150)],
    S11:[L('beans',300),L('carrot',150),L('potato',150),L('onion',100)],
-   S12:[L('paneer',225),L('onion',100),L('tomato',150)]})[id];
+   S12:[L(paneerId(),225),L('onion',100),L('tomato',150)]})[id];
 }
 function sabzi(id){
   // Full daily batch including its tadka oil (butter in S10 is additional, not a substitute).
@@ -673,7 +676,7 @@ const NO_EXTRA=s=>['S3','S8','S9','S10','S12'].includes(s);
 const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
-function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0,scale=dinnerScale(person);return id==='Y'?[L(soyaId(),((h?60:50)+(boost?10:0))*scale)]:[L('paneer',((h?125:100)+(boost?25:0))*scale)];}
+function protein(id,person,day){const h=person==='h',boost=day&&CHILLA(day)?1:0,scale=dinnerScale(person);return id==='Y'?[L(soyaId(),((h?60:50)+(boost?10:0))*scale)]:[L(paneerId(),((h?125:100)+(boost?25:0))*scale)];}
 function cardioDone(day,person){return person==='h'?day.cardioH!==false:day.cardioW!==false;}
 function baseMeal(day,which,person){
   const h=person==='h';
@@ -682,7 +685,7 @@ function baseMeal(day,which,person){
   if(which!=='e'&&day.skip&&day.skip[which])return[];
   if(which==='b')return breakfast(day.b,person,day);
   // Rest day (cardio skipped): no evening nuts — milk stays.
-  if(which==='e')return cardio?[L('milk',P(person).milk),L('nuts',P(person).nuts)]:[L('milk',P(person).milk)];
+  if(which==='e')return cardio?[L('milk',P(person).milk),L(nutsId(),P(person).nuts)]:[L('milk',P(person).milk)];
   const oU=oilUse();
   const sc=n=>n.map(x=>L(x.id,x.q*balancedSabShare(day,person,which)));
   const a=[];
@@ -920,7 +923,7 @@ function freshCookRows(i){
   if(dinner||lunch){
     const extras=[];
     if(dinner){
-      const pid=d.p==='Y'?soyaId():'paneer',pv=q[pid]||0;
+      const pid=d.p==='Y'?soyaId():paneerId(),pv=q[pid]||0;
       if(!NO_EXTRA(d.s)&&pv>0)extras.push(d.p==='Y'?`${SOYA_OPTS[state.soya]} soya chunks — ${F(pv)} g dry`:`Paneer — ${F(pv)} g`);
       else if(NO_EXTRA(d.s))extras.push(`${SABZIS[d.s]} protein is in the sabzi batch (fixed share, not a top-up)`);
     }

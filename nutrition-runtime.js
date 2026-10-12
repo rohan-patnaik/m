@@ -2,10 +2,12 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
+ "paneerMM":{"k":283,"p":16.1,"c":5.1,"s":5.1,"added":0,"f":22,"sat":12,"fb":null,"source":"Milky Mist regular 500 g packet image, audited 2026-10-12","basis":"100 g as sold","ingredients":"Milk solids, vinegar","url":"https://www.bbassets.com/media/uploads/p/xxl/40003150-4_5-milky-mist-paneer-premium-fresh.jpg"},
+ "cashews":{"k":553,"p":18.2,"c":30.2,"s":5.91,"added":0,"f":43.8,"sat":7.783,"fb":3.3,"fdc":170162,"source":"USDA SR Legacy (plain raw generic estimate)","basis":"100 g raw","url":"https://fdc.nal.usda.gov/food-details/170162/nutrients"},
  "corn":{"source":"USDA SR Legacy (generic estimate)","fdc":169998,"basis":"100 g raw edible kernels","k":86,"p":3.27,"c":18.7,"f":1.35,"s":6.26,"fb":2,"sat":0.325,"name":"Corn, sweet, yellow, raw","url":"https://fdc.nal.usda.gov/food-details/169998/nutrients"},
- "paneerHP":{"k":202.6,"p":25,"c":5.4,"s":5.4,"f":9,"sat":5.8,"fb":0,"source":"Heritage NOURISH+ packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/xxl/40359963-4_1-heritage-nourish-high-protein-paneer.jpg"},
- "curdH":{"k":58,"p":3.3,"c":4.3,"s":null,"f":3,"sat":2,"fb":0,"source":"Heritage Total Curd packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/225759-2_8-heritage-curd-premium.jpg"},
- "butterH":{"k":723.2,"p":.4,"c":.4,"s":null,"f":80,"sat":52,"fb":0,"source":"Heritage table butter packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/256566-2_3-heritage-table-butter-pasteurised.jpg"},
+ "paneerHP":{"k":202.6,"p":25,"c":5.4,"added":0,"s":5.4,"f":9,"sat":5.8,"fb":0,"source":"Heritage NOURISH+ packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/xxl/40359963-4_1-heritage-nourish-high-protein-paneer.jpg"},
+ "curdH":{"k":58,"p":3.3,"c":4.3,"added":0,"s":null,"f":3,"sat":2,"fb":0,"source":"Heritage Total Curd packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/225759-2_8-heritage-curd-premium.jpg"},
+ "butterH":{"k":723.2,"p":.4,"c":.4,"added":0,"s":null,"f":80,"sat":52,"fb":0,"source":"Heritage table butter packet image, 2026-10-11","basis":"100 g","url":"https://www.bbassets.com/media/uploads/p/l/256566-2_3-heritage-table-butter-pasteurised.jpg"},
  "walnuts":{"k":654,"p":15.23,"c":13.71,"f":65.21,"s":2.61,"fb":6.7,"sat":6.126,"fdc":170187,"source":"USDA SR Legacy (generic estimate)","basis":"100 g raw"},
  "flax":{"k":534,"p":18.29,"c":28.88,"f":42.16,"s":1.55,"fb":27.3,"sat":3.663,"fdc":169414,"source":"USDA SR Legacy (generic estimate)","basis":"100 g raw"},
  "chicken":{"source":"USDA SR Legacy (generic estimate)","fdc":171077,"basis":"100 g raw, boneless, skinless breast","k":120,"p":22.5,"c":0,"f":2.62,"s":0,"fb":0,"sat":0.563},
@@ -21,7 +23,7 @@ const COMPARE_NUTRIENTS={
  "cucumber":{"source":"USDA SR Legacy (generic estimate)","fdc":168409,"basis":"100 g raw edible","c":3.63,"k":15.0,"s":1.67,"sat":0.037,"f":0.11,"fb":0.5,"p":0.65,"name":"Cucumber, with peel, raw"},
  "beans":{"source":"USDA SR Legacy (generic estimate)","fdc":169961,"basis":"100 g raw edible","f":0.22,"s":3.26,"p":1.83,"fb":2.7,"c":6.97,"k":31.0,"sat":0.05,"name":"Beans, snap, green, raw"},
  "cabbage":{"source":"USDA SR Legacy (generic estimate)","fdc":169975,"basis":"100 g raw edible","f":0.1,"c":5.8,"k":25.0,"s":3.2,"p":1.28,"fb":2.5,"sat":0.034,"name":"Cabbage, raw"},
- "egg":{"source":"USDA SR Legacy (generic estimate)","fdc":171287,"basis":"1 egg, estimated 50 g edible","k":143.0,"sat":1.563,"p":12.56,"s":0.185,"f":4.755,"c":0.36,"fb":0.0,"name":"Egg, whole, raw, fresh"},
+ "egg":{"source":"USDA SR Legacy (generic estimate)","fdc":171287,"basis":"1 egg, estimated 50 g edible","k":72,"sat":1.563,"p":6.3,"s":0.185,"f":4.755,"c":0.36,"fb":0.0,"name":"Egg, whole, raw, fresh"},
  "nuts":{"source":"USDA SR Legacy (generic estimate)","fdc":170587,"basis":"100 g raw edible","p":20.04,"fb":7.0,"sat":8.711,"f":53.95,"c":21.05,"k":607.0,"s":4.15,"name":"Nuts, mixed nuts, oil roasted, with peanuts, without salt added"},
  "besan":{"source":"USDA SR Legacy (generic estimate)","fdc":174288,"basis":"100 g raw edible","s":10.85,"c":57.82,"k":387.0,"p":22.39,"sat":0.693,"fb":10.8,"f":6.69,"name":"Chickpea flour (besan)"},
  "rajma":{"source":"USDA SR Legacy (generic estimate)","fdc":173744,"basis":"100 g raw edible","s":2.1,"c":61.29,"k":337.0,"p":22.53,"fb":15.2,"sat":0.154,"f":1.06,"name":"Beans, kidney, red, mature seeds, raw"},
@@ -48,34 +50,45 @@ const COMPARE_NUTRIENTS={
  "oil":{"c":0,"f":99.7,"s":0,"added":0,"sat":6.2,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g","url":"https://www.tatasimplybetter.com/products/tata-simply-better-coldpressed-mustard-oil-1l?variant=50349740097856"}
 };
 
-function comparisonEmpty(){return{k:0,p:0,c:0,cHi:0,f:0,fHi:0,s:0,sHi:0,fb:0,oil:0,sat:0,a:0,aHi:0,carbUnknown:false,unknown:false};}
+const COMPARISON_NUMBERS=['k','p','c','cHi','f','fHi','s','sHi','fb','oil','sat','a','aHi','added','addedHi'];
+const COMPARISON_FLAGS=['carbUnknown','unknown','satUnknown','addedUnknown','fibreUnknown'];
+function comparisonEmpty(){return {...Object.fromEntries(COMPARISON_NUMBERS.map(k=>[k,0])),...Object.fromEntries(COMPARISON_FLAGS.map(k=>[k,false]))};}
 function comparisonSum(lines){
  const out=comparisonEmpty();
  for(const x of lines){
   if(!(x.q>0))continue;
+  if(x.n?.version===2){comparisonAdd(out,x.n);continue;}
   const ref=COMPARE_NUTRIENTS[x.id]||{},unit=DB[x.id]?.[3],factor=unit==='serving'||unit==='egg'?x.q:x.q/100;
   const density=x.id==='milk'?milkDensity():x.id==='oil'?.91:1;
   const n=!DB[x.id]?{k:ref.k*factor,p:ref.p*factor,fb:ref.fb*factor}:val(x);
   out.k+=n.k;out.p+=n.p;out.fb+=n.fb||0;
   const f=factor*density,upper=x.id==='egg'?50:x.id==='whey'?35:100;
-  const c=ref.c==null?0:ref.c;
-  const documentedFibre=/USDA|IFCT/.test(ref.source||'')&&typeof ref.fb==='number'&&x.id!=='nuts'?ref.fb:0;
-  out.a+=Math.max(0,c-documentedFibre)*f;out.aHi+=(ref.c==null?upper:Math.max(0,c-documentedFibre))*f;out.carbUnknown ||= ref.c==null||!!x.n||!!state.labels[x.id];
-  out.c+=c*f;out.cHi+=(ref.c==null?upper:c)*f;
-  out.f+=(ref.f||0)*f;out.fHi+=(ref.f==null?upper:ref.f)*f;
-  out.sat+=(typeof ref.sat==='number'?ref.sat:0)*f;
-  out.s+=(ref.s||0)*f;out.sHi+=(ref.s==null?(ref.c==null?upper:c):ref.s)*f;
-  out.unknown ||= ref.c==null||ref.f==null||ref.s==null||!!x.n||!!state.labels[x.id];
+  // Old batches never snapshotted these macros. Do not substitute current profiles.
+  const legacy=!!x.n,override=!!state.labels[x.id],known=!legacy&&!override;
+  const c=known&&typeof ref.c==='number'?ref.c:0;
+  const documentedFibre=known&&/USDA|IFCT/.test(ref.source||'')&&typeof ref.fb==='number'&&x.id!=='nuts'?ref.fb:0;
+  out.a+=Math.max(0,c-documentedFibre)*f;out.aHi+=(known&&ref.c!=null?Math.max(0,c-documentedFibre):upper)*f;
+  out.c+=c*f;out.cHi+=(known&&ref.c!=null?c:upper)*f;
+  out.carbUnknown ||= !known||ref.c==null;
+  out.f+=(known&&typeof ref.f==='number'?ref.f:0)*f;out.fHi+=(known&&ref.f!=null?ref.f:upper)*f;
+  out.sat+=(known&&typeof ref.sat==='number'?ref.sat:0)*f;
+  out.satUnknown ||= !known||typeof ref.sat!=='number';
+  out.s+=(known&&typeof ref.s==='number'?ref.s:0)*f;out.sHi+=(known&&ref.s!=null?ref.s:known&&ref.c!=null?c:upper)*f;
+  const added=known?(typeof ref.added==='number'?ref.added:/USDA/.test(ref.source||'')&&x.id!=='nuts'?0:null):null;
+  out.added+=(added??0)*f;out.addedHi+=(added??(known&&ref.c!=null?c:upper))*f;out.addedUnknown ||= added==null;
+  out.fibreUnknown ||= legacy||FIB[x.id]==null;
+  out.unknown ||= !known||ref.c==null||ref.f==null||ref.s==null||typeof ref.sat!=='number'||added==null;
   if(x.id==='oil')out.oil+=x.q;
  }
  return out;
 }
-function comparisonAdd(a,b,scale=1){for(const k of ['k','p','c','cHi','f','fHi','s','sHi','fb','oil','sat','a','aHi'])a[k]+=b[k]*scale;a.unknown ||= b.unknown;a.carbUnknown ||= b.carbUnknown;return a;}
+function comparisonAdd(a,b,scale=1){for(const k of COMPARISON_NUMBERS)a[k]+=(b[k]||0)*scale;for(const k of COMPARISON_FLAGS)a[k] ||= !!b[k];return a;}
+function nutrientSnapshot(x){const ref=COMPARE_NUTRIENTS[x.id]||{};return {...comparisonSum([x]),version:2,profileId:x.id,profileVersion:'2026-10-12',basis:'ingredient total',carbConvention:/USDA|IFCT/.test(ref.source||'')?'documented fibre counted once':'full declared carbs',source:ref.source||'Unverified estimate'};}
 // Explicit example portions, not a prescribed diet. All weights are raw edible or packet weights.
 function ketoMealKey(i,p,m,scope=state.weekKey||'template'){return `keto/${scope}/day/${i}/${p}/${m}`;}
 function ketoDefaultConfig(day,p,m,i){
  const h=p==='h',protein=h&&m==='d'?([1,4].includes(i)?'chicken':'eggs'):'paneer';
- return {protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:'paneerHP',curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:h?33:10,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare(day,p,m)};
+ return {protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare(day,p,m)};
 }
 function ketoConfig(day,p,m,i=state.days.indexOf(day),scope=state.weekKey||'template'){i=Math.max(0,i);return {...ketoDefaultConfig(day,p,m,i),...structuredClone(ketoMeals[ketoMealKey(i,p,m,scope)]||{})};}
 function ketoDraftMeal(day,p,m){return typeof householdKetoBase==='function'?householdKetoBase(day,p,m):[];}

@@ -11,6 +11,9 @@ function snapshotDraft(){
  if(state.weekKey){const old=lockedWeeks[state.weekKey];lockedWeeks[state.weekKey]={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:old?.savedAt||Date.now()};}
  else{templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);}
  const next={};
+ next['setting/nutritionVersion']=9;
+ if(typeof foodChoices==='object')next['setting/foodChoices']=structuredClone(foodChoices);
+ if(typeof produceOptions==='object')next['setting/produceOptions']=structuredClone(produceOptions);
  for(const k of SHARED_SETTINGS)next['setting/'+k]=structuredClone(state[k]);
  for(const k of Object.keys(DEFAULT_UTENSILS))next['setting/utensils/'+k]=state.utensils[k]||0;
  for(let i=0;i<7;i++)next['template/day/'+i]={meal:templateDays[i],utensils:templateUtensils[i]};
@@ -29,6 +32,8 @@ function cloudChanges(){return MealCloud.changesBetween(cloudBase,cloudDraft);}
 function hydrateDraft(){
  loadingCloud=true;
  try{
+ if(typeof foodChoices==='object')foodChoices={...FOOD_CHOICE_DEFAULTS,...structuredClone(cloudDraft['setting/foodChoices']||{})};
+ if(typeof produceOptions==='object')produceOptions=structuredClone(cloudDraft['setting/produceOptions']||PRODUCE_OPTION_DEFAULTS);
  for(const k of SHARED_SETTINGS)if(cloudDraft['setting/'+k]!=null)state[k]=structuredClone(cloudDraft['setting/'+k]);
  for(const k of Object.keys(DEFAULT_UTENSILS))state.utensils[k]=cloudDraft['setting/utensils/'+k]||0;
  templateDays=Array.from({length:7},(_,i)=>structuredClone(cloudDraft['template/day/'+i]?.meal||DEFAULT_DAYS[i]));
@@ -83,7 +88,7 @@ async function saveChanges(){
  const changes=cloudChanges();if(!changes.length)return true;
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:8});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:9});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;

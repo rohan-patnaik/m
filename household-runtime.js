@@ -1,16 +1,23 @@
 // Household assignments are independent of the comparison route and Balanced templates.
 const KETO_OPTION_DEFAULTS={targetK:2000,pMin:120,pMax:150,carbBudget:30,baselineWeight:75,baselineWaist:0,startDate:'2026-10-11',reviewWeeks:6};
 let householdDiets={w:'balanced',h:'keto'},ketoOptions={...KETO_OPTION_DEFAULTS},sharedRecipes={},trialChecks={},balancedCurdType='curdH';
+const FOOD_CHOICE_DEFAULTS={paneer:'paneerMM',butter:'butter',nuts:'cashews'};
+let foodChoices={...FOOD_CHOICE_DEFAULTS};
+const paneerId=()=>foodChoices.paneer;
+const butterId=()=>foodChoices.butter;
+const nutsId=()=>foodChoices.nuts;
+function updateFoodChoice(field,value){if(!cloudReady||cloudSaving)return false;const next={...foodChoices,[field]:value};MealCloud.validateRecord('setting/foodChoices',next);foodChoices=next;save();render();return true;}
+function plannedRecipe(recipe,scope){return recipe==='K3'&&(scope==='template'||scope>=mondayOf(dayViewISO()))?'K5':recipe;}
 const isKeto=p=>householdDiets[p]==='keto';
 const sharedKey=i=>`keto/shared/${state.weekKey||'template'}/day/${i}`;
 const KETO_SHARED={K1:'Cabbage',K2:'Cauliflower',K3:'Spinach',K4:'Bhindi',K5:'Palak corn'};
 function sharedRecipe(day,date=mealDate(day)){const i=date?(new Date(date+'T12:00:00Z').getUTCDay()+6)%7:Math.max(0,state.days.indexOf(day)),scope=date?mondayOf(date):state.weekKey||'template';return sharedRecipes[`keto/shared/${scope}/day/${i}`]?.recipe||day.s;}
 function recipeRecordKey(day,date=mealDate(day)){const i=date?(new Date(date+'T12:00:00Z').getUTCDay()+6)%7:Math.max(0,state.days.indexOf(day));return `keto/shared/${date?mondayOf(date):state.weekKey||'template'}/day/${i}`;}
-function personRecipe(day,p,date=mealDate(day)){return sharedRecipes[recipeRecordKey(day,date)]?.[p]||sharedRecipe(day,date);}
+function personRecipe(day,p,date=mealDate(day)){const scope=date?mondayOf(date):state.weekKey||'template';return plannedRecipe(sharedRecipes[recipeRecordKey(day,date)]?.[p]||sharedRecipe(day,date),scope);}
 function recipeName(recipe){return KETO_SHARED[recipe]||SABZIS[recipe]||recipe;}
 function assignedRecipesChanged(day){return ['w','h'].some(p=>personRecipe(day,p)!==day.s);}
 function differentSabzis(day){return personRecipe(day,'w')!==personRecipe(day,'h');}
-function assignedBalancedDay(day,p){const recipe=personRecipe(day,p);return {...day,s:SABZIS[recipe]?recipe:day.s};}
+function assignedBalancedDay(day,p){return {...day,s:personRecipe(day,p)};}
 function ketoVegetableBase(recipe){if(recipe==='K5')return [L('palak',500),L('corn',100),L('onion',20),L('tomato',40)];const id={K1:'cabbage',K2:'gobi',K3:'palak',K4:'bhindi'}[recipe];return id?[L(id,500),L('onion',20),L('tomato',40)]:sabziBase(recipe);}
 function sharedSabzi(day){return [...ketoVegetableBase(sharedRecipe(day)),L('oil',oilUse().sabzi)];}
 function personSabzi(day,p){return [...ketoVegetableBase(personRecipe(day,p)),L('oil',oilUse().sabzi)];}
@@ -28,7 +35,8 @@ function householdKetoBase(day,p,m){
  const a=[...ketoComponent(day,p,m,'protein'),...ketoComponent(day,p,m,'sabzi'),L('cucumber',cfg.cucumber)];
  if(m==='b'&&(h?day.wheyH:day.wheyW))a.push(L('whey',1));
  if(cfg.curd)a.push(L(cfg.curdType,cfg.curd));
- if(cfg.milk)a.push(L('milk',cfg.milk));if(cfg.butter)a.push(L('butterH',cfg.butter));
+ if(cfg.milk)a.push(L('milk',cfg.milk));if(cfg.butter)a.push(L(butterId(),cfg.butter));
+ if(cfg.cashews)a.push(L('cashews',cfg.cashews));
  if(cfg.walnuts)a.push(L('walnuts',cfg.walnuts));if(cfg.flax)a.push(L('flax',cfg.flax));
  if(m!=='b')a.push(L('spice',1));return a;
 }

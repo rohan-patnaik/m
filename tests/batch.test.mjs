@@ -12,9 +12,10 @@ function app(){
  vm.runInContext(readFileSync(new URL('../batch-runtime.js',import.meta.url),'utf8'),ctx);
  vm.runInContext(readFileSync(new URL('../weigh-runtime.js',import.meta.url),'utf8'),ctx);
  vm.runInContext(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),ctx);
+ for(const f of ['nutrition-runtime.js','household-runtime.js','shopping-runtime.js'])vm.runInContext(readFileSync(new URL('../'+f,import.meta.url),'utf8'),ctx);
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
  vm.runInContext(script.slice(0,script.indexOf("document.addEventListener('input'")),ctx);
- vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;",ctx);
+ vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};",ctx);
  return expression=>vm.runInContext(expression,ctx);
 }
 test('whole gram boxes add up exactly even with unequal shares and ties',()=>{
@@ -38,8 +39,8 @@ test('soya sabzi replaces only requested dinner protein, includes gravy/oil, and
 });
 test('batch-owned protein in sabzi suppresses the former separate protein',()=>{
  const run=app();run(`state.days[0].s='S1';state.days[0].p='P';batchDraft={recipe:'S8',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:400,oil:null,roles:{'2026-10-05/d':'sabzi'},selected:{'2026-10-05/d/w':true}};savedBatches['fixture-replace']=buildBatchPreview(true);`);
- assert.equal(run("meal(state.days[0],'d','w').some(x=>x.id==='paneer')"),false);
- assert.equal(run("meal(state.days[0],'d','h').some(x=>x.id==='paneer')"),true);
+ assert.equal(run("meal(state.days[0],'d','w').some(x=>x.id==='paneerMM')"),false);
+ assert.equal(run("meal(state.days[0],'d','h').some(x=>x.id==='paneerMM')"),true);
  assert.equal(run("coveredComponent(state.days[0],'d','w','protein')"),true);
 });
 test('conflicting batch assignments and invalid totals are rejected',()=>{
