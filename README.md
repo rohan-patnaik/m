@@ -131,3 +131,14 @@ Keto portions offer a cashews control (walnuts remain only in historical
 records), K5 is named "Spinach corn sabzi", plain-spinach K3 is hidden from new
 dropdowns, added sugar shows as unknown or a range (never an assumed 0 g), and
 saturated fat stays a lower bound with an incomplete-data note.
+
+Round 3 polish (October 12). New cooked batches no longer offer retired K3.
+Sabzi pickers select the recipe the math counts (`plannedRecipe(raw, scope)`),
+so a stored current/future K3 shows its K5 replacement while saved historical
+weeks keep K3 readable. Product, yield and mushroom-packet changes autosave like
+Settings. Shopping checkboxes use `shoppingChecked(row)` and save
+`shoppingPurchaseRecord(id, checked)`; a stored tick whose quantities no longer
+cover the row renders unchecked with a muted "quantity changed — re-check" hint.
+The milk carb evidence derives from the 100 g panel × the density in Settings.
+An explicit old walnut-only keto meal shows a one-line review note with a "Use
+cashews instead" button; walnut grams are never renamed silently.

@@ -440,6 +440,31 @@ test('round 2 UI: fixed theme switch, product selectors, buying assumptions and 
  assert.doesNotMatch(root.innerHTML,/<td>0 g<\/td><td>0 g<\/td>/);assert.doesNotMatch(run('trialHTML()+ketoReviewHTML()'),/walnut/i);
  const evidence=root.innerHTML.slice(root.innerHTML.indexOf('Packaged products and evidence'));assert.doesNotMatch(evidence.slice(0,evidence.indexOf('Five doctor')),/walnut/i);
  run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:10}");assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Planned cashews \(g\)/);assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','b')"),/walnut/i);
- assert.match(root.innerHTML,/my\.clevelandclinic\.org\/health\/treatments\/24003-ketosis/);assert.match(root.innerHTML,/4\.74 g carbs per 100 ml/);
+ assert.match(root.innerHTML,/my\.clevelandclinic\.org\/health\/treatments\/24003-ketosis/);assert.ok(root.innerHTML.includes(`${run('F(COMPARE_NUTRIENTS.milk.c*milkDensity())')} g carbs per 100 ml (the 4.6 g per 100 g panel × the 1.03 g/ml density set in Settings)`));
  assert.match(root.innerHTML,/Milky Mist paneer \(500 g pouch\) 283 kcal/);assert.match(root.innerHTML,/Keto draft/);
+});
+
+test('round 3 UI: retired K3 pickers, resolved selections, purchase records, milk density and legacy walnuts',()=>{
+ const {run,shopping}=app(true);
+ // New batches never offer retired K3; a historical K3 draft stays readable.
+ run("var dlg={innerHTML:'',textContent:''};const q=document.querySelector;document.querySelector=s=>s==='#dlgBody'||s==='#dlgTitle'?dlg:q(s)");
+ run("batchDraft={recipe:'K5',cookedOn:'2026-10-12',vessel:'none',includeVessel:false,gross:0,oil:null,servings:[],roles:{},selected:{}};try{drawBatchEditor()}catch(e){globalThis.batchErr=String(e)}");
+ assert.equal(run('globalThis.batchErr'),undefined);assert.match(run('dlg.innerHTML'),/value="K5" selected/);assert.doesNotMatch(run('dlg.innerHTML'),/value="K3"/);
+ // Resolved selection: Root's plannedRecipe decides what the picker shows.
+ run("sharedRecipes[sharedKey(2)]={recipe:'K3',h:'K3'};globalThis.plannedRecipe=(v,scope)=>v==='K3'&&scope!=='2026-10-05'?'K5':v");
+ assert.match(run('recipeSelectorsHTML(state.days[2],2)'),/value="K3" selected/);assert.match(run('uxWeekRow(state.days[2],2)'),/value="K3" selected/);
+ run("state.weekKey=null;sharedRecipes[sharedKey(2)]={recipe:'K3',h:'K3'}");
+ for(const html of [run('recipeSelectorsHTML(state.days[2],2)'),run('uxWeekRow(state.days[2],2)')]){assert.doesNotMatch(html,/value="K3"/);assert.equal((html.match(/value="K5" selected/g)||[]).length,2);assert.match(html,/Palak paneer/);}
+ run("delete globalThis.plannedRecipe;state.weekKey='2026-10-05'");
+ assert.match(run('uxWeekRow(state.days[2],2)'),/value="K3" selected/);
+ // Purchase state: fallback reads the stored record; Root's helper can force a re-check.
+ run("householdDiets={w:'balanced',h:'keto'};activityRecords={'buy/2026-10-05/gobi':{checked:true,updatedAt:1}};renderShopping()");
+ assert.match(shopping.innerHTML,/data-ux-buy="gobi"[^>]*checked/);assert.doesNotMatch(shopping.innerHTML,/re-check/);
+ run("globalThis.shoppingChecked=row=>false;renderShopping();delete globalThis.shoppingChecked");
+ assert.doesNotMatch(shopping.innerHTML,/data-ux-buy="gobi"[^>]*checked/);assert.match(shopping.innerHTML,/quantity changed — re-check/);
+ // Milk evidence follows the editable density.
+ run("state.density=1.1;renderKeto()");assert.match(run('document.querySelector("#keto").innerHTML'),/5\.1 g carbs per 100 ml \(the 4\.6 g per 100 g panel × the 1\.1 g\/ml/);
+ // An explicit old walnut record stays visible with a review note.
+ run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:0,walnuts:20}");
+ const edit=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(edit,/Older record: 20 g walnuts are still counted/);assert.match(edit,/data-keto-use-cashews="keto\/2026-10-05\/day\/0\/h\/b" data-keto-value="20"/);
 });

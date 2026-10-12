@@ -184,6 +184,9 @@ h4{font-size:14px;margin:0}
 .shopping-table .ux-buy-check input{display:block;margin-top:1px}
 .shopping-table td small{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:400}
 .shopping-table th .ux-buy-form{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:400}
+.shopping-table th .ux-recheck{display:block;margin-top:2px;color:var(--muted);font-size:11px;font-weight:400;font-style:italic}
+.keto-legacy-nuts{grid-column:1/-1;margin:0;color:var(--muted);font-size:12px}
+.keto-legacy-nuts button{margin-left:6px;font-size:11px;padding:3px 8px}
 /* Buying assumptions: purchase-only edible yields and mushroom packet size */
 .ux-buying>div>.ux-note{margin-top:0}
 .ux-yield-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 18px;max-width:900px}
