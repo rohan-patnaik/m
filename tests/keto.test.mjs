@@ -572,10 +572,12 @@ test('separate sabzis have separate weighing records and recipe-matched batch se
  run("sharedRecipes[sharedKey(5)].w='S5'");assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='paneerMM')"),true);assert.equal(run("meal(state.days[5],'d','w').some(x=>x.id==='soyN')"),false);
 });
 
-test('round 2 UI: fixed theme switch, product selectors, buying assumptions and honest unknowns',()=>{
+test('round 2 UI: sticky header theme switch, product selectors, buying assumptions and honest unknowns',()=>{
  const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8'),html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(css,/\.ux-theme-btn\{position:fixed;top:var\(--theme-top\);right:var\(--theme-right\);z-index:35/);
- assert.match(css,/#syncBar\{position:sticky;top:0;z-index:30;margin:0 var\(--theme-reserve\)/);assert.match(css,/\.ux-app-header\{padding-right:var\(--theme-reserve\)\}/);
+ // The theme switch lives in the opaque sticky header row, never floating over content; #syncBar parks below the header.
+ assert.match(css,/\.ux-app-header\{position:sticky;top:0;z-index:40;background:var\(--bg\)\}/);assert.doesNotMatch(css,/position:fixed|--theme-(top|right|reserve)/);
+ assert.match(css,/#syncBar\{position:sticky;top:var\(--header-h\);z-index:30/);
+ assert.match(html,/<div class="ux-app-header">[\s\S]*?id="settingsLink"[\s\S]*?id="themeBtn" class="ux-theme-btn"[\s\S]*?<\/div>/);
  assert.match(html,/id="themeBtn"/);assert.match(html,/id="settingsLink"/);assert.match(html,/id="productRow"/);
  const {run,shopping,root}=app(true);
  const products=run('uxProductChoicesHTML()');
@@ -669,4 +671,20 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  // Fullness: nuts are a substantial counted part of the plan; no fixed 10 g cashew default.
  assert.match(run('trialHTML()'),/Measured nuts are a substantial counted part of the plan \(about 120 g\/day in the current draft\), counted foods, not free snacks\./);
  assert.doesNotMatch(info,/10 g once a day|10 g cashew/);
+});
+
+test('weigh & serve: one full-width dish select replaces the scrolling dish tabs',()=>{
+ const {run}=app(true),css=readFileSync(new URL('../ux.css',import.meta.url),'utf8');
+ run("var dlg={innerHTML:'',textContent:'',open:true,classList:{add(){},remove(){}}};const q=document.querySelector;document.querySelector=s=>['#dlgBody','#dlgTitle','#dlg'].includes(s)?dlg:q(s);refreshServeCard=()=>{}");
+ const i=run("state.days.findIndex((d,i)=>serveDishes(i).length>1)");assert.ok(i>=0);
+ const dishes=JSON.parse(run(`JSON.stringify(serveDishes(${i}))`));
+ for(const current of dishes){
+  run(`weighContext={i:${i},date:dateForDay(${i}),meal:'l',guided:true};serveDish='${current}';serveRecord=null;serveStep=1;drawServe()`);
+  const html=run('dlg.innerHTML'),select=html.match(/<label class="ux-dish-select">Dish<select data-serve-dish-select aria-label="Dish">([\s\S]*?)<\/select><\/label>/);
+  assert.ok(select);assert.doesNotMatch(html,/ux-dish-tabs|data-serve-dish=|aria-pressed/);
+  const options=[...select[1].matchAll(/<option value="([^"]+)"( selected)?>([^<]*)<\/option>/g)];
+  assert.deepEqual(options.map(o=>o[1]),dishes);assert.deepEqual(options.filter(o=>o[2]).map(o=>o[1]),[current]);
+  for(const o of options)assert.equal(o[3],run(`esc(serveTitle(${i},'${o[1]}'))`));
+ }
+ assert.doesNotMatch(css,/ux-dish-tabs|overflow-x:auto/);assert.match(css,/\.ux-dish-select select\{width:100%;min-width:0;max-width:100%/);
 });
