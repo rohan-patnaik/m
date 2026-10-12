@@ -39,7 +39,7 @@ h4{font-size:14px;margin:0}
 .ux-nutrition ul{padding-left:18px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
-/* App header: title, two destinations, settings */
+/* App header: title, two destinations, theme switch, settings */
 .ux-app-header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:14px 0;margin-bottom:14px}
 .ux-app-header header.top{display:block;margin:0;text-align:left}
 .ux-app-header h1{font-size:20px;letter-spacing:-.3px;margin:0}
@@ -49,6 +49,9 @@ h4{font-size:14px;margin:0}
 .tabs.ux-nav svg{display:none}
 .ux-settings-link{display:flex;justify-content:center;align-items:center;width:var(--tap);height:var(--tap);color:var(--ink);border-radius:8px}
 .ux-settings-link:hover{background:var(--tint)}
+.ux-theme-btn{display:flex;justify-content:center;align-items:center;flex-shrink:0;width:38px;height:38px;min-height:38px;padding:0;border-radius:8px;color:var(--ink);background:transparent;border-color:transparent}
+.ux-theme-btn:hover{background:var(--tint)}
+.ux-theme-btn+.ux-settings-link{margin-left:-8px}
 #regularPlan{display:none!important}
 #syncBar{position:sticky;top:0;z-index:30;margin:0 0 12px;font-size:13px;padding:8px 12px}
 #syncBar button{min-height:32px;padding:4px 10px}
@@ -183,6 +186,32 @@ h4{font-size:14px;margin:0}
 .ux-bought{opacity:.55}
 .ux-bought>th{text-decoration:line-through}
 
+/* Calendar weeks: pick any day, see its Monday–Sunday range, save or open it */
+#dlg.ux-cal-dialog{width:540px}
+.cal-pick,.cal-saved{margin:0 0 16px}
+.cal-pick h3,.cal-saved h3{font-size:14px;margin:0 0 8px}
+.cal-pick-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.cal-date{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.cal-date input{color:var(--ink);min-width:0}
+.cal-quick{display:flex;gap:6px}
+.cal-quick [aria-pressed=true]{border-color:var(--accent);background:var(--tint);color:var(--accent)}
+.cal-range{font-size:15px;margin:12px 0 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.cal-tag{font-size:12px;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.cal-tag.is-saved{color:var(--accent);border-color:var(--accent);background:var(--tint)}
+.cal-actions{display:flex;gap:8px;flex-wrap:wrap}
+#dlg .cal-hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+.cal-confirm{border:1px solid var(--warn);border-radius:9px;padding:10px 12px;background:var(--paper2)}
+.cal-confirm p{margin:0 0 8px;font-size:14px}
+.calrow{flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.calrow.is-current{border-color:var(--accent)}
+.calrow .acts{flex-wrap:wrap;align-items:center}
+.calrow .acts.cal-confirm{padding:4px 8px;gap:8px;font-size:13px}
+.calrow button,.cal-quick button{min-height:var(--tap)}
+button.danger{color:var(--warn);border-color:var(--warn)}
+.cal-viewing{font-size:13px;color:var(--muted);margin:0}
+.ux-week-context .text-btn{margin-left:6px;white-space:nowrap}
+.ux-week-context b{color:var(--ink);font-weight:600}
+
 /* Dialogs: weigh & serve, cook list, editors */
 #dlg{border:1px solid var(--line);box-shadow:0 20px 80px #14283233;border-radius:14px;padding:20px;color:var(--ink);background:var(--paper);max-height:88dvh;max-width:min(850px,calc(100vw - 32px));overflow-y:auto}
 #dlg::backdrop{background:#192b3a66}
@@ -230,7 +259,6 @@ h4{font-size:14px;margin:0}
 #settingsPage .portion-controls{display:flex;gap:16px;flex-wrap:wrap}
 #settingsPage .portion-field{display:flex;gap:8px;align-items:center;font-size:13px}
 #settingsPage .portion-field select{min-width:110px}
-#settingsPage #themeBtn{width:auto;font-size:16px;min-width:44px}
 #settingsPage .ut-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 #settingsDlg #keto{padding:0;margin-top:0}
 #settingsDlg .keto-heading h2{font-size:20px}
@@ -248,9 +276,11 @@ h4{font-size:14px;margin:0}
 @media(max-width:600px){
  .wrap{padding:0 12px 24px}
  .ux-app-header{gap:8px;padding:12px 0;margin-bottom:12px}
- .ux-app-header header.top{width:calc(100% - 44px)}
+ .ux-app-header header.top{flex:1 1 0;min-width:0;width:auto}
  .ux-app-header h1{font-size:18px}
- .ux-settings-link{position:relative;margin-left:auto;order:0}
+ .ux-theme-btn{order:0;margin-left:auto}
+ .ux-settings-link{position:relative;order:0}
+ .ux-theme-btn+.ux-settings-link{margin-left:0}
  .tabs.ux-nav{order:1;width:100%;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
  .tabs.ux-nav a{justify-content:center;font-size:14px;padding:6px}
  .meal-toolbar{gap:10px;margin-bottom:10px}

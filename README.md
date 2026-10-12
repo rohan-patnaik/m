@@ -9,6 +9,7 @@ Meals and settings are authoritative in Convex. The frontend uses live WebSocket
 - `records`: each template/day and dated week/day is separate; utensils, nutrition labels, oil estimates and wife/husband portion presets are household settings.
 - Every record has a revision. Commits compare expected revisions atomically. Different-item edits merge; same-item edits require reloading the conflicting item. Deletions keep tombstones to avoid stale recreation.
 - Day mode automatically selects the saved calendar week. Day Save changes that day, without swapping another day's sabzi. Week Save stores all seven days.
+- **Calendar weeks**: pick any day (or This week / Next week); the dialog shows the resulting Monday–Sunday range and whether it is saved. **Save week** copies the seven days currently shown (template or another saved week) into those dates; an existing saved week is only replaced after an inline **Replace saved week** confirmation, and Delete also asks inline first. Day and Week pages name the saved week (or template) and its full range. The light/dark switch sits in the header beside Settings.
 - Legacy Firebase browser copies are archived once in `legacyArchives`, then only those unchanged legacy keys are removed. They never override the current shared plan. Archive failure retains the old copy for a retry on the next visit.
 - The app intentionally has no end-user login: anyone with its link can read and edit this household. Convex admin credentials are never shipped to the browser.
 

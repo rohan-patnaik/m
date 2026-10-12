@@ -39,6 +39,32 @@ function app(withUX=false){
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
  return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
 }
+test('calendar dialog shows Monday–Sunday ranges and asks before replacing or deleting a saved week',()=>{
+ const {run}=app(true);
+ run("lockedWeeks={'2026-10-05':{days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:1}};state.weekKey='2026-10-05';calConfirm=null");
+ const day=(iso,year)=>run(`new Date('${iso}T12:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'${year?",year:'numeric'":''}})`);
+ const range=day('2026-10-05')+' – '+day('2026-10-11',true);
+ assert.equal(run("weekRangeText('2026-10-05')"),range);
+ assert.equal(run("weekRangeText('2026-12-28')"),day('2026-12-28',true)+' – '+day('2027-01-03',true));
+ for(const iso of ['2026-10-05','2026-10-08','2026-10-11'])assert.equal(run(`mondayOf('${iso}')`),'2026-10-05');
+ const viewing=run("calPickMon=mondayOf('2026-10-08');calCard()");
+ assert.ok(viewing.includes(`<b>${range}</b> <span class="cal-tag is-saved">Saved · viewing</span>`));
+ assert.match(viewing,/data-calload="2026-10-05">View saved week/);assert.doesNotMatch(viewing,/data-calsave/);
+ assert.ok(viewing.includes(`Viewing saved week <b>${range}</b>`));
+ run('state.weekKey=null');
+ const template=run('calCard()');
+ assert.match(template,/data-calload="2026-10-05">View saved week<\/button><button data-calsave>Replace with current plan…/);assert.doesNotMatch(template,/data-calconfirm/);
+ assert.match(template,/Viewing the weekly template/);
+ const confirm=run("calConfirm={kind:'save',mon:'2026-10-05'};calCard()");
+ assert.ok(confirm.includes(`This replaces the saved week <b>${range}</b> with the seven days of the weekly template.`));
+ assert.match(confirm,/<button class="primary" data-calsave data-calconfirm="2026-10-05">Replace saved week<\/button><button data-calcancel>Cancel<\/button>/);
+ const other=run("calConfirm=null;calPickMon='2026-10-12';calCard()");
+ assert.match(other,/Not saved yet/);assert.match(other,/<button class="primary" data-calsave>Save week<\/button>/);assert.doesNotMatch(other,/data-calconfirm/);
+ assert.ok(other.includes(`<div class="calrow"><span><b>${range}</b></span>`));
+ assert.match(run("calConfirm={kind:'del',mon:'2026-10-05'};calCard()"),/data-caldel="2026-10-05" data-calconfirm="2026-10-05">Delete<\/button><button data-calcancel>Cancel/);
+ assert.equal(run("Object.keys(lockedWeeks).join()"),'2026-10-05');
+});
+
 test('palak corn counts raw corn, shared portions and shopping under every diet assignment',()=>{
  const {run}=app(true);
  assert.equal(run("comparisonSum([L('corn',100)]).k"),86);
@@ -72,7 +98,7 @@ test('open meal cards preserve all four diet assignments and expose dry, raw and
   assert.equal((html.match(/<section class="meal-card/g)||[]).length,4);
   assert.match(html,/Snacks &amp; milk|Snacks & milk/);
   assert.doesNotMatch(html,/<details[^>]*data-ux-meal/);
-  assert.match(html,/35 g powder \(1 scoop\)/);
+  assert.match(html,/<b>1 scoop<\/b><small>35 g powder<\/small>/);
   assert.equal(run('JSON.stringify(ledger())'),ledger);
  }
  run("householdDiets={w:'balanced',h:'keto'}");
@@ -116,7 +142,8 @@ test('compact quantity tables retain every person’s food and distinguish share
  run("householdDiets={w:'balanced',h:'keto'}");
  const breakfast=JSON.parse(run("JSON.stringify(uxMealRows(0,'b'))"));
  const whey=breakfast.filter(r=>r.label==='Whey');assert.equal(whey.length,1);
- assert.equal(whey[0].w.quantity,'35 g powder (1 scoop)');assert.equal(whey[0].h.quantity,'35 g powder (1 scoop)');
+ for(const p of ['w','h']){assert.equal(whey[0][p].quantity,'1 scoop');assert.equal(whey[0][p].detail,'35 g powder');}
+ assert.deepEqual(['0.5','1','2'].map(q=>run(`JSON.stringify(uxFoodRow(L('whey',${q})))`)),[{quantity:'0.5 scoop',detail:'17.5 g powder'},{quantity:'1 scoop',detail:'35 g powder'},{quantity:'2 scoops',detail:'70 g powder'}].map(x=>JSON.stringify({label:'Whey',...x})));
  const lunch=JSON.parse(run("JSON.stringify(uxMealRows(0,'l'))"));
  const dal=lunch.find(r=>r.label==='Moong dal');assert.ok(dal.w);assert.equal(dal.h,undefined);
  run("sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
