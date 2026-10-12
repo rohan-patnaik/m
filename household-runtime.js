@@ -29,7 +29,11 @@ function ketoComponent(day,p,m,component){
  if(!kept(day,m))return [];
  const cfg=ketoConfig(day,p,m);
  if(component==='sabzi'&&['l','d'].includes(m))return personSabzi(day,p).map(x=>L(x.id,x.q*cfg.sabziFraction));
- if(component==='protein'){if(m!=='b'&&personRecipe(day,p)==='S12')return [];return [...(cfg.eggWhites?[L('eggWhite',cfg.eggWhites)]:[]),...(cfg.spinach?[L('palak',cfg.spinach)]:[]),L(cfg.protein==='eggs'?'egg':cfg.protein==='paneer'?cfg.paneerType:'chicken',cfg.quantity),...(cfg.soya?[L(soyaId(),cfg.soya)]:[]),...(cfg.oil?[L('oil',cfg.oil)]:[])];}
+ if(component==='protein'){
+  const extras=[...(cfg.eggWhites?[L('eggWhite',cfg.eggWhites)]:[]),...(cfg.spinach?[L('palak',cfg.spinach)]:[])];
+  if(m!=='b'&&personRecipe(day,p)==='S12')return [...extras,...(extras.length&&cfg.oil?[L('oil',cfg.oil)]:[])];
+  return [...extras,L(cfg.protein==='eggs'?'egg':cfg.protein==='paneer'?cfg.paneerType:'chicken',cfg.quantity),...(cfg.soya?[L(soyaId(),cfg.soya)]:[]),...(cfg.oil?[L('oil',cfg.oil)]:[])];
+ }
  return [];
 }
 function householdKetoBase(day,p,m){
@@ -78,7 +82,7 @@ function assignedBaseMeal(day,m,p){
  if(kept(day,m)&&['l','d'].includes(m)&&personRecipe(day,p)!==effective.s){a=subtractIngredients(a,balancedOriginalComponent(effective,m,p,'sabzi'));a.push(...personSabzi(day,p).map(x=>L(x.id,x.q*balancedSabShare(effective,p,m))));}
  return a;
 }
-function ketoActualMeal(day,p,m){let a=householdKetoBase(day,p,m);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of ['sabzi','protein'])if(coveredComponent(day,m,p,c)){a=subtractIngredients(a,ketoComponent(day,p,m,c));const link=batchLink(date,m,p,c);if(link)a.push(...BatchMath.portionLines(link.batch,link.serving));}return a;}
+function ketoActualMeal(day,p,m){let a=householdKetoBase(day,p,m);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of ['sabzi','protein'])if(coveredComponent(day,m,p,c)){a=subtractIngredients(a,originalComponent(day,m,p,c,date));const link=batchLink(date,m,p,c);if(link)a.push(...BatchMath.portionLines(link.batch,link.serving));}return a;}
 function assignedDayNutrition(i,p){const t=comparisonEmpty();for(const m of ['b','l','d','e'])comparisonAdd(t,comparisonSum(meal(state.days[i],m,p)));return t;}
 function ketoDayNutrition(i,p){const t=comparisonEmpty();for(const m of ['b','l','d','e'])comparisonAdd(t,comparisonSum(ketoActualMeal(state.days[i],p,m)));return t;}
 function dailyPlanChecks(t,p){

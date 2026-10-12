@@ -41,7 +41,7 @@ function ketoSuggestion(day,p,m){
  return {name,note:m==='b'?'No separate vegetable recipe. Ready protein and cucumber'+(whey?', plus '+whey+'.':'.'):'Share the cook’s actual sabzi. Rice/roti and default dal are omitted for this keto person. Protein choice replaces the separate paneer portion; paneer already inside a shared/prepared recipe still counts.'+(whey?' Plus '+whey+'.':'')};
 }
 // Per-meal whey scoops (Root's cfg.whey); older configs fall back to the breakfast whey toggle for display only.
-function ketoWheyScoops(day,p,m,cfg=ketoConfig(day,p,m)){return typeof cfg.whey==='number'?cfg.whey:m==='b'&&(p==='h'?day.wheyH:day.wheyW)?1:0;}
+function ketoWheyScoops(day,p,m,cfg=ketoConfig(day,p,m)){if(!kept(day,m)||m==='b'&&!(p==='h'?day.wheyH:day.wheyW))return 0;return typeof cfg.whey==='number'?cfg.whey:m==='b'&&(p==='h'?day.wheyH:day.wheyW)?1:0;}
 function ketoWheyTotal(day,p,i){if(typeof ketoWheyDailyTotal==='function')return ketoWheyDailyTotal(day,p);return ['b','l','d'].filter(m=>!day.off&&!day.skip?.[m]).reduce((n,m)=>n+ketoWheyScoops(day,p,m,ketoConfig(day,p,m,i)),0);}
 function ketoBefore(day,p,m){
  if(day.off||day.skip?.[m])return 'Eating out / skipped';

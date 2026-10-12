@@ -70,6 +70,12 @@ test('prepared egg batches freeze whole eggs, extra whites, spinach and oil once
  assert.equal(batch.ingredients.find(x=>x.id==='egg').q,2);assert.equal(batch.ingredients.find(x=>x.id==='eggWhite').q,3);assert.equal(batch.ingredients.find(x=>x.id==='palak').q,200);assert.equal(batch.ingredients.find(x=>x.id==='oil').q,5);
  run("savedBatches['fixture-extra-whites']=buildBatchPreview(true)");assert.equal(run("JSON.stringify(comparisonSum(BatchMath.portionLines(savedBatches['fixture-extra-whites'],savedBatches['fixture-extra-whites'].servings[0])))"),before);
 });
+test('explicit whites and pan spinach count alongside bhurji and remain outside a frozen sabzi',()=>{
+ const {run}=app();run("householdDiets.h='keto';sharedRecipes[sharedKey(0)]={recipe:'S12'};ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(state.days[0],'h','d'),eggWhites:3,spinach:100,oil:5}");
+ assert.equal(run("ketoActualMeal(state.days[0],'h','d').find(x=>x.id==='eggWhite').q"),3);
+ run("batchDraft={recipe:'S12',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:400,oil:null,roles:{'2026-10-05/d':'sabzi'},selected:{'2026-10-05/d/h':true}};savedBatches['fixture-bhurji-extras']=buildBatchPreview(true)");
+ const lines=JSON.parse(run("JSON.stringify(ketoActualMeal(state.days[0],'h','d'))"));assert.equal(lines.find(x=>x.id==='eggWhite').q,3);assert.equal(lines.find(x=>x.id==='palak'&&!x.n).q,100);assert.ok(Math.abs(lines.find(x=>x.id==='oil'&&!x.n).q-5)<1e-8);
+});
 test('audited products keep separate identities and correct scoop, milk and oil units',()=>{
  const {run}=app();
  for(const [id,q,k,p,c]of [['paneerMM',100,283,16.1,5.1],['paneerMM',500,1415,80.5,25.5],['milk',100,59.74,3.193,4.738],['whey',1,136,29,2.8],['oil',10,81.627,0,0]]){
@@ -604,10 +610,10 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  assert.doesNotMatch(w,/eggWhites/);assert.match(w,/data-keto-field="whey"/);
  assert.match(run("ketoSuggestion(state.days[0],'h','b').note"),/plus 1 scoop whey with water\./);
  // Root's per-meal scoops and daily total drive the text; over 3 is flagged, not blocked.
- run("ketoMeals[ketoMealKey(0,'h','l')]={...ketoConfig(state.days[0],'h','l'),whey:1.5};globalThis.ketoWheyDailyTotal=()=>3.5");
+ run("ketoMeals[ketoMealKey(0,'h','l')]={...ketoConfig(state.days[0],'h','l'),whey:1.5};globalThis.savedWheyDailyTotal=globalThis.ketoWheyDailyTotal;globalThis.ketoWheyDailyTotal=()=>3.5");
  const lunch=run("ketoEditHTML(state.days[0],0,'h','l')");assert.match(lunch,/value="1.5"[^>]*data-keto-field="whey"><small class="keto-hint keto-over">today 3.5 of 3 scoops · over 3/);
  assert.match(run("ketoSuggestion(state.days[0],'h','l').note"),/Plus 1\.5 scoops whey with water\./);
- run('delete globalThis.ketoWheyDailyTotal');assert.match(run("ketoEditHTML(state.days[0],0,'h','l')"),/today 2\.5 of 3 scoops/);
+ run('globalThis.ketoWheyDailyTotal=globalThis.savedWheyDailyTotal');assert.match(run("ketoEditHTML(state.days[0],0,'h','l')"),/today 2\.5 of 3 scoops/);
  // Apply button appears only when Root provides an available plan.
  assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
  run("globalThis.applyKetoInventoryPlan=()=>true;globalThis.ketoInventoryPlanAvailable=()=>false");assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);

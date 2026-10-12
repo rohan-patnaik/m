@@ -22,7 +22,12 @@ function subtractIngredients(lines,remove){
  return [...Object.entries(q).filter(([,v])=>v>1e-8).map(([id,v])=>L(id,v)),...frozen];
 }
 function originalComponent(day,m,p,component,date=mealDate(day)){
- if(typeof isKeto==='function'&&isKeto(p))return ketoComponent(day,p,m,component);
+ if(typeof isKeto==='function'&&isKeto(p)){
+  const lines=ketoComponent(day,p,m,component),cfg=ketoConfig(day,p,m);
+  // Sabzi-owned paneer replaces the former main protein, not explicit new whites/veg.
+  if(component==='protein'&&date&&!batchLink(date,m,p,'protein')&&BatchMath.PROTEIN_SABZIS.has(batchLink(date,m,p,'sabzi')?.batch.recipe)&&(cfg.eggWhites||cfg.spinach))return lines.filter(x=>!['eggWhite','palak','oil'].includes(x.id));
+  return lines;
+ }
  const effective=typeof assignedBalancedDay==='function'?assignedBalancedDay(day,p,date):day;
  if(component==='sabzi'&&kept(day,m)&&['l','d'].includes(m)&&typeof personSabzi==='function')return personSabzi(day,p,date).map(x=>L(x.id,x.q*balancedSabShare(effective,p,m)));
  return balancedOriginalComponent(effective,m,p,component);
