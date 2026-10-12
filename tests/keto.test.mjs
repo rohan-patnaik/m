@@ -583,5 +583,13 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
  run("globalThis.applyKetoInventoryPlan=()=>true;globalThis.ketoInventoryPlanAvailable=()=>false");assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
  run("globalThis.ketoInventoryPlanAvailable=()=>true");assert.match(run('ketoReviewHTML()'),/data-keto-apply-plan>Apply suggested husband plan to draft<\/button><small>Fills the draft only; review each day, then save\./);
- const trial=run('trialHTML()');assert.match(trial,/4–5 strength sessions\/week/);assert.doesNotMatch(trial,/45 min|flax/);assert.match(trial,/maintenance is unconfirmed/);
+ const trial=run('trialHTML()');assert.match(trial,/4–5 strength sessions\/week/);assert.doesNotMatch(trial,/45 min|no seeds|flax[^.]*fullness/);assert.match(trial,/Ground flaxseed is an optional historical field\./);assert.match(trial,/maintenance is unconfirmed/);assert.match(trial,/not measured needs/);
+ // Egg display: whites are separate eggs; whole eggs keep their own label; guarded while DB.eggWhite is absent.
+ assert.deepEqual(JSON.parse(run("JSON.stringify(uxFoodRow(L('eggWhite',3)))")),{label:'Extra whites',quantity:'3 whites',detail:'extra eggs needed'});
+ assert.equal(run("uxFoodRow(L('eggWhite',1)).quantity"),'1 white');
+ assert.deepEqual(JSON.parse(run("JSON.stringify(uxFoodRow(L('egg',2)))")),{label:'Whole eggs',quantity:'2 eggs'});
+ assert.equal(run("uxFoodRow(L('almonds',20)).label"),'Almonds');
+ assert.match(run("shoppingBuy({id:'egg',unit:'egg',needed:10,buy:10})"),/^10 eggs<small class="ux-buy-note">Whole eggs plus any extra eggs bought only for their whites; those yolks go unused<\/small>$/);
+ assert.doesNotMatch(run("shoppingBuy({id:'chicken',unit:'g',needed:250,buy:250,packs:1,largePacks:1,largeLeftover:250})"),/ux-buy-note/);
+ assert.doesNotMatch(run('ketoApplyPlanHTML()'),/strict|keto-ready/i);
 });
