@@ -863,11 +863,15 @@ function inspect(i,m){
   const d=state.days[i],dw=daily(i,'w'),dh=daily(i,'h');
   if(d.off||(d.skip&&d.skip[m]))return`<p>Skipped — eating out. Nothing to split for this meal.</p><p class="hintline">Unskip it on the day card to bring the ratios back.</p>`;
   const tot=m==='b'?[dw.b,dh.b]:m==='l'?[dw.l,dh.l]:[dw.d,dh.d];
-  const rows=batchSplitRows(d,m,splitRatio(d,m)).map(r=>`<tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>`).join('');
+  // Meal-facing names are generic; one row per food from meal() replaces the joined per-person strings.
+  const name=typeof uxMealText==='function'?uxMealText:s=>s,foods=typeof uxIngredientTable==='function'?uxIngredientTable(i,m):'';
+  const assigned=typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d));
+  const split=foods&&assigned?'':`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${batchSplitRows(d,m,splitRatio(d,m)).map(r=>`<tr><td>${name(r[0])}</td><td class="num"><b>${name(r[1])}</b></td></tr>`).join('')}</tbody></table>`;
   const calc=splitCalc(d,m,i);
   const mlines={w:meal(d,m,'w'),h:meal(d,m,'h')};
   const oilMl={w:0,h:0,sp:0};for(const p of['w','h'])for(const x of mlines[p]){if(x.id==='oil')oilMl[p]+=x.q;if(x.id==='spice')oilMl.sp+=x.q;}
-  const oilNote=(oilMl.w+oilMl.h>0)?`<p class="hintline">Recipe oil in this meal ≈ ${F(oilMl.w+oilMl.h)} ml (W ${F(oilMl.w)} · H ${F(oilMl.h)}) + spices ${F(oilMl.sp)} g — estimates, editable in Packet labels. Included in the kcal above.</p>`:'';
+  const oilNote=(oilMl.w+oilMl.h>0)?`<p class="hintline">Oil included: W ${F(oilMl.w)} ml · H ${F(oilMl.h)} ml${oilMl.sp?` · spices ${F(oilMl.sp)} g`:''}.</p>`:'';
+  const oilMore=(oilMl.w+oilMl.h>0)?`<p class="hintline">Recipe oil and spices are estimates, editable in Packet labels, and are included in the kcal above.</p>`:'';
   let note='';
   if(m==='d'&&!(typeof isKeto==='function'&&['w','h'].some(isKeto))&&(d.cardioW===false||d.cardioH===false)){
     const cuts=[];
@@ -876,8 +880,11 @@ function inspect(i,m){
     note=`<p class="hintline">Rest day (${restWho(d)} skipped cardio): no dinner roti, no evening nuts — ${cuts.join(' · ')} vs a cardio day on this plan. Protein portions are unchanged (totals still carry less roti/nut protein). This is a plan difference, not measured exercise burn.</p>`;
   }
   const fibNote=(fibUnk(mlines.w)||fibUnk(mlines.h))?`<p class="hintline">Fibre excludes items with undeclared fibre (e.g. whey) — shown sums are incomplete, not zero.</p>`:'';
+  const whey=['w','h'].map(p=>mlines[p].filter(x=>x.id==='whey').reduce((n,x)=>n+x.q,0));
+  const wheyNote=whey[0]+whey[1]>0?`<p class="hintline">Whey: one level scoop is 35 g powder (W ${F(whey[0]*35)} g · H ${F(whey[1]*35)} g).</p>`:'';
   const mixNote=`<p class="hintline">Portion method: batch nutrients × your weighed portion ÷ whole cooked batch (vessel off). Water only changes weight. Mix well and deal chunky paneer/soya pieces deliberately — weight alone doesn't prove equal pieces.</p>`;
-  return`<table><thead><tr><th>Split</th><th class="num">Wife : Husband</th></tr></thead><tbody>${rows}</tbody></table>${calc}${oilNote}${note}${fibNote}${mixNote}<p class="hintline">This meal (oil included): W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>`;
+  const more=`<details class="ux-disclosure"><summary>How portions work</summary><div>${foods?split:''}${oilMore}${wheyNote}${fibNote}${mixNote}</div></details>`;
+  return`${foods||split}<p class="hintline">This meal (oil included): W ${R(tot[0].k)} kcal · H ${R(tot[1].k)} kcal.</p>${oilNote}${note}${calc}${more}`;
 }
 function avgForMode(m,p){
   const keep=state.personModes[p];state.personModes[p]=m;
@@ -985,15 +992,16 @@ function calRefresh(focus){const box=$('#calPicked');if(!box)return;const mon=ca
 function calPickDate(iso){const mon=mondayOf(iso);if(!mon)return;calPickMon=mon;calConfirm=null;calRefresh();}
 function openCal(pick){calPickMon=typeof pick==='string'&&mondayOf(pick)||null;calConfirm=null;$('#dlgTitle').textContent='Calendar weeks';$('#dlg').classList.add('ux-cal-dialog');$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
 function dayViewISO(){const vd=new Date();vd.setDate(vd.getDate()+dayOff);return vd.getFullYear()+'-'+String(vd.getMonth()+1).padStart(2,'0')+'-'+String(vd.getDate()).padStart(2,'0');}
-let editCtx=null,editSnap='';
+let editCtx=null,editSnap='',editP=null;
 function editValsFromState(i){const d=state.days[i];return{b:d.b,s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
 function editFormHTML(v){
+  // Protein sabzis already include protein: the Dinner protein field is hidden, and collectEdit keeps its last value.
   const noExtra=NO_EXTRA(v.s);
   const tgl=(k,txt)=>`<label><input type="checkbox" data-et="${k}"${v[k]?' checked':''}> ${txt}</label>`;
   return`<div class="editform">
     <label>Breakfast<select data-ek="b">${opts(BREAKFASTS,v.b)}</select></label>
     <label>Lunch + dinner sabzi<select data-ek="s">${opts(SABZIS,v.s)}</select></label>
-    <label>Dinner protein${noExtra?' (already in sabzi — nothing extra)':''}<select data-ek="p"${noExtra?' disabled':''}>${opts(PROTEINS,v.p)}</select></label>
+    ${noExtra?'':`<label>Dinner protein<select data-ek="p">${opts(PROTEINS,v.p)}</select></label>`}
     <label>Dal<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>
     <div><div class="lbl">For the day</div><div class="tglrow">${tgl('wheyW','W whey')}${tgl('wheyH','H whey')}${tgl('eggH','H eggs')}${tgl('cardioW','W cardio')}</div></div>
     <div><div class="lbl">Skip</div><div class="tglrow">${tgl('skipB','Breakfast')}${tgl('skipL','Lunch')}${tgl('skipD','Dinner')}${tgl('off','Eat out (whole day)')}</div></div>
@@ -1003,13 +1011,14 @@ function editFormHTML(v){
 function collectEdit(){
   const g=k=>{const el=document.querySelector(`[data-ek="${k}"]`);return el?el.value:null;};
   const t=k=>{const el=document.querySelector(`[data-et="${k}"]`);return el?el.checked:false;};
-  return{b:g('b'),s:g('s'),p:g('p'),dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
+  const p=g('p');if(p!==null)editP=p;else if(editP===null&&editSnap)editP=JSON.parse(editSnap).p;
+  return{b:g('b'),s:g('s'),p:editP,dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
   if(iso){selectWeek(mondayOf(iso));render();}
   editCtx={i,iso:iso||null};
-  const v=editValsFromState(i);editSnap=JSON.stringify(v);
+  const v=editValsFromState(i);editSnap=JSON.stringify(v);editP=v.p;
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
   $('#dlgBody').innerHTML=editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
@@ -1204,7 +1213,7 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-ing]');
   if(b){
     const[i,m]=b.dataset.ing.split(',').map((x,j)=>j===0?+x:x);
-    $('#dlgTitle').textContent=DAYS[i]+' · '+batchMealTitle(state.days[i],m);
+    $('#dlgTitle').textContent=DAYS[i]+' · '+(typeof uxDetailsTitle==='function'?uxDetailsTitle(i,m):batchMealTitle(state.days[i],m));
     $('#dlgBody').innerHTML=inspect(i,m);
     $('#dlg').showModal();return;
   }
