@@ -8,18 +8,21 @@ const UX_ICONS={meals:'<path d="M4 3v7m3-7v7M4 7h3m-1.5 3v11M17 3v18m0-18c-4 2-4
 function uxIcon(name){return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${UX_ICONS[name]||''}</svg>`;}
 function uxDietName(p){return isKeto(p)?'Keto draft':'Balanced';}
 function uxDietChips(){return `<div class="ux-diet-chips">${['w','h'].map(p=>`<span>${PERSON_NAMES[p]} <b>${uxDietName(p)}</b></span>`).join('')}</div>`;}
-function uxWarning(i){const warnings=[],people=[];for(const p of ['w','h'].filter(isKeto)){const t=assignedDayNutrition(i,p);if(!t.k)continue;if(t.aHi>ketoOptions.carbBudget)warnings.push(`${PERSON_NAMES[p]}: carb budget needs review`);else if(t.carbUnknown)warnings.push(`${PERSON_NAMES[p]}: carb check unverified`);else continue;people.push(p);}return warnings.length?`<div class="ux-warning" role="status">⚠ ${warnings.map(esc).join('; ')} <button type="button" class="text-btn" data-ux-carbs="${i},${people[0]}">View carbs</button> <a class="ux-diet-review" href="#keto">Diet review</a></div>`:'';}
+// Banner only when the conservative counted-carb upper bound reaches the budget. Unknown data below budget stays in
+// the View carbs dialog and the Nutrition & carb checks disclosure, never shown as a pass.
+function uxWarning(i){const warnings=[],people=[];for(const p of ['w','h'].filter(isKeto)){const t=assignedDayNutrition(i,p);if(!t.k)continue;if(!(t.aHi>=ketoOptions.carbBudget))continue;warnings.push(`${PERSON_NAMES[p]}: carb budget needs review`);people.push(p);}return warnings.length?`<div class="ux-warning" role="status">⚠ ${warnings.map(esc).join('; ')} <button type="button" class="text-btn" data-ux-carbs="${i},${people[0]}">View carbs</button> <a class="ux-diet-review" href="#keto">Diet review</a></div>`:'';}
 function uxCurrentIndex(){return (new Date(dayViewISO()+'T12:00:00').getDay()+6)%7;}
-function uxMealName(i,p,m){const day=state.days[i];return m==='e'?'Planned snacks & milk':isKeto(p)?ketoSuggestion(day,p,m).name:assignedBalancedTitle(day,p,m);}
+// Keto breakfast shows the cooked recipe name once Root's ketoBreakfastName ships.
+function uxMealName(i,p,m){const day=state.days[i];return m==='e'?'Planned snacks & milk':isKeto(p)?m==='b'&&typeof ketoBreakfastName==='function'?ketoBreakfastName(ketoConfig(day,p,m,i)):ketoSuggestion(day,p,m).name:assignedBalancedTitle(day,p,m);}
 function uxMealBasis(i,m){return JSON.stringify(['w','h'].map(p=>meal(state.days[i],m,p)));}
 function uxMealDone(i,m){const r=activityRecords[`done/${dateForDay(i)}/${m}`];return !!r?.complete&&r.basis===uxMealBasis(i,m);}
 const UX_FOOD_NAMES={atta:'Roti atta',rice:'Rice',oats:'Oats',besan:'Besan',poha:'Poha',whey:'Whey',egg:'Whole eggs',eggWhite:'Extra whites',paneer:'Heritage paneer',paneerHP:'Heritage high-protein paneer',paneerMM:'Milky Mist paneer',soyN:'Nutrela chunks',soyS:'Saffola chunks',curd:'Milky Mist curd',curdH:'Heritage curd',milk:'Milk',nuts:'Mixed nuts',cashews:'Cashews',almonds:'Almonds',walnuts:'Walnuts',flax:'Ground flaxseed',butter:'Amul butter',butterH:'Heritage butter',chicken:'Chicken breast',corn:'Sweetcorn kernels'};
 // Meal cards show generic food names; Settings, Shopping, carbs evidence and Adjust portions keep product names.
-const UX_MEAL_LABELS={paneer:'Paneer',paneerMM:'Paneer',paneerHP:'High-protein paneer',soyN:'Soya chunks',soyS:'Soya chunks',curd:'Curd',curdH:'Curd',butter:'Butter',butterH:'Butter'};
+const UX_MEAL_LABELS={avocado:'Avocado',mushroom:'Mushroom',paneer:'Paneer',paneerMM:'Paneer',paneerHP:'High-protein paneer',soyN:'Soya chunks',soyS:'Soya chunks',curd:'Curd',curdH:'Curd',butter:'Butter',butterH:'Butter'};
 function uxMealLabel(id){return UX_MEAL_LABELS[id]||UX_FOOD_NAMES[id]||String(DB[id]?.[0]||id).split(' · ')[0];}
-function uxMealText(s){return String(s).replace(/(?:Heritage |Milky Mist )?high-protein paneer/gi,'High-protein paneer').replace(/(?:Heritage|Milky Mist) paneer/g,'Paneer').replace(/(?:Heritage|Milky Mist) curd/g,'Curd').replace(/(?:Amul|Heritage) butter/g,'Butter').replace(/(?:Nutrela|Saffola) chunks/g,'Soya chunks').replace(/ · (?:Nutrela|Saffola)\b/g,'');}
+function uxMealText(s){return String(s).replace(/(?:Heritage |Milky Mist )?high-protein paneer/gi,'High-protein paneer').replace(/(?:Heritage|Milky Mist) paneer/g,'Paneer').replace(/(?:Heritage|Milky Mist) curd/g,'Curd').replace(/(?:Amul|Heritage) butter/g,'Butter').replace(/(?:Nutrela|Saffola) (?:chunks|soya)\b/g,'Soya chunks').replace(/ · (?:Nutrela|Saffola)\b/g,'');}
 const UX_DRY_FOODS=new Set(['atta','rice','oats','besan','poha','soyN','soyS','moong','masoor','arhar','rajma','chickpea','kalachana','pasta','maida']);
-const UX_RAW_FOODS=new Set(['chicken','onion','tomato','carrot','potato','gobi','bhindi','palak','arbi','mushroom','cucumber','beans','cabbage','corn']);
+const UX_RAW_FOODS=new Set(['chicken','onion','tomato','carrot','potato','gobi','bhindi','palak','arbi','mushroom','cucumber','beans','cabbage','corn','avocado']);
 function uxFoodRow(x){const unit=x.id==='eggWhite'?'egg':DB[x.id]?.[3]||'g',label=uxMealLabel(x.id);if(unit==='serving')return {label,quantity:`${F(x.q)} ${F(x.q)>1?'scoops':'scoop'}`,detail:`${F(x.q*35)} g powder`};if(x.id==='eggWhite')return {label,quantity:`${F(x.q)} ${x.q===1?'white':'whites'}`,detail:'extra eggs needed'};const quantity=unit==='egg'?`${F(x.q)} ${x.q===1?'egg':'eggs'}`:`${F(x.q)} ${unit}${UX_DRY_FOODS.has(x.id)?' dry':UX_RAW_FOODS.has(x.id)?' raw':''}`;return {label,quantity};}
 function uxDishRow(i,m,p,component,lines){
  const d=state.days[i],date=mealDate(d),link=date&&batchLink(date,m,p,component);
@@ -51,17 +54,26 @@ function uxServingRows(i,m,p){
 function uxRowsHTML(rows){return rows.length?`<ul class="meal-food-list">${rows.map(r=>`<li${r.unweighed?' class="meal-unweighed"':''}><span>${esc(r.label)}</span><strong>${esc(r.quantity)}</strong>${r.detail?`<small>${esc(r.detail)}</small>`:''}</li>`).join('')}</ul>`:'<p class="meal-none">None planned</p>';}
 // One row per food with both people's amounts side by side; shared dishes appear once.
 function uxMealRows(i,m){const order=[],cells={};for(const p of ['w','h']){const seen={};for(const r of uxServingRows(i,m,p)){const n=seen[r.label]=(seen[r.label]||0)+1,key=n>1?`${r.label}#${n}`:r.label;if(!cells[key]){cells[key]={label:r.label};order.push(key);}cells[key][p]=r;}}return order.map(k=>cells[k]);}
-function uxCellHTML(r){if(!r)return '<td class="meal-empty">—</td>';return `<td${r.unweighed?' class="meal-unweighed"':''}><b>${esc(r.quantity)}</b>${r.detail&&!r.unweighed?`<small>${esc(r.detail)}</small>`:''}</td>`;}
+// "1 scoop" needs no second line; the powder weight stays on hover/long-press and in the carbs dialog.
+function uxCellHTML(r){if(!r)return '<td class="meal-empty">—</td>';const quiet=/ g powder$/.test(r.detail||'');return `<td${r.unweighed?' class="meal-unweighed"':''}${quiet?` title="${esc(r.detail)}"`:''}><b>${esc(r.quantity)}</b>${r.detail&&!r.unweighed&&!quiet?`<small>${esc(r.detail)}</small>`:''}</td>`;}
+function uxMealHead(food='<span class="sr-only">Food</span>'){return `<thead><tr><th scope="col">${food}</th>${['w','h'].map(p=>`<th scope="col">${PERSON_NAMES[p]}<small>${uxDietName(p)}</small></th>`).join('')}</tr></thead>`;}
 function uxMealTable(i,m){
  const d=state.days[i],rows=uxMealRows(i,m),unweighed=rows.some(r=>['w','h'].some(p=>r[p]?.unweighed)),t=['w','h'].map(p=>comparisonSum(meal(d,m,p)));
- const head=`<thead><tr><th scope="col"><span class="sr-only">Food</span></th>${['w','h'].map(p=>`<th scope="col">${PERSON_NAMES[p]}<small>${uxDietName(p)}</small></th>`).join('')}</tr></thead>`;
+ const head=uxMealHead();
  const names=['w','h'].map(p=>uxMealText(uxMealName(i,p,m))),menu=m!=='b'?'':`<p class="meal-menu">${names[0]===names[1]?esc(names[0]):['w','h'].map((p,n)=>`<b>${PERSON_NAMES[p]}</b> ${esc(names[n])}`).join(' <span>·</span> ')}</p>`;
  const body=rows.length?rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th>${uxCellHTML(r.w)}${uxCellHTML(r.h)}</tr>`).join(''):'<tr><td colspan="3" class="meal-none">None planned</td></tr>';
  // Footer rows follow Show macros; a person with a macro off gets an empty cell. Food rows above never change.
+ // The footer is its own table (same columns) so laptop cards can pin it to the bottom at one height.
  const metrics=[['k','<th scope="row">kcal</th>',x=>R(x.k)],['p','<th scope="row">Protein</th>',x=>F(x.p)+' g'],['c','<th scope="row" title="Counted available carbs">Carbs<span class="sr-only"> (counted available)</span></th>',x=>comparisonRange(x.a,x.aHi)+' g']].filter(([k])=>['w','h'].some(p=>uxMacros[p][k]));
- const foot=metrics.length?`<tfoot>${metrics.map(([k,th,f])=>`<tr class="meal-${k}-row">${th}${t.map((x,n)=>`<td>${!uxMacros['wh'[n]][k]?'':x.k?f(x):'—'}</td>`).join('')}</tr>`).join('')}</tfoot>`:'';
- return `${menu}<table class="meal-table">${head}<tbody>${body}</tbody>${foot}</table>${unweighed?'<p class="meal-foot">Batch shares become cooked grams after weighing.</p>':''}`;
+ const foot=metrics.length?`<table class="meal-table meal-table-foot"><caption class="sr-only">${UX_MEALS[m]} totals: ${PERSON_NAMES.w}, ${PERSON_NAMES.h}</caption><colgroup><col><col class="meal-col"><col class="meal-col"></colgroup><tfoot>${metrics.map(([k,th,f])=>`<tr class="meal-${k}-row">${th}${t.map((x,n)=>`<td>${!uxMacros['wh'[n]][k]?'':x.k?f(x):'—'}</td>`).join('')}</tr>`).join('')}</tfoot></table>`:'';
+ return `${menu}<table class="meal-table">${head}<tbody>${body}</tbody></table>${unweighed?'<p class="meal-foot">Batch shares become cooked grams after weighing.</p>':''}${foot}`;
 }
+// Details popup: every planned ingredient of meal() (frozen batch portions included), one row per generic food,
+// both people's raw amounts side by side. Oil and spices are summarised separately by inspect().
+function uxIngredientRows(i,m){const order=[],cells={};for(const p of ['w','h']){const by={};for(const x of meal(state.days[i],m,p)){if(!(x.q>0)||['oil','spice'].includes(x.id))continue;const k=uxMealLabel(x.id)+'|'+(x.id==='eggWhite'?'white':DB[x.id]?.[3]||'g');(by[k]||={id:x.id,q:0}).q+=x.q;}for(const [k,x] of Object.entries(by)){if(!cells[k]){cells[k]={label:uxMealLabel(x.id)};order.push(k);}cells[k][p]=uxFoodRow(x);}}return order.map(k=>cells[k]);}
+function uxIngredientTable(i,m){const rows=uxIngredientRows(i,m);return `<table class="meal-table meal-ingredients">${uxMealHead('Food')}<tbody>${rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th>${uxCellHTML(r.w)}${uxCellHTML(r.h)}</tr>`).join('')||'<tr><td colspan="3" class="meal-none">None planned</td></tr>'}</tbody></table>`;}
+// Details dialog title: generic names; keto breakfast uses the same per-person names as the card's menu line.
+function uxDetailsTitle(i,m){if(m!=='b'||!['w','h'].some(isKeto))return uxMealText(batchMealTitle(state.days[i],m));const n=['w','h'].map(p=>uxMealText(uxMealName(i,p,m)));return n[0]===n[1]?n[0]:['w','h'].map((p,k)=>PERSON_NAMES[p]+': '+n[k]).join(' · ');}
 function uxNutrition(i){return `<details class="ux-disclosure"><summary>Nutrition &amp; carb checks</summary><div class="ux-nutrition">${['w','h'].map(p=>{const t=assignedDayNutrition(i,p);return `<section><h3>${PERSON_NAMES[p]}</h3><p>${F(t.aHi)} g counted carbs · ${F(t.c)} g estimated total carbs · ${F(t.fb)} g counted fibre <button type="button" class="text-btn" data-ux-carbs="${i},${p}">Carbs breakdown</button></p>${isKeto(p)?`<ul>${dailyPlanChecks(t,p).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</section>`;}).join('')}</div><a href="#keto">Diet comparison and targets</a></details>`;}
 // Read-only day carbs view. dayCarbBreakdown(i,p) ships with nutrition-runtime; until then only the day totals show.
 const UX_CARB_CONVENTION='Counted available carbs subtract documented fibre only from USDA total-carb or IFCT total estimates. Packets keep their full declared carbohydrate because the convention is unverified. This conservative count is not guaranteed physiological net carbs.';
@@ -147,8 +159,17 @@ document.addEventListener('change',e=>{const t=e.target;if(!t.matches?.('[data-u
   if(t.matches('[data-ux-mushroom-size]')&&typeof updateMushroomPacketSize==='function'){updateMushroomPacketSize(Number(t.value));queueUXSave();}
  }catch(error){t.setCustomValidity?.(error.message);t.reportValidity?.();}
 });
+// Keto breakfast recipe: Root's applyKetoBreakfast replaces that person's whole breakfast and renders; save only after true.
+document.addEventListener('change',e=>{const t=e.target;if(!t.matches?.('[data-keto-breakfast]'))return;
+ const box=t.closest('.keto-recipe-field'),error=box?.querySelector('[data-keto-breakfast-error]'),current=t.dataset.current||'',[i,p]=t.dataset.ketoBreakfast.split(',');
+ const fail=message=>{t.value=current;if(error&&message){error.textContent=message;error.hidden=false;}};
+ if(error)error.hidden=true;
+ if(!t.value||t.value===current)return;
+ if(typeof applyKetoBreakfast!=='function'||!cloudReady||cloudSaving){fail(cloudSaving?'Saving — try again in a moment.':'');return;}
+ try{if(applyKetoBreakfast(Number(i),p,t.value)===true){queueUXSave();render();}else fail('Breakfast not changed.');}catch(err){fail(err.message);}
+});
 document.addEventListener('click',e=>{const b=e.target.closest?.('[data-keto-use-cashews]');if(!b||typeof updateKetoPortion!=='function')return;const key=b.dataset.ketoUseCashews;try{if(updateKetoPortion(key,'cashews',b.dataset.ketoValue)&&updateKetoPortion(key,'walnuts',0))queueUXSave();}catch(error){b.title=error.message;}});
-document.addEventListener('change',e=>{const t=e.target;if(!cloudReady)return;if(t.matches('[data-ux-diet]')){householdDiets[t.dataset.uxDiet]=t.value;save();render();queueUXSave();}if(t.matches('[data-ux-portion]')){state.personModes[t.dataset.uxPortion]=t.value;state.custom=true;save();render();queueUXSave();}if(t.matches('[data-ux-recipe]')){updateRecipe(+t.dataset.uxRecipe,t.dataset.uxPerson,t.value);queueUXSave();}if(t.closest('#settingsDlg,#todayPage,#weekPage')&&!t.closest('#dlg'))queueUXSave();});
+document.addEventListener('change',e=>{const t=e.target;if(!cloudReady)return;if(t.matches('[data-ux-diet]')){householdDiets[t.dataset.uxDiet]=t.value;save();render();queueUXSave();}if(t.matches('[data-ux-portion]')){state.personModes[t.dataset.uxPortion]=t.value;state.custom=true;save();render();queueUXSave();}if(t.matches('[data-ux-recipe]')){updateRecipe(+t.dataset.uxRecipe,t.dataset.uxPerson,t.value);queueUXSave();}if(t.closest('#settingsDlg,#todayPage,#weekPage')&&!t.closest('#dlg')&&!t.matches('[data-keto-breakfast]'))queueUXSave();});
 document.addEventListener('click',async e=>{if(e.target.closest('[data-settings-close]'))document.querySelector('#settingsDlg').close();const cal=e.target.closest('[data-ux-calendar]');if(cal)openCal(cal.dataset.uxCalendar||null);if(e.target.closest('[data-ux-template]')){selectWeek(null);render();}const shift=e.target.closest('[data-ux-week-shift]');if(shift){const mon=addDate(state.weekKey||mondayOf(dayViewISO()),7*Number(shift.dataset.uxWeekShift));if(lockedWeeks[mon]){selectWeek(mon);render();}else openCal(mon);}if(e.target.closest('[data-keto-choice],[data-person-diet]')&&!e.target.closest('#dlg'))queueUXSave();});
 // One outside-click rule for every native dialog. Both the press and the click must land outside the box
 // (scrollbar gutter and padding count as inside), so drags out of inputs keep it open. close() runs each dialog's own cleanup.
@@ -169,11 +190,11 @@ function openServe(i,meal='l'){
  const dishes=serveDishes(i);serveDish=dishes.find(d=>currentWeigh(i,d)?.portions.some(s=>s.meal===meal))||dishes[0];serveRecord=serveDish?currentWeigh(i,serveDish):null;serveStep=serveRecord?2:1;
  drawServe();document.querySelector('#dlg').showModal();
 }
-function serveTitle(i,dish){return dish==='sabzi'?recipeName(sharedRecipe(state.days[i])):dish==='dal'?DALNAMES[state.days[i].dal]+' dal':weighDishName(i,dish);}
+function serveTitle(i,dish){return uxMealText(dish==='sabzi'?recipeName(sharedRecipe(state.days[i])):dish==='dal'?DALNAMES[state.days[i].dal]+' dal':weighDishName(i,dish));}
 function drawServe(){
  const {i,meal,date}=weighContext,dishes=serveDishes(i),r=serveDish?dailyWeights[date+'/'+serveDish]:null;
  document.querySelector('#dlgTitle').textContent='Weigh & serve';document.querySelector('#dlg').classList.add('ux-serve-dialog');
- const prepared=batchCookGroups(i).filter(g=>g[0].startsWith('Already prepared'));
+ const prepared=batchCookGroups(i).filter(g=>g[0].startsWith('Already prepared')).map(([t,rows])=>[uxMealText(t),rows]);
  if(!serveDish){document.querySelector('#dlgBody').innerHTML=`${prepared.map(g=>`<section><h3>${esc(g[0])}</h3>${g[1].map(x=>`<p>${esc(x)}</p>`).join('')}</section>`).join('')||'<p>No fresh dishes to weigh for this day.</p>'}<button data-weigh-close>Done</button>`;return;}
  const vessel=r?.vessel||utDayAt(i)[serveDish==='prot'?'prot':serveDish.startsWith('sabzi')?'sabzi':serveDish],weight=state.utensils[vessel]||0;
  const stale=r&&!currentWeigh(i,serveDish);

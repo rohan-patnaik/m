@@ -137,6 +137,8 @@ h4{font-size:14px;margin:0}
 .meal-table th:first-child,.meal-table td:first-child{padding-left:0}
 .meal-table th:last-child,.meal-table td:last-child{padding-right:0}
 .meal-table thead th{font-size:12px;line-height:16px;color:var(--muted);font-weight:600;padding-top:0;padding-bottom:6px;vertical-align:bottom;width:31%}
+/* The totals table repeats the body's column widths so Wife / Husband stay aligned */
+.meal-table-foot .meal-col{width:31%}
 .meal-table thead th:first-child{width:auto}
 .meal-table thead th small{display:block;font-size:12px;font-weight:400}
 .meal-table tbody th{font-weight:500;color:var(--ink);overflow-wrap:anywhere}
@@ -148,6 +150,7 @@ h4{font-size:14px;margin:0}
 .meal-menu{font-size:12px;line-height:17px;color:var(--muted);margin:0 0 6px}
 .meal-menu b{color:var(--ink);font-weight:600}
 .meal-menu span{margin:0 4px}
+.meal-table-foot{margin-top:2px}
 .meal-table tfoot th,.meal-table tfoot td{border-bottom:0;padding-top:2px;padding-bottom:0;font-size:12px;color:var(--muted)}
 .meal-table tfoot tr:first-child th,.meal-table tfoot tr:first-child td{padding-top:8px}
 .meal-table tfoot tr.meal-k-row td{font-size:14px;font-weight:650;color:var(--ink)}
@@ -156,10 +159,16 @@ h4{font-size:14px;margin:0}
 .meal-note{font-size:12px;line-height:1.45;color:var(--muted);margin:8px 0 0}
 .meal-none{font-size:13px;color:var(--muted);margin:4px 0 0}
 /* Laptop: when Breakfast shows its menu line, Lunch and Dinner reserve the same slot so the
-   Wife | Husband headers line up across the row. Cards keep their natural heights. */
+   Wife | Husband headers line up across the row. Breakfast, Lunch and Dinner stretch to one height
+   and their totals tables are pinned to the bottom, so kcal / protein / carbs rows share one line. */
 @media(min-width:1001px){
+ .meal-cards{align-items:stretch}
+ .meal-card:not(.meal-snacks){display:flex;flex-direction:column}
+ .meal-card:not(.meal-snacks)>.meal-table-foot{margin-top:auto}
+ .meal-card:not(.meal-snacks)>.meal-foot{margin-bottom:8px}
  .meal-cards:has(.meal-menu) .meal-menu{min-height:34px}
- .meal-cards:has(.meal-menu)>.meal-card:not(.meal-snacks)>.meal-actions+.meal-table{margin-top:46px}
+ /* Flex cards do not collapse margins: 40px + the band's 6px bottom margin = the menu line's slot */
+ .meal-cards:has(.meal-menu)>.meal-card:not(.meal-snacks)>.meal-actions+.meal-table{margin-top:40px}
  .meal-snacks{display:grid;grid-template-columns:minmax(0,620px) minmax(0,1fr);column-gap:28px;align-items:start}
  .meal-snacks>*{grid-column:1}
  .meal-snacks>.meal-card-head{grid-column:1/-1}
@@ -184,6 +193,15 @@ h4{font-size:14px;margin:0}
 .meal-adjust .keto-protein-choices{gap:4px;flex-wrap:wrap}
 .meal-adjust .keto-protein-choices button{font-size:12px;padding:4px 8px;min-height:30px}
 .meal-adjust .keto-adjust p{font-size:12px;margin:8px 0 0}
+.keto-recipe-field{margin-top:8px}
+.keto-recipe-field label{display:block;font-size:12px}
+.keto-recipe-field select{display:block;width:100%;max-width:100%;min-width:0;font-size:13px;min-height:32px;margin-top:2px}
+.keto-adjust .keto-recipe-field p{font-size:12px;line-height:1.4;color:var(--muted);margin:4px 0 0}
+.keto-adjust .keto-recipe-field .keto-recipe-error{color:var(--warn)}
+/* Details popup ingredient table: same compact columns as the meal cards */
+#dlg .meal-ingredients{margin:0 0 10px}
+#dlg .meal-ingredients th,#dlg .meal-ingredients td{background:none}
+#dlg .meal-ingredients thead th:first-child{color:var(--muted)}
 
 /* Secondary per-day controls */
 .meal-day-more{margin-top:12px}
@@ -353,10 +371,11 @@ button.danger{color:var(--warn);border-color:var(--warn)}
 
 /* Tablet: one meal card per row, table keeps three columns */
 @media(max-width:1000px){
- .meal-cards{grid-template-columns:1fr}
+ .meal-cards{grid-template-columns:1fr;align-items:start}
+ .meal-card{display:block}
  .meal-snacks .meal-table{max-width:none}
  .meal-action-slot{display:none}
- .meal-table thead th{width:26%}
+ .meal-table thead th,.meal-table-foot .meal-col{width:26%}
 }
 /* Phone */
 @media(max-width:600px){
@@ -391,7 +410,7 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .meal-cards{gap:8px}
  .meal-card{padding:10px 12px}
  .meal-table th,.meal-table td{padding:5px 4px}
- .meal-table thead th{width:29%}
+ .meal-table thead th,.meal-table-foot .meal-col{width:29%}
  .meal-table td b{font-size:13px}
  .meal-adjust .keto-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
  .meal-recipe-fields{grid-template-columns:1fr}

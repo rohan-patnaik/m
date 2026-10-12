@@ -241,7 +241,7 @@ test('open meal cards preserve all four diet assignments and expose dry, raw and
   assert.equal((html.match(/<section class="meal-card/g)||[]).length,4);
   assert.match(html,/Snacks &amp; milk|Snacks & milk/);
   assert.doesNotMatch(html,/<details[^>]*data-ux-meal/);
-  assert.match(html,/<b>1 scoop<\/b><small>35 g powder<\/small>/);
+  assert.match(html,/<td title="35 g powder"><b>1 scoop<\/b><\/td>/);assert.doesNotMatch(html,/<small>35 g powder<\/small>/);
   assert.equal(run('JSON.stringify(ledger())'),ledger);
  }
  run("householdDiets={w:'balanced',h:'keto'}");
@@ -801,4 +801,65 @@ test('Show macros: one toolbar menu, view-only, applied to the totals strip and 
  run("uxMacrosOpen=false");assert.equal(run("uxMacrosOutside({target:away,button:0})"),false);
  const ux=readFileSync(new URL('../ux-runtime.js',import.meta.url),'utf8');assert.doesNotMatch(ux.slice(ux.indexOf('function uxMacrosCount'),ux.indexOf('function initializeUX')),/localStorage|save\(|saveChanges|queueUXSave|MealCloud/);
  const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8');assert.match(css,/\.meal-macros-menu\{position:absolute;right:0;[^}]*z-index:20;[^}]*max-width:calc\(100vw - 24px\)/);
+});
+
+test('details popup, dinner-protein field, carb banner threshold, breakfast recipes and equal-height cards',()=>{
+ const {run}=app(true);
+ // Details: one row per generic food from meal(), both quantities, no product brands or joined strings.
+ for(const [w,h] of [['keto','keto'],['balanced','keto'],['balanced','balanced']]){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  for(const m of ['b','l','d']){
+   const html=run(`inspect(0,'${m}')`),rows=JSON.parse(run(`JSON.stringify(uxIngredientRows(0,'${m}'))`));
+   const table=html.match(/<table class="meal-table meal-ingredients">[\s\S]*?<\/table>/)[0];
+   assert.equal((table.match(/<tr><th scope="row">/g)||[]).length,rows.length,`${w}/${h} ${m}`);
+   assert.equal(new Set(rows.map(r=>r.label)).size,rows.length,'merged by generic label');
+   const foods=new Set(JSON.parse(run(`JSON.stringify(['w','h'].flatMap(p=>meal(state.days[0],'${m}',p)).filter(x=>x.q>0&&!['oil','spice'].includes(x.id)).map(x=>uxMealLabel(x.id)))`)));
+   assert.deepEqual([...foods].sort(),rows.map(r=>r.label).sort());
+   assert.doesNotMatch(html,/Heritage|Milky Mist|Nutrela|Saffola|Amul|ATOM/);assert.doesNotMatch(html,/Keto trial<\/td>|Balanced<\/td>/);
+   assert.match(html,/<p class="hintline">This meal \(oil included\): W \d+ kcal · H \d+ kcal\.<\/p>/);
+   assert.match(html,/<details class="ux-disclosure"><summary>How portions work<\/summary><div>[\s\S]*Portion method:/);
+   assert.doesNotMatch(html.slice(0,html.indexOf('<details')),/Portion method|Fibre excludes|editable in Packet labels/);
+  }
+ }
+ const both=JSON.parse(run("JSON.stringify(uxIngredientRows(0,'d').find(r=>r.w&&r.h))"));assert.ok(both.w.quantity&&both.h.quantity);
+ const lunch=run("inspect(0,'l')");assert.match(lunch,/data-split[\s\S]*data-tare[\s\S]*data-out/);assert.match(lunch,/<p class="hintline">Oil included: W [\d.]+ ml · H [\d.]+ ml/);
+ assert.match(lunch,/<details class="ux-disclosure"><summary>How portions work<\/summary><div><table><thead><tr><th>Split<\/th>/,'Balanced split ratios move into the disclosure');
+ assert.match(run("inspect(0,'b')"),/<td title="35 g powder"><b>1 scoop<\/b><\/td>[\s\S]*one level scoop is 35 g powder/);
+ // Dinner protein: hidden for protein sabzis, value carried through collectEdit and shown again.
+ run("state.days[0].s='S1';state.days[0].p='Y'");
+ assert.match(run("editFormHTML(editValsFromState(0))"),/<label>Dinner protein<select data-ek="p"><option value="P">P · Paneer<\/option><option value="Y" selected>/);
+ for(const s of ['S12','S3'])assert.doesNotMatch(run(`editFormHTML({...editValsFromState(0),s:'${s}'})`),/data-ek="p"|Dinner protein/);
+ run(`editSnap=JSON.stringify(editValsFromState(0));editP='Y';var els={'[data-ek="s"]':{value:'S12'}};const q0=document.querySelector;document.querySelector=s=>els[s]||q0(s)`);
+ assert.equal(run('collectEdit().p'),'Y','missing select falls back to the previous value');
+ run(`els['[data-ek="s"]'].value='S1'`);assert.match(run('editFormHTML(collectEdit())'),/data-ek="p"><option value="P">P · Paneer<\/option><option value="Y" selected>/);
+ run(`els['[data-ek="p"]']={value:'P'}`);assert.equal(run('collectEdit().p'),'P');delete run('els')['[data-ek="p"]'];assert.equal(run('collectEdit().p'),'P');
+ run("editP=null");assert.equal(run('collectEdit().p'),'Y','snapshot fallback');
+ // Carb banner: only at or over the budget, unknown data alone does not raise it.
+ run("householdDiets={w:'balanced',h:'keto'};globalThis.realDay=assignedDayNutrition;globalThis.assignedDayNutrition=(i,p)=>({...realDay(i,p),a:30,aHi:49.9,carbUnknown:true})");
+ assert.equal(run('uxWarning(0)'),'');assert.match(run('uxDayHTML(0)'),/data-ux-carbs="0,h">Carbs breakdown/);assert.match(run("uxCarbsHTML(0,'h')"),/Unknown data — upper bound is conservative/);
+ run("globalThis.assignedDayNutrition=(i,p)=>({...realDay(i,p),aHi:ketoOptions.carbBudget,carbUnknown:false})");assert.match(run('uxWarning(0)'),/Husband: carb budget needs review <button type="button" class="text-btn" data-ux-carbs="0,h">View carbs<\/button>/);
+ run("globalThis.assignedDayNutrition=realDay");
+ // Breakfast recipe picker: nothing without Root's helper; "Current / Custom" first; ineligible options disabled with the reason.
+ run("householdDiets={w:'keto',h:'keto'};state.days[0].off=false;state.days[0].skip={}");
+ assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','b')"),/data-keto-breakfast|data-keto-field="avocado"/);
+ run(`globalThis.ketoBreakfastOptions=(i,p)=>[{id:'omelette',name:'Mushroom omelette',nutrition:{k:520,p:38,a:5,aHi:7},dayNutrition:{a:40,aHi:46},eligible:true},{id:'chickenBowl',name:'Chicken & mushroom bowl',nutrition:{k:610,p:55,a:4,aHi:6},dayNutrition:{a:39,aHi:45},eligible:false,reason:'Chicken already planned twice this week'}]`);
+ let b=run("ketoEditHTML(state.days[0],0,'h','b')");
+ assert.match(b,/<summary>Adjust portions<\/summary><div class="keto-recipe-field"><label>Breakfast recipe<select aria-label="[^"]*Breakfast recipe" data-keto-breakfast="0,h" data-current=""><option value="" selected>Current \/ Custom<\/option><option value="omelette" title="day 40–46 g of 50 g carbs">Mushroom omelette · 520 kcal · 38 g protein · 5–7 g carbs<\/option>/);
+ assert.match(b,/<option value="chickenBowl" disabled title="[^"]*Chicken already planned twice this week">Chicken &amp; mushroom bowl · [^<]* — Chicken already planned twice this week<\/option>/);
+ assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','l')"),/data-keto-breakfast/);
+ run("globalThis.ketoBreakfastOptions=()=>{throw Error('x')}");assert.doesNotMatch(run("ketoEditHTML(state.days[0],0,'h','b')"),/data-keto-breakfast/);
+ run(`globalThis.ketoBreakfastOptions=(i,p)=>[{id:'omelette',name:'Mushroom omelette',nutrition:{k:520,p:38,a:5,aHi:7},dayNutrition:{a:40,aHi:46},eligible:true}];ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'omelette',mushroom:120}`);
+ b=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(b,/data-current="omelette"><option value="">Current \/ Custom<\/option><option value="omelette" selected/);assert.match(b,/520 kcal · 38 g protein · 5–7 g carbs · day 40–46 g of 50 g carbs<\/p>/);
+ assert.match(b,/Mushroom \(raw g\)<input[^>]*min="0" max="500" step="1" value="120"[^>]*data-keto-field="mushroom">/);assert.match(b,/Avocado \(raw g\)<input[^>]*value="0"[^>]*data-keto-field="avocado">/);
+ assert.doesNotMatch(b,/\bseeds?\b|tofu|brinjal|loki/i);
+ run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),avocado:50};delete ketoMeals[ketoMealKey(0,'h','b')].breakfastRecipe;delete ketoMeals[ketoMealKey(0,'h','b')].mushroom");
+ b=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(b,/data-keto-field="avocado"/);assert.doesNotMatch(b,/data-keto-field="mushroom"/);
+ // Breakfast card title uses Root's recipe name when available.
+ run("globalThis.ketoBreakfastName=cfg=>cfg.avocado?'Eggs & avocado':'Mushroom omelette'");const card=run("uxMealTable(0,'b')");
+ assert.match(card,/<p class="meal-menu">(<b>Wife<\/b> )?(Mushroom omelette|Eggs &amp; avocado)/);assert.doesNotMatch(card,/Ready portions/);assert.equal(run("uxFoodRow({id:'avocado',q:50}).label"),'Avocado');
+ // Equal-height laptop cards with the totals table pinned; phone stacks at natural height.
+ const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8');
+ assert.match(css,/@media\(min-width:1001px\)\{\n \.meal-cards\{align-items:stretch\}\n \.meal-card:not\(\.meal-snacks\)\{display:flex;flex-direction:column\}\n \.meal-card:not\(\.meal-snacks\)>\.meal-table-foot\{margin-top:auto\}/);
+ assert.match(css,/@media\(max-width:1000px\)\{\n \.meal-cards\{grid-template-columns:1fr;align-items:start\}\n \.meal-card\{display:block\}/);
+ assert.match(run("uxMealTable(0,'l')"),/<\/tbody><\/table>(<p class="meal-foot">[^<]*<\/p>)?<table class="meal-table meal-table-foot"><caption class="sr-only">Lunch totals: Wife, Husband<\/caption><colgroup><col><col class="meal-col"><col class="meal-col"><\/colgroup><tfoot><tr class="meal-k-row">/);
 });
