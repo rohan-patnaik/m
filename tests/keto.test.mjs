@@ -98,6 +98,33 @@ test('meal cards reuse measured lunch and dinner portions and reject stale cooke
  assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Palak corn').unweighed"));
 });
 
+test('compact quantity tables retain every person’s food and distinguish shared from individual portions',()=>{
+ const {run}=app(true);
+ for(const w of ['balanced','keto'])for(const h of ['balanced','keto']){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  const ledger=run('JSON.stringify(ledger())');
+  for(const m of ['b','l','d','e']){
+   const rows=JSON.parse(run(`JSON.stringify(uxMealRows(0,'${m}'))`));
+   for(const p of ['w','h']){
+    const original=JSON.parse(run(`JSON.stringify(uxServingRows(0,'${m}','${p}'))`));
+    const sort=xs=>xs.toSorted((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    assert.deepEqual(sort(rows.flatMap(r=>r[p]?[r[p]]:[])),sort(original),`${w}/${h} ${m} ${p}: food not lost or duplicated`);
+   }
+  }
+  assert.equal(run('JSON.stringify(ledger())'),ledger);
+ }
+ run("householdDiets={w:'balanced',h:'keto'}");
+ const breakfast=JSON.parse(run("JSON.stringify(uxMealRows(0,'b'))"));
+ const whey=breakfast.filter(r=>r.label==='Whey');assert.equal(whey.length,1);
+ assert.equal(whey[0].w.quantity,'35 g powder (1 scoop)');assert.equal(whey[0].h.quantity,'35 g powder (1 scoop)');
+ const lunch=JSON.parse(run("JSON.stringify(uxMealRows(0,'l'))"));
+ const dal=lunch.find(r=>r.label==='Moong dal');assert.ok(dal.w);assert.equal(dal.h,undefined);
+ run("sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
+ const different=JSON.parse(run("JSON.stringify(uxMealRows(5,'l'))"));
+ assert.ok(different.find(r=>r.label==='Paneer bhurji').w);assert.equal(different.find(r=>r.label==='Paneer bhurji').h,undefined);
+ assert.ok(different.find(r=>r.label==='Cabbage').h);assert.equal(different.find(r=>r.label==='Cabbage').w,undefined);
+});
+
 test('prepared batch serving appears once using its frozen cooked weight',()=>{
  const {run}=app(true);run("householdDiets={w:'balanced',h:'keto'};savedBatches.test={recipe:'K4',cookedOn:dateForDay(0),vessel:'kadhai',tare:0,netWeight:300,createdAt:1,ingredients:[{id:'bhindi',q:175,n:{k:57.75,p:3.3775,fb:5.6}}],servings:[{date:dateForDay(0),meal:'l',person:'h',component:'sabzi',share:1,grams:300}]}");
  const rows=run("uxServingRows(0,'l','h')");

@@ -77,13 +77,13 @@ The machine's migration backups/evidence are retained under `/run/media/rohan/St
 
 ## Household interface (October 2026)
 
-The primary routes are Today (`#today`, also the default), Week (`#week`) and Shop
-(`#shopping`). Old `#planner`, `#labels`, `#utensils` and `#keto` links remain usable;
-labels and utensils now live in Settings, while Keto opens the detailed review.
-The three navigation items move to a bottom bar on phones. Today expands the
-relevant meal, keeps nutrition behind a disclosure, and shows carb-review warnings.
-Week keeps shared sabzis and person-specific exceptions together; phone rows use
-Choices to expose the individual selectors. Diet assignments remain independent.
+The two primary destinations are Meals and Shopping (`#shopping`). Meals contains
+Day (`#today`, the default) and Week (`#week`) views with open meal cards. Old
+`#planner`, `#labels`, `#utensils` and `#keto` links remain usable; labels, utensils
+and the detailed diet review open in Settings. Laptop layouts show three meal
+cards together; phones stack the cards while keeping Wife and Husband quantities
+side by side. Week keeps shared sabzis and person-specific exceptions together
+under Sabzis & vessels. Diet assignments remain independent from navigation.
 
 Weigh & serve walks through one dish at a time, using saved global vessel weights
 and the existing allocation math. A whole lunch-plus-dinner reading reserves both
