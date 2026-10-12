@@ -449,3 +449,34 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .meal-table th,.meal-table td{font-size:12px;padding:4px 3px}
  .day-actions button{font-size:12px}
 }
+
+/* Intuitive-overhaul additions: save status, edit scope, week overview, serve-by-parts, phone header. */
+.ux-save-status{font-size:12px;font-weight:600;color:var(--muted);padding:3px 9px;border-radius:999px;border:1px solid var(--line);white-space:nowrap;min-height:24px;display:inline-flex;align-items:center}
+.ux-save-status:empty{display:none}
+.ux-save-status[data-kind=ok]{color:var(--accent)}
+.ux-save-status[data-kind=warn]{color:var(--warn);border-color:currentColor}
+.ux-scope{font-size:13px;margin:0 0 12px;padding:8px 12px;border-radius:8px;background:var(--paper2);border:1px solid var(--line)}
+.ux-scope-template{background:var(--tint);border-color:var(--warn);color:var(--ink)}
+#settingsDlg .meal-assignments{margin:4px 0 6px}
+.ux-week-overview{display:grid;gap:4px;margin:0 0 14px}
+.ux-week-row{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:var(--tap);padding:6px 12px;text-align:left;font-weight:400;border-radius:8px;background:var(--paper)}
+.ux-week-day{font-weight:700}
+.ux-week-dish{overflow-wrap:anywhere;color:var(--ink)}
+.ux-week-kcal{display:flex;gap:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ux-week-kcal b{color:var(--ink)}
+.ux-serve-parts{margin:4px 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper2)}
+.ux-serve-parts p{margin:0 0 6px}
+.ux-serve-parts .ux-serve-portions{margin:6px 0}
+.ux-cook-actions{margin-top:14px;justify-content:space-between;flex-wrap:wrap}
+.keto-recipe-hint{grid-column:1/-1;margin:6px 0 8px}
+.editform .hintline{display:block;margin-top:4px}
+@media(max-width:600px){
+ .ux-week-row{grid-template-columns:2.6em minmax(0,1fr);row-gap:2px}
+ .ux-week-kcal{grid-column:2;white-space:normal;flex-wrap:wrap;gap:4px 10px}
+ .ux-save-status{order:0}
+ /* Meals/Shopping row hides while scrolling down and returns on scroll up; the sync bar follows the header height. */
+ body.ux-scrolled{--header-h:62px}
+ body.ux-scrolled .tabs.ux-nav{display:none}
+}
+.shopping-table td small.ux-shop-need{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
+.shopping-table th:nth-child(2){width:auto}
