@@ -1053,10 +1053,13 @@ async function saveEdit(){
     if(typeof prepareKetoBreakfasts!=='function')return editMessage('Breakfast recipes need the latest update.');
     try{prepared=prepareKetoBreakfasts(editCtx.i,sel,d);}catch(e){return editMessage(e&&e.message||String(e));}
   }
+  // A first Day edit belongs to its calendar week. Clone untouched source portions before applying the edit.
+  const mon=editCtx.iso&&mondayOf(editCtx.iso),newWeek=mon&&!lockedWeeks[mon],sourceScope=state.weekKey||'template';
+  if(newWeek){ensureUtDay();ensureOilUse();copyDietScope(sourceScope,mon);state.weekKey=mon;}
   Object.assign(state.days[editCtx.i],d);if(!d.readyB)delete state.days[editCtx.i].readyB;
-  if(prepared)Object.assign(ketoMeals,prepared);
+  if(prepared)for(const [key,value]of Object.entries(prepared))ketoMeals[newWeek?key.replace('keto/'+sourceScope+'/','keto/'+mon+'/'):key]=value;
   state.custom=true;
-  if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();copyDietScope(state.weekKey||'template',mon);lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
+  if(newWeek){lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
   save();render();if(await saveChanges())$('#dlg').close();else{editMessage(syncStatusText+' Close this editor to review your unsaved changes.');const cancel=$('#dlgBody [data-editcancel]');if(cancel)cancel.textContent='Close editor';}
 }
 function render(){

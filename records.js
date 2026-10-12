@@ -21,7 +21,7 @@ export function validateKetoWheyTotals(rows){
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
- if(key==='setting/nutritionVersion'){if(![9,10,11,12].includes(value))throw Error('Invalid nutrition version');return;}
+ if(key==='setting/nutritionVersion'){if(![9,10,11,12,13].includes(value))throw Error('Invalid nutrition version');return;}
  if(key==='setting/foodChoices'){if(!value||Object.keys(value).sort().join(',')!=='butter,nuts,paneer'||!['paneerMM','paneer','paneerHP'].includes(value.paneer)||!['butter','butterH'].includes(value.butter)||value.nuts!=='cashews')throw Error('Invalid food choices');return;}
  if(key==='setting/produceOptions'){
   const ids=['gobi','arbi','bhindi','palak','carrot','potato','onion','tomato','mushroom','cucumber','cabbage','beans','corn'];

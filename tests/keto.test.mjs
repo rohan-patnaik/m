@@ -904,7 +904,7 @@ test('Edit meals breakfast recipes: per-assignment selects, form-only until Save
  run("calls=[];order=[];editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els['[data-ek=\"s\"]'].value=state.days[0].s");await run('saveEdit()');assert.equal(run('calls.length'),0);assert.equal(run("order.join()"),'save,saveChanges');
  // New calendar week: the map lands in the current scope before copyDietScope.
  run("order=[];var cds=copyDietScope;copyDietScope=(a,b)=>{order.push('copy:'+ketoMeals[key].breakfastRecipe);cds(a,b)};lockedWeeks={};persistWeeks=()=>{};ensureUtDay=()=>{};ensureOilUse=()=>{};cfg={...cfg,breakfastRecipe:'dahiBowl'};els['[data-ek=\"bh\"]'].value='dahiBowl';editCtx={i:0,iso:'2026-10-14'}");
- await run('saveEdit()');assert.equal(run("order.join()"),'prepare,copy:dahiBowl,save,saveChanges');assert.equal(run("ketoMeals[ketoMealKey(0,'h','b','2026-10-12')].breakfastRecipe"),'dahiBowl');
+ await run('saveEdit()');assert.equal(run("order.join()"),'prepare,copy:eggAvocado,save,saveChanges');assert.equal(run("ketoMeals[ketoMealKey(0,'h','b','2026-10-12')].breakfastRecipe"),'dahiBowl');assert.equal(run('ketoMeals[key].breakfastRecipe'),'eggAvocado','original scope portions stay unchanged');
 });
 
 test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut rows and week-first Day edits',()=>{

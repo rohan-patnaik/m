@@ -32,3 +32,5 @@ test('keto meal validation enforces week, vegetarian wife, egg counts and bounde
  assert.throws(()=>validateRecord('keto/template/day/1/w/d',cfg));
  for(const patch of [{quantity:-1},{quantity:1001},{oil:NaN},{oil:51},{soya:101},{protein:'tofu'},{extra:true},{protein:'eggs',quantity:2.5}])assert.throws(()=>validateRecord('keto/template/day/1/h/d',{...cfg,...patch}));
 });
+
+test('new no-cooking breakfast writer version is accepted by the shared validator',()=>{assert.doesNotThrow(()=>validateRecord('setting/nutritionVersion',13));assert.throws(()=>validateRecord('setting/nutritionVersion',14));});
