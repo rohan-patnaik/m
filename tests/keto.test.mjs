@@ -699,6 +699,7 @@ test('day carbs: totals strip, warning actions and the read-only breakdown dialo
  const warn=run('uxWarning(0)');assert.match(warn,/carb check unverified|carb budget needs review/);
  assert.match(warn,/<button type="button" class="text-btn" data-ux-carbs="0,h">View carbs<\/button> <a class="ux-diet-review" href="#keto">Diet review<\/a>/);assert.doesNotMatch(warn,/>Review</);
  // Without Root's function: totals still show, with an honest unavailable note.
+ run('dayCarbBreakdown=undefined');
  let html=run("uxCarbsHTML(0,'h')");
  assert.match(html,/Per-food breakdown unavailable until the next update\./);assert.match(html,/subtract documented fibre only from USDA total-carb or IFCT total estimates\. Packets keep their full declared carbohydrate/);
  assert.match(html,/data-ux-carbs="0,h" aria-pressed="true"/);assert.match(html,/data-ux-carbs="0,w" aria-pressed="false"/);assert.match(html,/Keto budget 50 g/);
@@ -721,7 +722,7 @@ test('day carbs: totals strip, warning actions and the read-only breakdown dialo
  assert.match(html,/<th scope="row">Dinner<\/th><td>25–28 g<small>incl. unknown<\/small><\/td>/);assert.match(html,/Snacks &amp; milk|Snacks & milk/);assert.match(html,/<tr class="ux-carbs-day"><th scope="row">Day<\/th><td>46–49 g/);
  assert.match(html,/<summary>Why some carbs are unknown<\/summary>/);assert.match(html,/<h4>Missing carbohydrate profile<\/h4>/);assert.match(html,/<h4>Frozen snapshot with incomplete carb data<\/h4>/);
  assert.match(html,/Unspecified spice mixture; unknown macros · 100 g<\/li>/);assert.match(html,/Unknown spices or frozen historical label differences prevent a verified carb pass\./);
- run('delete globalThis.dayCarbBreakdown');assert.match(run("uxCarbsHTML(0,'h')"),/unavailable until the next update/);
+ run('dayCarbBreakdown=undefined');assert.match(run("uxCarbsHTML(0,'h')"),/unavailable until the next update/);
 });
 
 test('dialogs close only when both the press and the click land outside the box',()=>{
