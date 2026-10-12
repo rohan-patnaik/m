@@ -691,7 +691,7 @@ test('weigh & serve: one full-width dish select replaces the scrolling dish tabs
 
 test('day carbs: totals strip, warning actions and the read-only breakdown dialog',()=>{
  const {run}=app(true);
- run("householdDiets={w:'balanced',h:'keto'}");
+ run("householdDiets={w:'balanced',h:'keto'};uxMacros.w.c=uxMacros.h.c=true");
  const day=run('uxDayHTML(0)'),link=p=>day.match(new RegExp(`<button type="button" class="ux-carbs-link" data-ux-carbs="0,${p}"[^>]*>([\\s\\S]*?)</button>`));
  for(const p of ['w','h']){const t=JSON.parse(run(`JSON.stringify(assignedDayNutrition(0,'${p}'))`));assert.ok(link(p),p);assert.match(link(p)[1],new RegExp('^'+run(`comparisonRange(${t.a},${t.aHi})`)+' g carbs'));}
  assert.match(link('h')[1],/<small> \/ 50 g<\/small>$/);assert.doesNotMatch(link('w')[1],/\/ 50 g|budget/);
@@ -738,4 +738,54 @@ test('dialogs close only when both the press and the click land outside the box'
  run('box.open=false');assert.equal(run("uxDialogOutside({target:box,button:0,clientX:5,clientY:300})"),null);
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8'),ux=readFileSync(new URL('../ux-runtime.js',import.meta.url),'utf8');
  assert.doesNotMatch(html,/e\.target\.id==='dlg'/);assert.equal((ux.match(/addEventListener\('pointerdown'/g)||[]).length,1);
+});
+
+test('Show macros: one toolbar menu, view-only, applied to the totals strip and meal footers',()=>{
+ const {run}=app(true);
+ run("householdDiets={w:'balanced',h:'keto'}");
+ assert.equal(run('JSON.stringify(uxMacros)'),JSON.stringify({w:{k:true,p:true,c:false},h:{k:true,p:true,c:false}}));
+ const menu=run('uxMacrosHTML()');
+ assert.match(menu,/<button type="button" class="meal-macros-btn" data-ux-macros-toggle aria-expanded="false" aria-controls="mealMacrosMenu">Show macros <small data-ux-macros-count>4\/6<\/small><\/button>/);
+ assert.match(menu,/id="mealMacrosMenu" role="group" aria-label="Show macros" hidden>/);
+ assert.equal((menu.match(/<input type="checkbox" data-ux-macro="/g)||[]).length,6);
+ const groups=[...menu.matchAll(/<fieldset><legend>([^<]+)<\/legend>([\s\S]*?)<\/fieldset>/g)];
+ assert.deepEqual(groups.map(g=>g[1]),[run("PERSON_NAMES.w"),run("PERSON_NAMES.h")]);
+ for(const [n,p]of [[0,'w'],[1,'h']])assert.deepEqual([...groups[n][2].matchAll(/data-ux-macro="(\w),(\w)"( checked)?> (\w+)/g)].map(m=>[m[1],m[2],!!m[3],m[4]]),[[p,'k',true,'Calories'],[p,'p',true,'Protein'],[p,'c',false,'Carbs']]);
+ // Defaults: kcal + protein, no carbs figure in the strip; carbs stay reachable from the warning and the disclosure.
+ const strip=d=>d.slice(d.indexOf('<div class="meal-day-totals">'),d.indexOf('<div class="day-actions">')>d.indexOf('<div class="meal-day-totals">')?d.indexOf('<div class="day-actions">'):d.indexOf('<div class="meal-cards">'));
+ let day=run('uxDayHTML(0,true)');const t=p=>JSON.parse(run(`JSON.stringify(assignedDayNutrition(0,'${p}'))`));
+ for(const p of ['w','h'])assert.ok(strip(day).includes(`<strong>${run(`R(${t(p).k})`)}<small> kcal</small></strong><span>${run(`F(${t(p).p})`)} g protein</span>`));
+ assert.doesNotMatch(strip(day),/ux-carbs-link|data-ux-carbs|g carbs/);
+ assert.match(day,/View carbs<\/button>/);assert.match(day,/<summary>Nutrition &amp; carb checks<\/summary>/);assert.match(day,/data-ux-carbs="0,w">Carbs breakdown/);assert.match(day,/data-ux-carbs="0,h">Carbs breakdown/);
+ assert.doesNotMatch(run("uxMealTable(0,'l')"),/<tr class="meal-c-row">/);
+ // Husband carbs on: strip button with budget, and a Carbs footer row in Day and Week markup.
+ run("uxMacros.h.c=true");day=run('uxDayHTML(0,true)');
+ const h=t('h'),range=run(`comparisonRange(${h.a},${h.aHi})`);
+ assert.ok(strip(day).includes(`data-ux-carbs="0,h"`));assert.match(strip(day),new RegExp(`>${range} g carbs<small> / 50 g</small></button>`));assert.doesNotMatch(strip(day),/data-ux-carbs="0,w"/);
+ const lunch=JSON.parse(run("JSON.stringify(comparisonSum(meal(state.days[0],'l','h')))")),carbRow=`<tr class="meal-c-row"><th scope="row" title="Counted available carbs">Carbs<span class="sr-only"> (counted available)</span></th><td></td><td>${run(`comparisonRange(${lunch.a},${lunch.aHi})`)} g</td></tr>`;
+ assert.ok(run("uxMealTable(0,'l')").includes(carbRow));assert.ok(day.includes(carbRow));assert.ok(run('uxDayHTML(0)').includes(carbRow),'Week day card');
+ assert.doesNotMatch(run("uxMealTable(0,'l')"),/net.carb/i);
+ // Wife protein off: her protein cell goes, her name and every food row stay.
+ const foods=run("uxMealRows(0,'l').length"),before=run("uxMealTable(0,'l')").match(/<tbody>[\s\S]*<\/tbody>/)[0];
+ run("uxMacros.w.p=false");day=run('uxDayHTML(0,true)');const table=run("uxMealTable(0,'l')");
+ assert.equal(table.match(/<tbody>[\s\S]*<\/tbody>/)[0],before);assert.equal((table.match(/<tbody>[\s\S]*<\/tbody>/)[0].match(/<tr>/g)||[]).length,foods);
+ assert.match(table,new RegExp(`<tr class="meal-p-row"><th scope="row">Protein</th><td></td><td>`));
+ const wStrip=strip(day).split('</div>')[0];assert.ok(wStrip.includes(run('PERSON_NAMES.w')));assert.doesNotMatch(wStrip,/g protein/);assert.match(wStrip,/kcal/);
+ // All off for Wife: name and diet only, no numbers; all off for both drops the footer, not the foods.
+ run("uxMacros.w={k:false,p:false,c:false}");assert.equal(strip(run('uxDayHTML(0,true)')).split('</div>')[0],`<div class="meal-day-totals"><div><span>${run('PERSON_NAMES.w')} <small>Balanced</small></span>`);
+ run("uxMacros.h={k:false,p:false,c:false}");assert.doesNotMatch(run("uxMealTable(0,'l')"),/<tfoot>/);assert.equal(run("uxMealTable(0,'l')").match(/<tbody>[\s\S]*<\/tbody>/)[0],before);
+ // Survives a full UI render, never touches the plan, and the carbs dialog is still available.
+ run("uxMacros={w:{k:true,p:false,c:true},h:{k:false,p:true,c:true}}");const ledger=run('JSON.stringify(ledger())');
+ run("var controls={innerHTML:''};const q=document.querySelector;document.querySelector=s=>s==='#mealControls'?controls:q(s);renderMealControls()");
+ assert.equal(run('JSON.stringify(uxMacros)'),JSON.stringify({w:{k:true,p:false,c:true},h:{k:false,p:true,c:true}}));
+ assert.match(run('controls.innerHTML'),/<div class="meal-toolbar">[\s\S]*class="meal-view-switch"[\s\S]*class="meal-assignments"[\s\S]*<div class="meal-macros">[\s\S]*Show macros <small data-ux-macros-count>4\/6/);
+ assert.match(run('controls.innerHTML'),/data-ux-macro="w,p"> Protein/);assert.match(run('controls.innerHTML'),/data-ux-macro="w,c" checked> Carbs/);
+ assert.equal(run('JSON.stringify(ledger())'),ledger);assert.match(run("uxCarbsHTML(0,'h')"),/Counted available carbs/);
+ // Outside rule: a press inside the menu or with the menu closed never closes it.
+ run("uxMacrosOpen=true;var inside={isConnected:true,closest:s=>s==='.meal-macros'?{}:null},away={isConnected:true,closest:()=>null}");
+ assert.equal(run("uxMacrosOutside({target:inside,button:0})"),false);assert.equal(run("uxMacrosOutside({target:away,button:0})"),true);
+ assert.equal(run("uxMacrosOutside({target:away,button:2})"),false);assert.equal(run("uxMacrosOutside({target:{isConnected:false,closest:()=>null},button:0})"),false,'re-rendered node');
+ run("uxMacrosOpen=false");assert.equal(run("uxMacrosOutside({target:away,button:0})"),false);
+ const ux=readFileSync(new URL('../ux-runtime.js',import.meta.url),'utf8');assert.doesNotMatch(ux.slice(ux.indexOf('function uxMacrosCount'),ux.indexOf('function initializeUX')),/localStorage|save\(|saveChanges|queueUXSave|MealCloud/);
+ const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8');assert.match(css,/\.meal-macros-menu\{position:absolute;right:0;[^}]*z-index:20;[^}]*max-width:calc\(100vw - 24px\)/);
 });
