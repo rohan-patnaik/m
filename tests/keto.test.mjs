@@ -47,7 +47,7 @@ test('pantry trial meets the reviewed daily energy, protein, fibre and 50 g budg
  assert.equal(run('applyKetoInventoryPlan()'),true);
  assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),wife);
  const days=JSON.parse(run("JSON.stringify(state.days.map((d,i)=>({n:assignedDayNutrition(i,'h'),whey:ketoWheyDailyTotal(d,'h'),checks:dailyPlanChecks(assignedDayNutrition(i,'h'),'h')})))"));
- for(const {n,whey,checks}of days){assert.ok(n.k>=1900&&n.k<=2100);assert.ok(n.p>=120&&n.p<=165);assert.ok(n.aHi<=50);assert.ok(n.fb>=25);assert.ok(whey<=2);assert.ok(checks.some(x=>/Saturated fat|saturated fat/.test(x)),'Do not hide the saturated-fat limitation');assert.equal(n.carbUnknown,true,'Spices remain uncertain');}
+ for(const {n,whey,checks}of days){assert.ok(n.k>=1900&&n.k<=2100);assert.ok(n.p>=120&&n.p<=165);assert.ok(n.aHi<=50);assert.ok(n.fb>=25);assert.ok(whey<=3);assert.ok(checks.some(x=>/Saturated fat|saturated fat/.test(x)),'Do not hide the saturated-fat limitation');assert.equal(n.carbUnknown,true,'Spices remain uncertain');}
  assert.equal(run("state.days.reduce((n,d)=>n+['b','l','d'].filter(m=>ketoConfig(d,'h',m).protein==='chicken'&&ketoConfig(d,'h',m).quantity>0).length,0)"),2);
  assert.equal(run("ledger().flax||0"),0);assert.equal(run("ledger().chicken"),500);
  const weights=run('JSON.stringify(dailyWeights)');run('snapshotDraft();ketoMeals={};hydrateDraft()');assert.equal(run('JSON.stringify(dailyWeights)'),weights);assert.equal(run('ketoOptions.carbBudget'),50);
@@ -81,7 +81,7 @@ test('saving a calendar week clones the actual keto portions and person recipes 
  const before=run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'h')))");
  run("copyDietScope('template','2026-10-12');lockedWeeks['2026-10-12']={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:1};save();selectWeek('2026-10-12')");
  assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'h')))"),before);assert.equal(run("ketoConfig(state.days[1],'h','l').whey"),.5);assert.equal(run("personRecipe(state.days[1],'w')"),'S2');assert.equal(run("personRecipe(state.days[1],'h')"),'K2');
- run("ketoMeals[ketoMealKey(0,'h','b')].eggWhites=6");assert.equal(run("ketoMeals['keto/template/day/0/h/b'].eggWhites"),4);
+ run("ketoMeals[ketoMealKey(0,'h','b')].eggWhites=6");assert.equal(run("ketoMeals['keto/template/day/0/h/b'].eggWhites"),0);
  assert.equal(run("Object.keys(ketoMeals).filter(k=>k.includes('2026-10-05')).length"),0);
  run("snapshotDraft();ketoMeals={};sharedRecipes={};hydrateDraft()");assert.equal(run("ketoConfig(state.days[0],'h','b').eggWhites"),6);
 });

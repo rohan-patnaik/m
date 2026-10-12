@@ -24,7 +24,7 @@ const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
 function ready(){const run=app();run("householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),paneerType:'paneerMM',curdType:'curd'}");return run;}
 test('breakfast recipes count every ingredient, cooking oil, whey and available carbs from actual profiles',()=>{
  const run=ready(),options=JSON.parse(run('JSON.stringify(ketoBreakfastOptions(0,"h"))'));
- const wanted={omelette:[638.7535,62.8005,12.4211],eggAvocado:[665.2535,62.218,8.1236],paneerBhurji:[656.4135,56.0475,15.6655],chickenBowl:[685.6635,73.4975,11.18],dahiBowl:[591.6,55.276,13.127]};
+ const wanted={omelette:[638.7535,62.8005,12.4211],eggAvocado:[665.2535,62.218,8.1236],paneerBhurji:[656.4135,56.0475,15.6655],chickenBowl:[685.6635,73.4975,11.18],dahiBowl:[591.6,55.276,13.127],boiledEggs:[711.3,56.9375,8.3575],eggPoach:[752.1135,56.9375,8.3575]};
  for(const o of options){const expected=wanted[o.id];near(o.nutrition.k,expected[0]);near(o.nutrition.p,expected[1]);near(o.nutrition.a,expected[2]);assert.equal(o.config.spinach,0);assert.equal(o.config.cucumber,0);records.validateRecord('keto/template/day/0/h/b',o.config);}
  near(run("comparisonSum([L('avocado',100)]).a"),1.83);near(run("comparisonSum([L('avocado',100)]).k"),160);
 });
@@ -47,4 +47,10 @@ test('avocado shopping uses edible flesh and yield changes cannot change a meal'
  const run=ready();run("applyKetoBreakfast(0,'h','eggAvocado')");const before=run("JSON.stringify(assignedDayNutrition(0,'h'))");assert.equal(run("householdShopping().market.find(x=>x.id==='avocado').needed"),100);
  run("updateProduceYield('avocado',50)");assert.equal(run("householdShopping().market.find(x=>x.id==='avocado').buy"),200);assert.equal(run("JSON.stringify(assignedDayNutrition(0,'h'))"),before);
  records.validateRecord('keto/template/day/0/h/b',{oil:5,protein:'eggs',quantity:1,soya:0,avocado:100,breakfastRecipe:'eggAvocado'});assert.throws(()=>records.validateRecord('keto/template/day/0/w/b',{oil:5,protein:'paneer',quantity:1,soya:0,breakfastRecipe:'eggAvocado'}),/breakfast/);
+});
+
+test('Edit breakfast validation uses tentative flags without touching the draft on failure',()=>{
+ const run=ready(),before=run('JSON.stringify({days:state.days,ketoMeals,cloudDraft})');
+ const cfg=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'}))"));assert.equal(Object.values(cfg)[0].quantity,3);assert.equal(run('JSON.stringify({days:state.days,ketoMeals,cloudDraft})'),before);
+ run("ketoMeals[ketoMealKey(0,'h','l')]={...ketoConfig(state.days[0],'h','l'),whey:2.5}");assert.throws(()=>run("prepareKetoBreakfasts(0,{h:'boiledEggs'},{...state.days[0],wheyH:true})"),/3 whey/);run('ketoOptions.carbBudget=100');const without=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'},{...state.days[0],wheyH:false}))"));assert.equal(Object.values(without)[0].quantity,3);
 });

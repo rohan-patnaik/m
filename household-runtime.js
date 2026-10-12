@@ -62,6 +62,8 @@ const KETO_BREAKFASTS={
  eggAvocado:{name:'Eggs & avocado',prep:'Cook the eggs and whites in measured oil; serve with weighed avocado flesh. Whey and almonds are included.',portion:{protein:'eggs',quantity:2,eggWhites:4,avocado:100,oil:5,whey:1,almonds:20}},
  paneerBhurji:{name:'Paneer bhurji',prep:'Scramble paneer with mushrooms, tomato and onion in measured oil. Whey and almonds are included.',portion:{protein:'paneer',quantity:125,mushroom:100,tomato:50,onion:20,oil:5,whey:1,almonds:15}},
  chickenBowl:{name:'Chicken & mushroom bowl',prep:'Cook raw boneless chicken with mushrooms and tomato in measured oil. Avocado, whey and almonds are included; this counts toward occasional chicken meals.',portion:{protein:'chicken',quantity:150,mushroom:150,tomato:50,avocado:125,oil:5,whey:1,almonds:15}},
+ boiledEggs:{name:'3 boiled eggs',prep:'Boil three whole eggs. Whey, weighed nuts and avocado are counted sides; no cooking oil.',portion:{protein:'eggs',quantity:3,oil:0,whey:1,almonds:20,walnuts:25,avocado:50}},
+ eggPoach:{name:'3 Egg Poach',prep:'Sunny-side-up eggs (your requested label): cook three whole eggs in 5 ml measured oil. Whey, weighed nuts and avocado are counted sides. Water-poached eggs need no oil; edit oil to zero for that method.',portion:{protein:'eggs',quantity:3,oil:5,whey:1,almonds:20,walnuts:25,avocado:50}},
  dahiBowl:{name:'Dahi protein bowl',prep:'Mix plain dahi with whey; add the weighed nuts. Avocado is a separate side. No added oil.',portion:{protein:'paneer',quantity:0,curd:100,whey:1.5,avocado:50,almonds:20,walnuts:20}}
 };
 function ketoBreakfastName(cfg){return KETO_BREAKFASTS[cfg.breakfastRecipe]?.name||(cfg.protein==='eggs'?(cfg.spinach?'Egg & spinach scramble':'Egg breakfast'):cfg.protein==='chicken'?'Chicken breakfast':cfg.quantity?'Paneer breakfast':'Protein breakfast');}
@@ -76,6 +78,23 @@ function ketoBreakfastOptions(i,p){
   const reason=!isKeto(p)?'Choose Keto for this person first.':!kept(day,'b')?'Breakfast is skipped.':id==='chickenBowl'&&otherChicken>=2?'Swap an existing chicken meal first to keep chicken to 1–2 meals this week.':id==='dahiBowl'&&!day[p==='h'?'wheyH':'wheyW']?'Enable breakfast whey for this recipe.':whey>3?'This would exceed 3 whey scoops today.':dayNutrition.aHi>ketoOptions.carbBudget?`This day would reach ${F(dayNutrition.aHi)} g counted carbs (budget ${ketoOptions.carbBudget} g).`:'';
   return {id,name:x.name,prep:x.prep,config,nutrition,dayNutrition,eligible:!reason,reason};
  });
+}
+// Reviewed breakfast rotation: real dishes, with weighed avocado to support energy and fibre.
+const KETO_WEEK_BREAKFASTS=[['boiledEggs',{}],['omelette',{whey:.5,eggWhites:3,mushroom:250,avocado:25}],['dahiBowl',{curd:75,avocado:125,almonds:15}],['eggAvocado',{avocado:150}],['eggPoach',{}],['dahiBowl',{curd:75,avocado:125,almonds:15}],['eggAvocado',{avocado:150}]];
+function recommendedKetoBreakfast(i){
+ const [id,portion]=KETO_WEEK_BREAKFASTS[i],cfg={...ketoBreakfastOptions(i,'h').find(x=>x.id===id).config,...portion},rest=comparisonEmpty();
+ for(const m of ['l','d','e'])comparisonAdd(rest,comparisonSum(meal(state.days[i],m,'h')));
+ const totals=()=>comparisonAdd(comparisonAdd(comparisonEmpty(),rest),comparisonSum(householdKetoBase(state.days[i],'h','b',cfg)));
+ const n=totals(),extra=Math.max(0,(2000-n.k)/1.6,(25-n.fb)/.067);
+ cfg.avocado=(cfg.avocado||0)+Math.ceil(extra/5)*5;
+ MealCloud.validateRecord(ketoMealKey(i,'h','b'),cfg);const t=totals();
+ if(t.aHi>ketoOptions.carbBudget||t.k>2100||t.k<1900)throw Error('Breakfast rotation needs portion review for '+DAYS[i]+'.');
+ return cfg;
+}
+// Validate Edit meal choices against its tentative day before touching any saved/draft meal.
+function prepareKetoBreakfasts(i,selections,dayOverride=state.days[i]){
+ const original=state.days[i],prepared={};state.days[i]=dayOverride;
+ try{for(const [p,id]of Object.entries(selections)){if(!id)continue;if(!['w','h'].includes(p))throw Error('Invalid breakfast person.');const option=ketoBreakfastOptions(i,p).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);const key=ketoMealKey(i,p,'b');MealCloud.validateRecord(key,option.config);prepared[key]=option.config;}return prepared;}finally{state.days[i]=original;}
 }
 function applyKetoBreakfast(i,p,id){
  if(!cloudReady||cloudSaving)return false;
@@ -95,7 +114,7 @@ function applyKetoInventoryPlan(){
   if(personRecipe(day,'h')!==recipe)sharedRecipes[sharedKey(i)]={...sharedRecipes[sharedKey(i)],w:personRecipe(day,'w'),h:recipe};
   for(const m of ['b','l','d']){
    const cfg={...ketoConfig(day,'h',m,i),whey:m==='b'?1:m==='l'?(chicken?.5:1):0,
-    flax:0,spinach:m==='b'?[200,250,300,270,500,250,200][i]:0,
+    flax:0,spinach:0,
     cashews:m==='b'&&[1,5].includes(i)?5:0,almonds:20,
     walnuts:m==='b'?([0,4].includes(i)?25:i===6?22.5:20):m==='l'?20:15,
     curd:m==='l'?(i===0?0:[2,3,4,6].includes(i)?50:75):0,curdType:'curd',
@@ -108,6 +127,7 @@ function applyKetoInventoryPlan(){
   }
  }
  ketoOptions={...ketoOptions,targetK:2000,pMin:120,pMax:165,carbBudget:50};
+ for(let i=0;i<7;i++)ketoMeals[ketoMealKey(i,'h','b')]=recommendedKetoBreakfast(i);
  save();render();return true;
 }
 function assignedBaseMeal(day,m,p){
@@ -135,7 +155,7 @@ function householdPrep(i){
  const dal=[];for(const p of ['w','h'])if(!isKeto(p))for(const m of ['l','d'])if(kept(d,m))dal.push(L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p)));if(dal.length)groups.push(['Cook · one dal batch for Balanced portions',format(dal)]);
  for(const p of ['w','h']){
   if(!isKeto(p)){const bf=kept(d,'b')?freshMeal(d,'b',p):[];if(bf.length)groups.push(['Cook · '+PERSON_NAMES[p]+' Balanced breakfast',format(bf)]);const extras=[];for(const m of ['l','d','e']){let rest=freshMeal(d,m,p);if(['l','d'].includes(m)){if(!coveredComponent(d,m,p,'sabzi'))rest=subtractIngredients(rest,originalComponent(d,m,p,'sabzi'));rest=subtractIngredients(rest,[L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]);}extras.push(...rest);}if(extras.length)groups.push([PERSON_NAMES[p]+' · Balanced starch / protein / dairy / extras',format(extras)]);continue;}
-  const ready=[],cook=[];for(const m of ['b','l','d']){if(!kept(d,m))continue;const cfg=ketoConfig(d,p,m);const extra=subtractIngredients(freshMeal(d,m,p),coveredComponent(d,m,p,'sabzi')?[]:ketoComponent(d,p,m,'sabzi'));for(const x of extra)(['egg','eggWhite','palak','chicken','soyN','soyS'].includes(x.id)||x.id==='oil'?cook:ready).push(x);}
+  const ready=[],cook=[];for(const m of ['b','l','d']){if(!kept(d,m))continue;const cfg=ketoConfig(d,p,m);const extra=subtractIngredients(freshMeal(d,m,p),coveredComponent(d,m,p,'sabzi')?[]:ketoComponent(d,p,m,'sabzi'));for(const x of extra)(['egg','eggWhite','palak','mushroom','tomato','onion','chicken','soyN','soyS'].includes(x.id)||x.id==='oil'?cook:ready).push(x);}
   if(cook.length)groups.push([PERSON_NAMES[p]+' · self-cooked protein (one batch; reserve portions if needed)',format(cook)]);
   if(ready.length)groups.push([PERSON_NAMES[p]+' · ready portions / no extra cooked recipe',format(ready)]);
  }
