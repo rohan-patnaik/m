@@ -399,11 +399,12 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
       <a href="#today" data-ux-nav="meals"><span>Meals</span></a>
       <a href="#shopping" data-ux-nav="shop"><span>Shopping</span></a>
     </nav>
+    <button type="button" id="themeBtn" class="ux-theme-btn" aria-label="Switch theme">Theme</button>
     <a href="#settings" id="settingsLink" class="ux-settings-link" aria-label="Settings" title="Settings">⚙</a>
   </div>
   <div class="ux-legacy" hidden>
     <details class="more-menu"><summary>More</summary><div class="more-items"><button id="resetBtn">Reset week</button></div></details>
-    <button id="calBtn">Calendar</button><button id="syncBtn">Connection status</button><button id="themeBtn" aria-label="Switch theme">Theme</button>
+    <button id="calBtn">Calendar</button><button id="syncBtn">Connection status</button>
   </div>
   <div id="syncBar" class="weekbar" hidden></div>
   <div id="regularPlan">
@@ -944,29 +945,38 @@ function cookCard(i){
     ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
   return skipNote+banner+cookRows(i).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
-function calWeekRange(iso){
-  const mon=mondayOf(iso);if(!mon)return'';
-  try{
-    const d=new Date(mon+'T12:00:00');d.setDate(d.getDate()+6);
-    const sun=d.toISOString().slice(0,10);
-    return`Meals will be set for <b>Mon ${fmtMon(mon)} – Sun ${fmtMon(sun)}</b>`;
-  }catch(e){return'';}
+function localISO(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// "Mon, 5 Oct – Sun, 11 Oct 2026": a Monday key and its Sunday, both read as local calendar dates.
+function weekRangeText(mon){if(!mon)return'';try{const a=new Date(mon+'T12:00:00'),b=new Date(addDate(mon,6)+'T12:00:00'),o={weekday:'short',day:'numeric',month:'short'};return a.toLocaleDateString(undefined,a.getFullYear()===b.getFullYear()?o:{...o,year:'numeric'})+' – '+b.toLocaleDateString(undefined,{...o,year:'numeric'});}catch(e){return mon;}}
+function calWeekRange(iso){const mon=mondayOf(iso);return mon?`Meals will be set for <b>${weekRangeText(mon)}</b>`:'';}
+// Calendar dialog: the picked week (any day snaps to its Monday) and one pending inline confirmation.
+let calPickMon=null,calConfirm=null;
+function calSource(){return state.weekKey?`saved week ${weekRangeText(state.weekKey)}`:'weekly template';}
+function calPickedHTML(mon){
+  const saved=!!lockedWeeks[mon],range=weekRangeText(mon);
+  const status=`<p class="cal-range" id="calWeekRange" aria-live="polite"><b>${range}</b> <span class="cal-tag${saved?' is-saved':''}">${saved?mon===state.weekKey?'Saved · viewing':'Saved':'Not saved yet'}</span></p>`;
+  if(calConfirm?.kind==='save'&&calConfirm.mon===mon)return status+`<div class="cal-confirm" role="group" aria-labelledby="calConfirmText"><p id="calConfirmText">This replaces the saved week <b>${range}</b> with the seven days of the ${calSource()}. Replace it?</p><div class="cal-actions"><button class="primary" data-calsave data-calconfirm="${mon}">Replace saved week</button><button data-calcancel>Cancel</button></div></div>`;
+  if(saved&&mon===state.weekKey)return status+`<div class="cal-actions"><button class="primary" data-calload="${mon}">View saved week</button></div><p class="hintline cal-hint">You are viewing this saved week. Edits to it are stored with Save changes.</p>`;
+  return status+`<div class="cal-actions">${saved?`<button class="primary" data-calload="${mon}">View saved week</button><button data-calsave>Replace with current plan…</button>`:'<button class="primary" data-calsave>Save week</button>'}</div><p class="hintline cal-hint">${saved?'View opens the saved copy. Replacing it':'Save week'} copies the seven days of the ${calSource()} into these dates.</p>`;
 }
 function calCard(){
-  const today=new Date();const iso=today.toISOString().slice(0,10);
-  const def=state.weekKey||mondayOf(iso)||iso;
+  const thisMon=mondayOf(localISO(new Date())),mon=calPickMon||state.weekKey||mondayOf(dayViewISO())||thisMon;
   const keys=Object.keys(lockedWeeks).sort();
   const rows=keys.length?keys.map(k=>{
-    const w=lockedWeeks[k],cur=k===state.weekKey;
-    return`<div class="calrow"><span>📅 <b>${fmtMon(k)}</b>${cur?' · viewing':''}</span><span class="acts"><button data-calload="${k}">View</button><button data-caldel="${k}">Delete</button></span></div>`;
-  }).join(''):'<p class="hintline">No locked weeks yet. Pick a date below and press Set week.</p>';
-  return`<p class="hintline" style="margin:0 0 8px">Choose a date to save the current seven-day plan to that week.</p>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="calDate" value="${def}"><button class="primary" data-calsave>Set week ✓</button></div>
-  <p class="hintline" id="calWeekRange" style="margin:6px 0 0">${calWeekRange(def)}</p>
-  <div class="callist">${rows}</div>
-  ${state.weekKey?`<p class="hintline">Viewing week of <b>${fmtMon(state.weekKey)}</b>. <button data-calunlink>Edit week template</button></p>`:''}`;
+    const cur=k===state.weekKey,range=weekRangeText(k);
+    const acts=calConfirm?.kind==='del'&&calConfirm.mon===k?`<span class="acts cal-confirm" role="group" aria-label="Confirm delete"><span>Delete this saved week?</span><button class="danger" data-caldel="${k}" data-calconfirm="${k}">Delete</button><button data-calcancel>Cancel</button></span>`:`<span class="acts"><button data-calload="${k}" aria-label="View saved week ${range}">View</button><button data-caldel="${k}" aria-label="Delete saved week ${range}">Delete</button></span>`;
+    return`<div class="calrow${cur?' is-current':''}"><span><b>${range}</b>${cur?' <span class="cal-tag is-saved">Viewing</span>':''}</span>${acts}</div>`;
+  }).join(''):'<p class="hintline">No saved weeks yet. Pick a week above and press Save week.</p>';
+  return`<section class="cal-pick" aria-labelledby="calPickTitle"><h3 id="calPickTitle">Choose a week</h3>
+  <div class="cal-pick-row"><label class="cal-date"><span>Any day in the week</span><input type="date" id="calDate" value="${mon}"></label><div class="cal-quick" role="group" aria-label="Quick pick">${[['0','This week'],['1','Next week']].map(([n,t])=>`<button type="button" data-calpick="${n}" aria-pressed="${addDate(thisMon,7*n)===mon}">${t}</button>`).join('')}</div></div>
+  <div id="calPicked">${calPickedHTML(mon)}</div></section>
+  <section class="cal-saved" aria-labelledby="calSavedTitle"><h3 id="calSavedTitle">Saved weeks</h3><div class="callist">${rows}</div></section>
+  <p class="hintline cal-viewing">${state.weekKey?`Viewing saved week <b>${weekRangeText(state.weekKey)}</b>. <button data-calunlink>Edit week template</button>`:'Viewing the weekly template (not tied to dates).'}</p>`;
 }
-function openCal(){$('#dlgTitle').textContent='Calendar · locked weeks';$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
+// Refresh only the picked-week block so typing in the date field keeps focus.
+function calRefresh(focus){const box=$('#calPicked');if(!box)return;const mon=calPickMon||mondayOf($('#calDate')?.value);if(!mon)return;box.innerHTML=calPickedHTML(mon);const thisMon=mondayOf(localISO(new Date()));document.querySelectorAll('[data-calpick]').forEach(b=>b.setAttribute('aria-pressed',String(addDate(thisMon,7*b.dataset.calpick)===mon)));if(focus)$('#dlgBody').querySelector(focus)?.focus();}
+function calPickDate(iso){const mon=mondayOf(iso);if(!mon)return;calPickMon=mon;calConfirm=null;calRefresh();}
+function openCal(pick){calPickMon=typeof pick==='string'&&mondayOf(pick)||null;calConfirm=null;$('#dlgTitle').textContent='Calendar weeks';$('#dlg').classList.add('ux-cal-dialog');$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
 function dayViewISO(){const vd=new Date();vd.setDate(vd.getDate()+dayOff);return vd.getFullYear()+'-'+String(vd.getMonth()+1).padStart(2,'0')+'-'+String(vd.getDate()).padStart(2,'0');}
 let editCtx=null,editSnap='';
 function editValsFromState(i){const d=state.days[i];return{b:d.b,s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
@@ -1012,10 +1022,10 @@ async function saveEdit(){
 }
 function render(){
   document.documentElement.dataset.theme=state.theme;
-  const tb=$('#themeBtn');tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',state.theme==='light'?'Switch to dark mode':'Switch to light mode');
+  const tb=$('#themeBtn'),themeLabel=state.theme==='light'?'Switch to dark mode':'Switch to light mode';if(typeof uxIcon==='function')tb.innerHTML=uxIcon(state.theme==='light'?'moon':'sun');else tb.textContent=state.theme==='light'?'🌙':'☀️';tb.setAttribute('aria-label',themeLabel);tb.title=themeLabel;
   // locked-week banner
   const wb=$('#weekBar');
-  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Week of <b>${fmtMon(state.weekKey)}</b></span><button data-calunlink>Edit week template</button>`;}
+  if(state.weekKey){wb.hidden=false;wb.innerHTML=`<span>📅 Saved week <b>${weekRangeText(state.weekKey)}</b></span><button data-calunlink>Edit week template</button>`;}
   else{wb.hidden=true;wb.innerHTML='';}
   // stats
   const w=avgForMode(personMode('w'),'w'),h=avgForMode(personMode('h'),'h');
@@ -1057,9 +1067,9 @@ function render(){
       <div class="meals">${slots}</div></article>`;
   }
   // planner (week-set mode: all 7 days) + Set-week lock button after Sunday
-  const _todayIso=new Date().toISOString().slice(0,10);
+  const _todayIso=localISO(new Date());
   const _defLock=state.weekKey||mondayOf(_todayIso)||_todayIso;
-  const _lockCard=`<section class="panel section" id="weeklock"><h2>Week ready? Save it</h2><p class="hintline" style="margin:0 0 8px">Saves all 7 days above into the calendar week. Day mode then prefills from it.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="weekLockDate" value="${_defLock}"><button class="primary" data-weeklock>Set week meals \u2713</button></div><p class="hintline" id="weekLockRange" style="margin:6px 0 0">${calWeekRange(_defLock)}</p>${state.weekKey?`<p class="hintline">Locked to week of <b>${fmtMon(state.weekKey)}</b> \u2713 — use Save changes after editing.</p>`:`<p class="hintline">Template only — choose a date and Set week meals to save a calendar week.</p>`}</section>`;
+  const _lockCard=`<section class="panel section" id="weeklock"><h2>Week ready? Save it</h2><p class="hintline" style="margin:0 0 8px">Saves all 7 days above into the calendar week. Day mode then prefills from it.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input type="date" id="weekLockDate" value="${_defLock}"><button class="primary" data-weeklock>Set week meals \u2713</button></div><p class="hintline" id="weekLockRange" style="margin:6px 0 0">${calWeekRange(_defLock)}</p>${state.weekKey?`<p class="hintline">Locked to week <b>${weekRangeText(state.weekKey)}</b> \u2713 — use Save changes after editing.</p>`:`<p class="hintline">Template only — choose a date and Set week meals to save a calendar week.</p>`}</section>`;
   $('#planner').innerHTML=state.days.map((d,i)=>dayHTML(d,i)).join('')+_lockCard;
   // day-plan mode: only one day (today by default), prefilled from the week plan
   document.body.dataset.view=state.view==='day'?'day':'week';
@@ -1135,11 +1145,7 @@ document.addEventListener('change',e=>{
     if(!Number.isFinite(v)||v<=0){render();return;}
     state.density=v;state.custom=true;save();render();return;
   }
-  if(t.id==='calDate'){
-    const r=$('#calWeekRange');
-    if(r)r.innerHTML=calWeekRange(t.value);
-    return;
-  }
+  if(t.id==='calDate'){calPickDate(t.value);return;}
   if(t.id==='weekLockDate'){
     const r=$('#weekLockRange');
     if(r)r.innerHTML=calWeekRange(t.value);
@@ -1178,6 +1184,7 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.id==='calDate'){calPickDate(t.value);return;}
   if(t.dataset&&t.dataset.split!==undefined){
     const out=t.closest('.splitrow').querySelector('[data-out]');
     out.textContent=splitOut(t);
@@ -1210,25 +1217,33 @@ document.addEventListener('click',e=>{
   if(ul){selectWeek(null);state.view='week';location.hash='#week';render();if($('#dlg').open)$('#dlgBody').innerHTML=calCard();return;}
   const wl=e.target.closest('[data-weeklock]');
   if(wl){const inp=$('#weekLockDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
+    if(lockedWeeks[mon]&&mon!==state.weekKey&&wl.dataset.weeklock!==mon){$('#weekLockRange').innerHTML=`<span role="group" aria-labelledby="weekLockConfirm"><span id="weekLockConfirm">This replaces the saved week <b>${weekRangeText(mon)}</b>. Replace it?</span> <button class="primary" data-weeklock="${mon}">Replace saved week</button> <button data-weeklock-cancel>Cancel</button></span>`;$('#weekLockRange [data-weeklock-cancel]').focus();return;}
     ensureUtDay();ensureOilUse();
     lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
     state.weekKey=mon;state.custom=true;save();render();saveChanges();return;}
+  if(e.target.closest('[data-weeklock-cancel]')){const inp=$('#weekLockDate');$('#weekLockRange').innerHTML=calWeekRange(inp.value);inp.focus();return;}
   if(e.target.closest('[data-syncdone]')){$('#dlg').close();return;}
+  const pk=e.target.closest('[data-calpick]');
+  if(pk){const mon=addDate(mondayOf(localISO(new Date())),7*pk.dataset.calpick);$('#calDate').value=mon;calPickDate(mon);return;}
+  if(e.target.closest('[data-calcancel]')){const kind=calConfirm?.kind;calConfirm=null;if(kind==='del'){const k=e.target.closest('.calrow').querySelector('[data-caldel]')?.dataset.caldel;$('#dlgBody').innerHTML=calCard();$('#dlgBody').querySelector(`[data-caldel="${k}"]`)?.focus();}else calRefresh('[data-calsave]');return;}
   const sv=e.target.closest('[data-calsave]');
   if(sv){const inp=$('#calDate');const mon=inp&&inp.value?mondayOf(inp.value):null;if(!mon)return;
+    // An existing saved copy is only replaced after the inline Replace step for that same Monday.
+    if(lockedWeeks[mon]&&sv.dataset.calconfirm!==mon){calPickMon=mon;calConfirm={kind:'save',mon};calRefresh('[data-calcancel]');return;}
+    calConfirm=null;calPickMon=mon;
     ensureUtDay();ensureOilUse();lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();
-    state.weekKey=mon;state.view='week';location.hash='#week';save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
+    state.weekKey=mon;state.view='week';location.hash='#week';save();render();saveChanges();$('#dlgBody').innerHTML=calCard();$('#dlgBody [data-calload]')?.focus();return;}
   const ld=e.target.closest('[data-calload]');
   if(ld){selectWeek(ld.dataset.calload);state.view='week';location.hash='#week';render();$('#dlg').close();return;}
   const del=e.target.closest('[data-caldel]');
-  if(del){const k=del.dataset.caldel;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
+  if(del){const k=del.dataset.caldel;if(del.dataset.calconfirm!==k){calConfirm={kind:'del',mon:k};$('#dlgBody').innerHTML=calCard();$('#dlgBody').querySelector('.calrow [data-calcancel]')?.focus();return;}calConfirm=null;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
 });
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 document.addEventListener('click',e=>{const menu=document.querySelector('.more-menu');if(menu.open&&(!menu.contains(e.target)||e.target.closest('.more-items button')))menu.open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('.more-menu').open=false;});
-$('#calBtn').onclick=openCal;
+$('#calBtn').onclick=()=>openCal();
 $('#syncBtn').onclick=openSync;
-$('#dlg').addEventListener('close',()=>{if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
+$('#dlg').addEventListener('close',()=>{$('#dlg').classList.remove('ux-cal-dialog');calConfirm=null;if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.personModes={w:'easy',h:'medium'};state.custom=false;state.weekKey=null;save();render();};
