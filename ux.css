@@ -68,6 +68,20 @@ h4{font-size:14px;margin:0}
 .meal-assignments>div{display:flex;align-items:center;gap:4px;height:var(--tap);padding:0 3px 0 12px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
 .meal-assignments b{font-size:13px;font-weight:600;margin-right:4px}
 .meal-assignments select{font-size:13px;height:28px;min-height:28px;padding:2px 8px;min-width:0;border-radius:999px;background:var(--paper2)}
+/* Show macros: view-only popover anchored under its toolbar button, right-aligned so it never leaves the viewport.
+   Above the cards, below the sticky header (40), #syncBar (30) and the dialog top layer. */
+.meal-macros{position:relative;margin-left:auto}
+.meal-macros-btn{display:flex;align-items:center;gap:6px;height:var(--tap);border-radius:999px;padding:0 14px;font-size:13px}
+.meal-macros-btn small{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+.meal-macros-btn::after{content:'▾';color:var(--muted)}
+.meal-macros-btn[aria-expanded=true]{border-color:var(--accent)}
+.meal-macros-btn[aria-expanded=true]::after{content:'▴'}
+.meal-macros-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:20;width:220px;max-width:calc(100vw - 24px);padding:6px 14px 8px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px #0b141c38}
+.meal-macros-menu fieldset{border:0;margin:0;padding:4px 0;min-width:0}
+.meal-macros-menu fieldset:first-child{border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:6px}
+.meal-macros-menu legend{padding:0;font-size:12px;font-weight:600;color:var(--muted)}
+.meal-macros-menu .ux-checkbox{font-size:14px;white-space:normal}
+.meal-macros-menu input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;margin:0;flex-shrink:0}
 
 /* Day / week headings */
 /* ‹ date › travel together; Today / Calendar sit in a separate right-hand group */
@@ -136,7 +150,7 @@ h4{font-size:14px;margin:0}
 .meal-menu span{margin:0 4px}
 .meal-table tfoot th,.meal-table tfoot td{border-bottom:0;padding-top:2px;padding-bottom:0;font-size:12px;color:var(--muted)}
 .meal-table tfoot tr:first-child th,.meal-table tfoot tr:first-child td{padding-top:8px}
-.meal-table tfoot tr:first-child td{font-size:14px;font-weight:650;color:var(--ink)}
+.meal-table tfoot tr.meal-k-row td{font-size:14px;font-weight:650;color:var(--ink)}
 .meal-table .meal-none{padding:8px 0;color:var(--muted);border:0}
 .meal-foot{font-size:12px;color:var(--muted);margin:8px 0 0}
 .meal-note{font-size:12px;line-height:1.45;color:var(--muted);margin:8px 0 0}
