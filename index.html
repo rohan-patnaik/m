@@ -767,8 +767,8 @@ function mealTitle(d,m){
 const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar'};
 function ratioText(wShare,hShare,cooked){
   // Share pair rendered from the same fractions the splitter uses; cooked<1 names the smaller batch.
-  const r=typeof uxParts==='function'?uxParts([wShare,hShare],12):null,W=r?r.parts[0]:Math.round(wShare*360),H=r?r.parts[1]:Math.round(hShare*360),g=gcd(W,H)||1;
-  return `W : H = ${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
+  const r=typeof uxParts==='function'?uxParts([wShare,hShare],24):null,W=r?r.parts[0]:Math.round(wShare*360),H=r?r.parts[1]:Math.round(hShare*360),g=gcd(W,H)||1;
+  return `W : H = ${r&&!r.exact?'≈ ':''}${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
 }
 function splitRatio(d,m){
  if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d))){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Keto trial':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
