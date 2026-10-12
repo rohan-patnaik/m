@@ -688,3 +688,53 @@ test('weigh & serve: one full-width dish select replaces the scrolling dish tabs
  }
  assert.doesNotMatch(css,/ux-dish-tabs|overflow-x:auto/);assert.match(css,/\.ux-dish-select select\{width:100%;min-width:0;max-width:100%/);
 });
+
+test('day carbs: totals strip, warning actions and the read-only breakdown dialog',()=>{
+ const {run}=app(true);
+ run("householdDiets={w:'balanced',h:'keto'}");
+ const day=run('uxDayHTML(0)'),link=p=>day.match(new RegExp(`<button type="button" class="ux-carbs-link" data-ux-carbs="0,${p}"[^>]*>([\\s\\S]*?)</button>`));
+ for(const p of ['w','h']){const t=JSON.parse(run(`JSON.stringify(assignedDayNutrition(0,'${p}'))`));assert.ok(link(p),p);assert.match(link(p)[1],new RegExp('^'+run(`comparisonRange(${t.a},${t.aHi})`)+' g carbs'));}
+ assert.match(link('h')[1],/<small> \/ 50 g<\/small>$/);assert.doesNotMatch(link('w')[1],/\/ 50 g|budget/);
+ assert.equal((day.match(/data-ux-carbs="0,[wh]"/g)||[]).length>=4,true,'strip + nutrition disclosure');
+ const warn=run('uxWarning(0)');assert.match(warn,/carb check unverified|carb budget needs review/);
+ assert.match(warn,/<button type="button" class="text-btn" data-ux-carbs="0,h">View carbs<\/button> <a class="ux-diet-review" href="#keto">Diet review<\/a>/);assert.doesNotMatch(warn,/>Review</);
+ // Without Root's function: totals still show, with an honest unavailable note.
+ let html=run("uxCarbsHTML(0,'h')");
+ assert.match(html,/Per-food breakdown unavailable until the next update\./);assert.match(html,/subtract documented fibre only from USDA total-carb or IFCT total estimates\. Packets keep their full declared carbohydrate/);
+ assert.match(html,/data-ux-carbs="0,h" aria-pressed="true"/);assert.match(html,/data-ux-carbs="0,w" aria-pressed="false"/);assert.match(html,/Keto budget 50 g/);
+ assert.match(run("uxCarbsHTML(0,'w')"),/Balanced · no carb budget/);assert.doesNotMatch(run("uxCarbsHTML(0,'w')"),/Keto budget/);
+ // Contract mock, held only in the vm context.
+ run(`globalThis.dayCarbBreakdown=(i,p)=>{const n=o=>({...comparisonEmpty(),...o}),totals=n({k:1900,a:46,aHi:49,c:60,cHi:63,fb:14,carbUnknown:true});return {dayIndex:i,person:p,totals,
+  foods:[{id:'paneerMM',quantity:150,unit:'g',kind:'live',source:'Milky Mist regular 500 g packet image, audited 2026-10-12',basis:'100 g as sold',carbConvention:'full declared carbs',reasons:[],nutrition:n({a:7.65,aHi:7.65,c:7.65,cHi:7.65}),meals:{l:n({a:7.65,aHi:7.65})}},
+   {id:'spice',quantity:3,unit:'g',kind:'live',source:'Unspecified spice mixture; unknown macros',basis:'100 g',carbConvention:'full declared carbs',reasons:['missing-carbohydrate-profile'],nutrition:n({a:0,aHi:3,c:0,cHi:3,carbUnknown:true}),meals:{d:n({aHi:3,carbUnknown:true})}},
+   {id:'gobi',quantity:200,unit:'g',kind:'frozen',source:'USDA SR Legacy (generic estimate)',basis:'100 g raw edible',carbConvention:'documented fibre counted once',reasons:['frozen-carbohydrate-data-incomplete'],nutrition:n({a:5,aHi:38,c:9,cHi:42,carbUnknown:true}),meals:{d:n({a:5,aHi:38})}},
+   {id:'oil',quantity:10,unit:'ml',kind:'live',source:'Matched public packet panel, audited 2026-10-04',basis:'100 g',reasons:[],nutrition:n({}),meals:{l:n({})}}],
+  meals:[{meal:'b',nutrition:n({a:1,aHi:1,c:1,cHi:1})},{meal:'l',nutrition:n({a:20,aHi:20,c:25,cHi:25})},{meal:'d',nutrition:n({a:25,aHi:28,c:34,cHi:37,carbUnknown:true})},{meal:'e',nutrition:n({})}]};}`);
+ html=run("uxCarbsHTML(0,'h')");
+ assert.doesNotMatch(html,/unavailable until/);assert.match(html,/<strong>46–49 g<\/strong><small>Keto budget 50 g<\/small>/);assert.match(html,/Estimated total carbs<\/span><strong>60–63 g/);assert.match(html,/≥14 g/);
+ assert.match(html,/Unknown data — upper bound is conservative, not a measured amount\./);assert.doesNotMatch(html.replace('prevent a verified carb pass',''),/within|\bpass|✓/i,'informational only, never a pass state');
+ assert.match(html,/Counted available carbs subtract documented fibre only/);assert.doesNotMatch(html.replace('not guaranteed physiological net carbs',''),/net.carb/i,'net carbs only with its qualification');
+ const rows=[...html.matchAll(/<tr><th scope="row">([^<]*)<small>([^<]*)/g)].map(m=>m[1]);
+ assert.deepEqual(rows.slice(0,4),['gobi','paneerMM','spice','oil'].map(id=>run(`esc(uxCarbFood({id:'${id}'}))`)),'sorted by counted upper bound');
+ assert.match(html,/150 g · <span class="ux-carbs-badge" title="full declared carbs">Current<\/span> Milky Mist regular 500 g packet image<\/small><\/th><td>7.7 g<\/td>/);
+ assert.match(html,/Frozen batch<\/span> USDA SR Legacy<\/small><\/th><td>unknown<small>up to 38 g<\/small><\/td><td>unknown<small>up to 42 g<\/small><\/td>/);
+ assert.match(html,/<th scope="row">Dinner<\/th><td>25–28 g<small>incl. unknown<\/small><\/td>/);assert.match(html,/Snacks &amp; milk|Snacks & milk/);assert.match(html,/<tr class="ux-carbs-day"><th scope="row">Day<\/th><td>46–49 g/);
+ assert.match(html,/<summary>Why some carbs are unknown<\/summary>/);assert.match(html,/<h4>Missing carbohydrate profile<\/h4>/);assert.match(html,/<h4>Frozen snapshot with incomplete carb data<\/h4>/);
+ assert.match(html,/Unspecified spice mixture; unknown macros · 100 g<\/li>/);assert.match(html,/Unknown spices or frozen historical label differences prevent a verified carb pass\./);
+ run('delete globalThis.dayCarbBreakdown');assert.match(run("uxCarbsHTML(0,'h')"),/unavailable until the next update/);
+});
+
+test('dialogs close only when both the press and the click land outside the box',()=>{
+ const {run}=app(true);
+ const r='({left:10,top:20,right:410,bottom:520})';
+ assert.equal(run(`uxPointerOutside(${r},12,22)`),false,'inner padding');assert.equal(run(`uxPointerOutside(${r},405,300)`),false,'scrollbar gutter');
+ for(const [x,y]of [[5,300],[500,300],[200,10],[200,600]])assert.equal(run(`uxPointerOutside(${r},${x},${y})`),true);
+ run(`globalThis.HTMLDialogElement=class{};var box=Object.assign(new HTMLDialogElement(),{open:true,closed:0,getBoundingClientRect:()=>${r},close(){this.closed++;}}),inner={}`);
+ assert.equal(run("uxDialogOutside({target:box,button:0,isPrimary:false,clientX:5,clientY:300})===box"),true,'Chrome click events report isPrimary:false');
+ assert.equal(run("uxDialogOutside({target:box,button:0,clientX:200,clientY:300})"),null,'padding hit on the dialog element');
+ assert.equal(run("uxDialogOutside({target:inner,button:0,clientX:5,clientY:300})"),null,'press started on a child');
+ assert.equal(run("uxDialogOutside({target:box,button:2,clientX:5,clientY:300})"),null,'secondary button');
+ run('box.open=false');assert.equal(run("uxDialogOutside({target:box,button:0,clientX:5,clientY:300})"),null);
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8'),ux=readFileSync(new URL('../ux-runtime.js',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/e\.target\.id==='dlg'/);assert.equal((ux.match(/addEventListener\('pointerdown'/g)||[]).length,1);
+});
