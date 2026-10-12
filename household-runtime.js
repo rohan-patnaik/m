@@ -61,15 +61,15 @@ function applyKetoInventoryPlan(){
   if(personRecipe(day,'h')!==recipe)sharedRecipes[sharedKey(i)]={...sharedRecipes[sharedKey(i)],w:personRecipe(day,'w'),h:recipe};
   for(const m of ['b','l','d']){
    const cfg={...ketoConfig(day,'h',m,i),whey:m==='b'?1:m==='l'?(chicken?.5:1):0,
-    flax:0,spinach:m==='b'?[200,250,300,250,500,250,200][i]:0,
-    cashews:m==='b'&&![0,3,4].includes(i)?5:0,almonds:20,
+    flax:0,spinach:m==='b'?[200,250,300,270,500,250,200][i]:0,
+    cashews:m==='b'&&[1,5].includes(i)?5:0,almonds:20,
     walnuts:m==='b'?([0,4].includes(i)?25:i===6?22.5:20):m==='l'?20:15,
-    curd:m==='l'?(i===0?0:[2,3,6].includes(i)?50:75):0,curdType:'curd',
+    curd:m==='l'?(i===0?0:[2,3,4,6].includes(i)?50:75):0,curdType:'curd',
     cucumber:m==='d'?150:0,milk:0,butter:0,soya:0,paneerType:'paneerMM',
     quantity:m==='b'?(recipe==='S12'?4:1):m==='l'?(inside?0:100):(recipe==='S12'?0:chicken?250:2),
     protein:m==='b'?'eggs':m==='d'&&chicken?'chicken':m==='d'?'eggs':'paneer',
     eggWhites:m==='b'?(chicken?0:4):0,oil:m==='b'?5:m==='d'&&recipe!=='S12'?5:0,
-    sabziFraction:m==='b'?0:inside?.3:i===0?.32:i===3?.28:.35};
+    sabziFraction:m==='b'?0:inside?.3:i===0?.30:i===3?.26:.35};
    MealCloud.validateRecord(ketoMealKey(i,'h',m),cfg);ketoMeals[ketoMealKey(i,'h',m)]=cfg;
   }
  }
