@@ -994,13 +994,18 @@ function calPickDate(iso){const mon=mondayOf(iso);if(!mon)return;calPickMon=mon;
 function openCal(pick){calPickMon=typeof pick==='string'&&mondayOf(pick)||null;calConfirm=null;$('#dlgTitle').textContent='Calendar weeks';$('#dlg').classList.add('ux-cal-dialog');$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
 function dayViewISO(){const vd=new Date();vd.setDate(vd.getDate()+dayOff);return vd.getFullYear()+'-'+String(vd.getMonth()+1).padStart(2,'0')+'-'+String(vd.getDate()).padStart(2,'0');}
 let editCtx=null,editSnap='',editP=null;
-function editValsFromState(i){const d=state.days[i];return{b:d.b,s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
-function editFormHTML(v){
+// Keto breakfast recipes in Edit meals are form state only; saveEdit hands changed picks to Root's prepareKetoBreakfasts.
+function editKetoOptions(i,p){try{const o=isKeto(p)&&typeof ketoBreakfastOptions==='function'?ketoBreakfastOptions(i,p):null;return Array.isArray(o)?o:[];}catch{return[];}}
+function editKetoRecipe(i,p){const r=isKeto(p)&&ketoConfig(state.days[i],p,'b',i).breakfastRecipe;return r&&editKetoOptions(i,p).some(o=>o.id===r)?r:'';}
+function editValsFromState(i){const d=state.days[i];return{b:d.b,bw:editKetoRecipe(i,'w'),bh:editKetoRecipe(i,'h'),s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
+function editFormHTML(v,i=editCtx?editCtx.i:0){
   // Protein sabzis already include protein: the Dinner protein field is hidden, and collectEdit keeps its last value.
   const noExtra=NO_EXTRA(v.s);
   const tgl=(k,txt)=>`<label><input type="checkbox" data-et="${k}"${v[k]?' checked':''}> ${txt}</label>`;
+  const bal=['w','h'].filter(p=>!isKeto(p)),name=n=>typeof uxMealText==='function'?uxMealText(n):n;
+  const kb=p=>{const o=editKetoOptions(i,p),cur=o.some(x=>x.id===v['b'+p])?v['b'+p]:'';return`<label>${PERSON_NAMES[p]} breakfast<select data-ek="b${p}"><option value=""${cur?'':' selected'}>Current / Custom</option>${o.map(x=>{const off=x.eligible===false&&x.reason;return`<option value="${esc(x.id)}"${x.id===cur?' selected':''}${x.eligible===false?' disabled':''}${off?` title="${esc(x.reason)}"`:''}>${esc(name(x.name))}${x.nutrition&&typeof x.nutrition.k==='number'?` · ${R(x.nutrition.k)} kcal`:''}${off?` (${esc(x.reason)})`:''}</option>`;}).join('')}</select></label>`;};
   return`<div class="editform">
-    <label>Breakfast<select data-ek="b">${opts(BREAKFASTS,v.b)}</select></label>
+    ${bal.length?`<label>${bal.length===2?'Breakfast':PERSON_NAMES[bal[0]]+' breakfast'}<select data-ek="b">${opts(BREAKFASTS,v.b)}</select></label>`:''}${['w','h'].filter(isKeto).map(kb).join('')}
     <label>Lunch + dinner sabzi<select data-ek="s">${opts(SABZIS,v.s)}</select></label>
     ${noExtra?'':`<label>Dinner protein<select data-ek="p">${opts(PROTEINS,v.p)}</select></label>`}
     <label>Dal<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>
@@ -1013,7 +1018,8 @@ function collectEdit(){
   const g=k=>{const el=document.querySelector(`[data-ek="${k}"]`);return el?el.value:null;};
   const t=k=>{const el=document.querySelector(`[data-et="${k}"]`);return el?el.checked:false;};
   const p=g('p');if(p!==null)editP=p;else if(editP===null&&editSnap)editP=JSON.parse(editSnap).p;
-  return{b:g('b'),s:g('s'),p:editP,dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
+  const snap=editSnap?JSON.parse(editSnap):{};
+  return{b:g('b')??snap.b??null,bw:g('bw')??'',bh:g('bh')??'',s:g('s'),p:editP,dal:g('dal'),wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:t('eggH'),cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
 }
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
@@ -1024,18 +1030,29 @@ function openEdit(i,iso){
   $('#dlgBody').innerHTML=editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
 }
+function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
 async function saveEdit(){
   if(!editCtx)return;
-  const v=collectEdit(),d=state.days[editCtx.i];
+  // Build the tentative day first; nothing is mutated until breakfast recipes validate.
+  const v=collectEdit(),d=structuredClone(state.days[editCtx.i]);
   if(v.s&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}
   if(v.b)d.b=v.b;
   if(v.dal)d.dal=v.dal;
   if(v.p&&!NO_EXTRA(d.s))d.p=v.p;
   d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
+  // Only changed picks are prepared, so re-saving keeps hand-tuned portions of an unchanged recipe.
+  const snap=editSnap?JSON.parse(editSnap):{},sel={h:v.bh&&v.bh!==snap.bh?v.bh:undefined,w:v.bw&&v.bw!==snap.bw?v.bw:undefined};
+  let prepared=null;
+  if(sel.h||sel.w){
+    if(typeof prepareKetoBreakfasts!=='function')return editMessage('Breakfast recipes need the latest update.');
+    try{prepared=prepareKetoBreakfasts(editCtx.i,sel,d);}catch(e){return editMessage(e&&e.message||String(e));}
+  }
+  Object.assign(state.days[editCtx.i],d);
+  if(prepared)Object.assign(ketoMeals,prepared);
   state.custom=true;
   if(editCtx.iso){const mon=mondayOf(editCtx.iso);if(mon&&!lockedWeeks[mon]){ensureUtDay();ensureOilUse();copyDietScope(state.weekKey||'template',mon);lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();state.weekKey=mon;}}
-  save();render();if(await saveChanges())$('#dlg').close();else{let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';$('#dlgBody').append(msg);}msg.textContent=syncStatusText+' Close this editor to review your unsaved changes.';const cancel=$('#dlgBody [data-editcancel]');if(cancel)cancel.textContent='Close editor';}
+  save();render();if(await saveChanges())$('#dlg').close();else{editMessage(syncStatusText+' Close this editor to review your unsaved changes.');const cancel=$('#dlgBody [data-editcancel]');if(cancel)cancel.textContent='Close editor';}
 }
 function render(){
   document.documentElement.dataset.theme=state.theme;

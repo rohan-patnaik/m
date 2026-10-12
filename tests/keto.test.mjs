@@ -863,3 +863,45 @@ test('details popup, dinner-protein field, carb banner threshold, breakfast reci
  assert.match(css,/@media\(max-width:1000px\)\{\n \.meal-cards\{grid-template-columns:1fr;align-items:start\}\n \.meal-card\{display:block\}/);
  assert.match(run("uxMealTable(0,'l')"),/<\/tbody><\/table>(<p class="meal-foot">[^<]*<\/p>)?<table class="meal-table meal-table-foot"><caption class="sr-only">Lunch totals: Wife, Husband<\/caption><colgroup><col><col class="meal-col"><col class="meal-col"><\/colgroup><tfoot><tr class="meal-k-row">/);
 });
+test('Edit meals breakfast recipes: per-assignment selects, form-only until Save, prepared via Root helper',async()=>{
+ const {run}=app();
+ run(`var els={},calls=[],order=[];document.querySelector=s=>els[s]||null;state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false}});save=()=>order.push('save');saveChanges=async()=>{order.push('saveChanges');return true};render=()=>{};var dlg={open:true,close(){this.open=false}}`);
+ const optCount=html=>(html.match(/<option/g)||[]).length;
+ // Both Balanced: single "Breakfast", no keto selects.
+ let f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Breakfast<select data-ek="b">/);assert.doesNotMatch(f,/data-ek="b[hw]"/);
+ // Husband Keto: Balanced select labelled for Wife plus the Husband recipe select from the real helper.
+ run("householdDiets={w:'balanced',h:'keto'}");const n=run("ketoBreakfastOptions(0,'h').length");assert.ok(n>=5);
+ f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Wife breakfast<select data-ek="b">/);
+ const bh=f.match(/<label>Husband breakfast<select data-ek="bh">[\s\S]*?<\/select>/)[0];assert.equal(optCount(bh),n+1);assert.match(bh,/^<label>Husband breakfast<select data-ek="bh"><option value="" selected>Current \/ Custom<\/option><option value="omelette"[^>]*>Mushroom omelette · \d+ kcal/);assert.match(bh,/<option value="eggAvocado">Eggs &amp; avocado · \d+ kcal<\/option>/);assert.doesNotMatch(f,/data-ek="bw"/);
+ // Both Keto: no common select; chicken disabled with the reason once two chicken meals exist.
+ run("householdDiets={w:'keto',h:'keto'};for(const j of [1,2])ketoMeals[ketoMealKey(j,'h','l')]={...ketoConfig(state.days[j],'h','l'),protein:'chicken',quantity:150}");
+ f=run('editFormHTML(editValsFromState(0),0)');assert.doesNotMatch(f,/data-ek="b"/);
+ assert.equal(optCount(f.match(/data-ek="bh">[\s\S]*?<\/select>/)[0]),n+1);assert.equal(optCount(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0]),run("ketoBreakfastOptions(0,'w').length")+1);
+ assert.match(f,/<label>Wife breakfast<select data-ek="bw">/);assert.doesNotMatch(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0],/chicken|omelette|eggAvocado/i);
+ assert.match(f,/<option value="chickenBowl" disabled title="Swap an existing chicken meal first[^"]*">Chicken &amp; mushroom bowl · \d+ kcal \(Swap an existing chicken meal first[^)]*\)<\/option>/);
+ // Existing recipe preselects; selection is dirty, survives the sabzi re-render and touches nothing until Save.
+ run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'paneerBhurji'}");
+ assert.equal(run('editValsFromState(0).bh'),'paneerBhurji');assert.equal(run('editValsFromState(0).bw'),'');
+ run("editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek=\"s\"]':{value:state.days[0].s},'[data-ek=\"dal\"]':{value:state.days[0].dal},'[data-ek=\"bh\"]':{value:'paneerBhurji'},'[data-ek=\"bw\"]':{value:''},'[data-editsave]':{disabled:true},'#dlg':dlg};const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et=\"'+k+'\"]']={checked:sv[k]}");
+ assert.equal(run('collectEdit().b'),run('state.days[0].b'),'missing common select keeps the saved breakfast');run('refreshEditDirty()');assert.equal(run("els['[data-editsave]'].disabled"),true);
+ const before=run('JSON.stringify([state.days,ketoMeals])');
+ run("els['[data-ek=\"bh\"]'].value='eggAvocado';refreshEditDirty()");assert.equal(run("els['[data-editsave]'].disabled"),false);
+ run("els['[data-ek=\"s\"]'].value='S12'");assert.match(run('editFormHTML(collectEdit())'),/data-ek="bh">[\s\S]*<option value="eggAvocado" selected>/);
+ assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before,'selecting is pure form state; Cancel leaves nothing behind');
+ // Helper absent: inline message, no mutation.
+ run("els['[data-et=\"wheyH\"]']={checked:false};var box={dataset:{},textContent:''};els['#dlgBody .editbtns']={after(m){els['#dlgBody [data-editmessage]']=m}};document.createElement=()=>box");
+ await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);assert.equal(run('dlg.open'),true);assert.equal(run('order.length'),0);
+ // Helper throws: message shown, dialog open, nothing changed.
+ run("globalThis.prepareKetoBreakfasts=(i,sel,day)=>{calls.push({i,sel,day:structuredClone(day),sNow:state.days[0].s});throw Error('This would exceed 3 whey scoops today.')}");
+ await run('saveEdit()');assert.equal(run('box.textContent'),'This would exceed 3 whey scoops today.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);assert.equal(run('dlg.open'),true);assert.equal(run('order.length'),0);
+ assert.equal(run('JSON.stringify(calls[0].sel)'),'{"h":"eggAvocado"}');assert.equal(run('calls[0].i'),0);assert.equal(run('calls[0].day.wheyH'),false,'tentative day carries the whey toggle');assert.equal(run('state.days[0].wheyH'),true);assert.equal(run('calls[0].day.s'),'S12');assert.equal(run('calls[0].sNow'),'S1','called before state mutation');
+ // Success: called before mutation, map applied once, one save + saveChanges.
+ run("calls=[];var key=ketoMealKey(0,'h','b'),cfg={...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'eggAvocado'};globalThis.prepareKetoBreakfasts=(i,sel,day)=>{calls.push({sel,s:state.days[0].s,k:ketoMeals[key].breakfastRecipe});order.push('prepare');return {[key]:cfg}}");
+ await run('saveEdit()');assert.equal(run('calls.length'),1);assert.equal(run('calls[0].s'),JSON.parse(before)[0][0].s);assert.equal(run('calls[0].k'),'paneerBhurji');
+ assert.equal(run('ketoMeals[key].breakfastRecipe'),'eggAvocado');assert.equal(run('state.days[0].s'),'S12');assert.equal(run('state.days[0].wheyH'),false);assert.equal(run("order.join()"),'prepare,save,saveChanges');assert.equal(run('dlg.open'),false);
+ // Unchanged recipe is not re-prepared (keeps hand-tuned portions).
+ run("calls=[];order=[];editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els['[data-ek=\"s\"]'].value=state.days[0].s");await run('saveEdit()');assert.equal(run('calls.length'),0);assert.equal(run("order.join()"),'save,saveChanges');
+ // New calendar week: the map lands in the current scope before copyDietScope.
+ run("order=[];var cds=copyDietScope;copyDietScope=(a,b)=>{order.push('copy:'+ketoMeals[key].breakfastRecipe);cds(a,b)};lockedWeeks={};persistWeeks=()=>{};ensureUtDay=()=>{};ensureOilUse=()=>{};cfg={...cfg,breakfastRecipe:'dahiBowl'};els['[data-ek=\"bh\"]'].value='dahiBowl';editCtx={i:0,iso:'2026-10-14'}");
+ await run('saveEdit()');assert.equal(run("order.join()"),'prepare,copy:dahiBowl,save,saveChanges');assert.equal(run("ketoMeals[ketoMealKey(0,'h','b','2026-10-12')].breakfastRecipe"),'dahiBowl');
+});
