@@ -1246,13 +1246,11 @@ document.addEventListener('click',e=>{
   const del=e.target.closest('[data-caldel]');
   if(del){const k=del.dataset.caldel;if(del.dataset.calconfirm!==k){calConfirm={kind:'del',mon:k};$('#dlgBody').innerHTML=calCard();$('#dlgBody').querySelector('.calrow [data-calcancel]')?.focus();return;}calConfirm=null;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
 });
-$('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 document.addEventListener('click',e=>{const menu=document.querySelector('.more-menu');if(menu.open&&(!menu.contains(e.target)||e.target.closest('.more-items button')))menu.open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('.more-menu').open=false;});
 $('#calBtn').onclick=()=>openCal();
 $('#syncBtn').onclick=openSync;
 $('#dlg').addEventListener('close',()=>{$('#dlg').classList.remove('ux-cal-dialog');calConfirm=null;if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
-$('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')e.target.close();});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.personModes={w:'easy',h:'medium'};state.custom=false;state.weekKey=null;save();render();};
 for(const [p,id]of [['w','presetW'],['h','presetH']])$( '#'+id).onchange=()=>{state.personModes[p]=$('#'+id).value;state.custom=true;save();render();};
