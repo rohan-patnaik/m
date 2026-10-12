@@ -480,3 +480,12 @@ button.danger{color:var(--warn);border-color:var(--warn)}
 }
 .shopping-table td small.ux-shop-need{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
 .shopping-table th:nth-child(2){width:auto}
+/* Phones: a closed "Husband · Adjust portions" lays out as one flex row so its real width (name + summary) is
+   measured, and the Weigh & serve | Details group wraps to the next row instead of overlapping it. Open forms keep
+   the full-width panel above; laptop placement is unchanged. */
+@media(max-width:600px){
+ .meal-adjust:not(:has(>.keto-adjust[open])){display:flex;align-items:center;flex-wrap:nowrap}
+ .meal-adjust:not(:has(>.keto-adjust[open]))>span{float:none}
+ .meal-adjust:not(:has(>.keto-adjust[open]))::after{content:none}
+ .meal-card-actions{flex:0 0 auto;flex-wrap:wrap}
+}

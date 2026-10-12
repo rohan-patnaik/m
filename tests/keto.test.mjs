@@ -959,4 +959,8 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&formatVersion!==13/);
  assert.match(run('uxDayHTML(0)'),/<div class="day-actions"><button data-cook="0">1 · Cook list<\/button><button class="primary" data-weigh="0">2 · Serve<\/button><button data-edit="0">Edit meals<\/button><\/div>/);
  assert.match(run('uxWeekOverview()'),/data-ux-jump="0"[\s\S]*data-ux-jump="6"/);
+ // Phone: a closed adjust control is a flex row (no float), so the action group wraps instead of overlapping it.
+ const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8'),phone=css.slice(css.lastIndexOf('@media(max-width:600px){'));
+ assert.match(phone,/\.meal-adjust:not\(:has\(>\.keto-adjust\[open\]\)\)\{display:flex;align-items:center;flex-wrap:nowrap\}/);assert.match(phone,/\.meal-adjust:not\(:has\(>\.keto-adjust\[open\]\)\)>span\{float:none\}/);assert.match(phone,/\.meal-card-actions\{flex:0 0 auto;flex-wrap:wrap\}/);
+ assert.match(css,/\.meal-adjust:has\(>\.keto-adjust\[open\]\)\{flex:1 1 100%/,'open form stays full width');
 });
