@@ -41,6 +41,35 @@ function app(withUX=false){
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
  return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
 }
+test('pantry trial meets the reviewed daily energy, protein, fibre and 50 g budget without changing Wife',()=>{
+ const {run}=app();run("state.weekKey=null;householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});render=()=>{}");
+ const wife=run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))");
+ assert.equal(run('applyKetoInventoryPlan()'),true);
+ assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),wife);
+ const days=JSON.parse(run("JSON.stringify(state.days.map((d,i)=>({n:assignedDayNutrition(i,'h'),whey:ketoWheyDailyTotal(d,'h'),checks:dailyPlanChecks(assignedDayNutrition(i,'h'),'h')})))"));
+ for(const {n,whey,checks}of days){assert.ok(n.k>=1900&&n.k<=2100);assert.ok(n.p>=120&&n.p<=165);assert.ok(n.aHi<=50);assert.ok(n.fb>=25);assert.ok(whey<=2);assert.ok(checks.some(x=>/Saturated fat|saturated fat/.test(x)),'Do not hide the saturated-fat limitation');assert.equal(n.carbUnknown,true,'Spices remain uncertain');}
+ assert.equal(run("state.days.reduce((n,d)=>n+['b','l','d'].filter(m=>ketoConfig(d,'h',m).protein==='chicken'&&ketoConfig(d,'h',m).quantity>0).length,0)"),2);
+ assert.equal(run("ledger().flax||0"),0);assert.equal(run("ledger().chicken"),500);
+ const weights=run('JSON.stringify(dailyWeights)');run('snapshotDraft();ketoMeals={};hydrateDraft()');assert.equal(run('JSON.stringify(dailyWeights)'),weights);assert.equal(run('ketoOptions.carbBudget'),50);
+ run("state.weekKey='2026-10-05'");assert.equal(run('ketoInventoryPlanAvailable()'),false);
+});
+test('whey cap survives transaction edits and whites buy separate eggs without duplicate rows',()=>{
+ const {run}=app();run("householdDiets.h='keto';render=()=>{};ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),whey:1.5};");
+ assert.equal(run("updateKetoPortion(ketoMealKey(0,'h','l'),'whey',1.5)"),true);assert.equal(run("ketoWheyDailyTotal(state.days[0],'h')"),3);
+ assert.throws(()=>run("updateKetoPortion(ketoMealKey(0,'h','d'),'whey',.5)"),/Maximum 3/);
+ run("ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(state.days[0],'h','d'),protein:'eggs',quantity:2,eggWhites:3,spinach:200};snapshotDraft()");
+ const draft=JSON.parse(run('JSON.stringify(cloudDraft)'));records.validateKetoWheyTotals(Object.entries(draft).map(([key,value])=>({key,value})));
+ assert.throws(()=>records.validateKetoWheyTotals(Object.entries({...draft,[run("ketoMealKey(0,'h','d')")]:{...draft[run("ketoMealKey(0,'h','d')")],whey:.5}}).map(([key,value])=>({key,value}))),/Maximum 3/);
+ assert.equal(run("comparisonSum([L('eggWhite',1)]).k"),17.16);assert.equal(run("comparisonSum([L('eggWhite',1)]).p"),3.597);
+ const q=run('ledger().egg+ledger().eggWhite'),shop=JSON.parse(run('JSON.stringify(householdShopping().supermarket)'));assert.equal(shop.find(x=>x.id==='egg').needed,q);assert.equal(shop.filter(x=>x.id==='eggWhite').length,0);
+});
+test('prepared egg batches freeze whole eggs, extra whites, spinach and oil once',()=>{
+ const {run}=app();run("householdDiets.h='keto';ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(state.days[0],'h','d'),protein:'eggs',quantity:2,eggWhites:3,spinach:200,oil:5};batchDraft={recipe:'E',cookedOn:'2026-10-05',vessel:'pan',includeVessel:false,gross:400,oil:null,roles:{'2026-10-05/d':'protein'},selected:{'2026-10-05/d/h':true}}");
+ const before=run("JSON.stringify(comparisonSum(ketoComponent(state.days[0],'h','d','protein')))");
+ const batch=JSON.parse(run('JSON.stringify(buildBatchPreview(true))'));math.validateBatch(batch);
+ assert.equal(batch.ingredients.find(x=>x.id==='egg').q,2);assert.equal(batch.ingredients.find(x=>x.id==='eggWhite').q,3);assert.equal(batch.ingredients.find(x=>x.id==='palak').q,200);assert.equal(batch.ingredients.find(x=>x.id==='oil').q,5);
+ run("savedBatches['fixture-extra-whites']=buildBatchPreview(true)");assert.equal(run("JSON.stringify(comparisonSum(BatchMath.portionLines(savedBatches['fixture-extra-whites'],savedBatches['fixture-extra-whites'].servings[0])))"),before);
+});
 test('audited products keep separate identities and correct scoop, milk and oil units',()=>{
  const {run}=app();
  for(const [id,q,k,p,c]of [['paneerMM',100,283,16.1,5.1],['paneerMM',500,1415,80.5,25.5],['milk',100,59.74,3.193,4.738],['whey',1,136,29,2.8],['oil',10,81.627,0,0]]){

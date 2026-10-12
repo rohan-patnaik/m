@@ -3,10 +3,25 @@ import {validateBatch} from './batch-math.js';
 import {validateActivity} from './activity-math.js';
 // Shared wire format. Tombstones retain revisions, including after deletion/recreation.
 export const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+// Check the final transaction, so two devices cannot each add a fourth scoop.
+export function validateKetoWheyTotals(rows){
+ const map=Object.fromEntries(rows.map(r=>[r.key,r.value]));
+ const groups=new Set(Object.keys(map).filter(k=>/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]\/(w|h)\/(b|l|d)$/.test(k)).map(k=>k.slice(0,-2)));
+ for(const group of groups){
+  const [,scope,,index,p]=group.split('/');
+  const meal=(map[(scope==='template'?'template':'week/'+scope)+'/day/'+index]||map['template/day/'+index])?.meal;
+  let total=0;
+  for(const m of ['b','l','d']){
+   if(meal&&(meal.off||meal.skip?.[m]||m==='b'&&!meal[p==='h'?'wheyH':'wheyW']))continue;
+   const cfg=map[group+'/'+m];total+=cfg?.whey??(m==='b'?1:0);
+  }
+  if(total>3+1e-8)throw Error('Maximum 3 whey scoops per person per day. Reduce another meal first.');
+ }
+}
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
- if(key==='setting/nutritionVersion'){if(value!==9)throw Error('Invalid nutrition version');return;}
+ if(key==='setting/nutritionVersion'){if(![9,10].includes(value))throw Error('Invalid nutrition version');return;}
  if(key==='setting/foodChoices'){if(!value||Object.keys(value).sort().join(',')!=='butter,nuts,paneer'||!['paneerMM','paneer','paneerHP'].includes(value.paneer)||!['butter','butterH'].includes(value.butter)||value.nuts!=='cashews')throw Error('Invalid food choices');return;}
  if(key==='setting/produceOptions'){
   const ids=['gobi','arbi','bhindi','palak','carrot','potato','onion','tomato','mushroom','cucumber','cabbage','beans','corn'];
@@ -28,10 +43,11 @@ export function validateRecord(key,value){
  if(match[1]!=='template'){const date=new Date(match[1]+'T00:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==match[1]||date.getUTCDay()!==1)throw Error('Invalid keto week');}
  if(value===null)return;
  const number=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
- if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
+ if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction','whey','eggWhites','almonds','spinach'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
  if(value.paneerType!==undefined&&!['paneer','paneerHP','paneerMM'].includes(value.paneerType)||value.curdType!==undefined&&!['curd','curdH'].includes(value.curdType))throw Error('Invalid dairy product');
- for(const [field,max]of Object.entries({curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,cashews:150,flax:50,sabziFraction:2}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
- if(value.walnuts>0&&value.cashews>0)throw Error('Review the nut replacement; cannot duplicate walnut and cashew portions');
+ for(const [field,max]of Object.entries({whey:3,eggWhites:12,spinach:1000,almonds:150,curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,cashews:150,flax:50,sabziFraction:2}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
+ if(value.eggWhites!==undefined&&(!Number.isInteger(value.eggWhites)||match[3]==='w'&&value.eggWhites>0))throw Error('Invalid extra egg whites');
+ if(value.whey!==undefined&&!Number.isInteger(value.whey*2))throw Error('Use whole or half whey scoops');
  if(!number(value.quantity,0,value.protein==='eggs'?6:1000)||value.protein==='eggs'&&!Number.isInteger(value.quantity)||!number(value.soya,0,100)||!number(value.oil,0,50))throw Error('Invalid keto portion');
  return;
  }

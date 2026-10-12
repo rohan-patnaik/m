@@ -1,5 +1,5 @@
 // Household assignments are independent of the comparison route and Balanced templates.
-const KETO_OPTION_DEFAULTS={targetK:2000,pMin:120,pMax:150,carbBudget:30,baselineWeight:75,baselineWaist:0,startDate:'2026-10-11',reviewWeeks:6};
+const KETO_OPTION_DEFAULTS={targetK:2000,pMin:120,pMax:165,carbBudget:50,baselineWeight:75,baselineWaist:0,startDate:'2026-10-11',reviewWeeks:6};
 let householdDiets={w:'balanced',h:'keto'},ketoOptions={...KETO_OPTION_DEFAULTS},sharedRecipes={},trialChecks={},balancedCurdType='curdH';
 const FOOD_CHOICE_DEFAULTS={paneer:'paneerMM',butter:'butter',nuts:'cashews'};
 let foodChoices={...FOOD_CHOICE_DEFAULTS};
@@ -29,19 +29,48 @@ function ketoComponent(day,p,m,component){
  if(!kept(day,m))return [];
  const cfg=ketoConfig(day,p,m);
  if(component==='sabzi'&&['l','d'].includes(m))return personSabzi(day,p).map(x=>L(x.id,x.q*cfg.sabziFraction));
- if(component==='protein'){if(m!=='b'&&personRecipe(day,p)==='S12')return [];return [L(cfg.protein==='eggs'?'egg':cfg.protein==='paneer'?cfg.paneerType:'chicken',cfg.quantity),...(cfg.soya?[L(soyaId(),cfg.soya)]:[]),...(cfg.oil?[L('oil',cfg.oil)]:[])];}
+ if(component==='protein'){if(m!=='b'&&personRecipe(day,p)==='S12')return [];return [...(cfg.eggWhites?[L('eggWhite',cfg.eggWhites)]:[]),...(cfg.spinach?[L('palak',cfg.spinach)]:[]),L(cfg.protein==='eggs'?'egg':cfg.protein==='paneer'?cfg.paneerType:'chicken',cfg.quantity),...(cfg.soya?[L(soyaId(),cfg.soya)]:[]),...(cfg.oil?[L('oil',cfg.oil)]:[])];}
  return [];
 }
 function householdKetoBase(day,p,m){
  if(!kept(day,m)||m==='e')return [];
  const cfg=ketoConfig(day,p,m),h=p==='h';
  const a=[...ketoComponent(day,p,m,'protein'),...ketoComponent(day,p,m,'sabzi'),L('cucumber',cfg.cucumber)];
- if(m==='b'&&(h?day.wheyH:day.wheyW))a.push(L('whey',1));
+ if(cfg.whey&&(m!=='b'||(h?day.wheyH:day.wheyW)))a.push(L('whey',cfg.whey));
  if(cfg.curd)a.push(L(cfg.curdType,cfg.curd));
  if(cfg.milk)a.push(L('milk',cfg.milk));if(cfg.butter)a.push(L(butterId(),cfg.butter));
+ if(cfg.almonds)a.push(L('almonds',cfg.almonds));
  if(cfg.cashews)a.push(L('cashews',cfg.cashews));
  if(cfg.walnuts)a.push(L('walnuts',cfg.walnuts));if(cfg.flax)a.push(L('flax',cfg.flax));
  if(m!=='b')a.push(L('spice',1));return a;
+}
+function ketoWheyDailyTotal(day,p){return ['b','l','d'].reduce((q,m)=>q+(!kept(day,m)||m==='b'&&!(p==='h'?day.wheyH:day.wheyW)?0:ketoConfig(day,p,m).whey||0),0);}
+// Reviewed pantry-based trial. Targets describe intake; they do not confirm ketosis.
+function ketoInventoryPlanAvailable(){
+ return isKeto('h')&&(state.weekKey===null||!state.weekKey||state.weekKey>=NUTRITION_EFFECTIVE_WEEK)&&!state.days.some(d=>['l','d'].some(m=>['sabzi','protein'].some(c=>coveredComponent(d,m,'h',c))));
+}
+function applyKetoInventoryPlan(){
+ if(!cloudReady||cloudSaving||!ketoInventoryPlanAvailable())return false;
+ const recipes=['S1','K2','S3','K5','S12','K1','K1'];
+ for(let i=0;i<7;i++){
+  const day=state.days[i],recipe=recipes[i],inside=['S3','S12'].includes(recipe),chicken=[1,5].includes(i);
+  if(personRecipe(day,'h')!==recipe)sharedRecipes[sharedKey(i)]={...sharedRecipes[sharedKey(i)],w:personRecipe(day,'w'),h:recipe};
+  for(const m of ['b','l','d']){
+   const cfg={...ketoConfig(day,'h',m,i),whey:m==='b'?1:m==='l'?(chicken?.5:1):0,
+    flax:0,spinach:m==='b'?[200,250,300,250,500,250,200][i]:0,
+    cashews:m==='b'&&![0,3,4].includes(i)?5:0,almonds:20,
+    walnuts:m==='b'?([0,4].includes(i)?25:i===6?22.5:20):m==='l'?20:15,
+    curd:m==='l'?(i===0?0:[2,3,6].includes(i)?50:75):0,curdType:'curd',
+    cucumber:m==='d'?150:0,milk:0,butter:0,soya:0,paneerType:'paneerMM',
+    quantity:m==='b'?(recipe==='S12'?4:1):m==='l'?(inside?0:100):(recipe==='S12'?0:chicken?250:2),
+    protein:m==='b'?'eggs':m==='d'&&chicken?'chicken':m==='d'?'eggs':'paneer',
+    eggWhites:m==='b'?(chicken?0:4):0,oil:m==='b'?5:m==='d'&&recipe!=='S12'?5:0,
+    sabziFraction:m==='b'?0:inside?.3:i===0?.32:i===3?.28:.35};
+   MealCloud.validateRecord(ketoMealKey(i,'h',m),cfg);ketoMeals[ketoMealKey(i,'h',m)]=cfg;
+  }
+ }
+ ketoOptions={...ketoOptions,targetK:2000,pMin:120,pMax:165,carbBudget:50};
+ save();render();return true;
 }
 function assignedBaseMeal(day,m,p){
  if(isKeto(p))return householdKetoBase(day,p,m);
@@ -68,7 +97,7 @@ function householdPrep(i){
  const dal=[];for(const p of ['w','h'])if(!isKeto(p))for(const m of ['l','d'])if(kept(d,m))dal.push(L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p)));if(dal.length)groups.push(['Cook · one dal batch for Balanced portions',format(dal)]);
  for(const p of ['w','h']){
   if(!isKeto(p)){const bf=kept(d,'b')?freshMeal(d,'b',p):[];if(bf.length)groups.push(['Cook · '+PERSON_NAMES[p]+' Balanced breakfast',format(bf)]);const extras=[];for(const m of ['l','d','e']){let rest=freshMeal(d,m,p);if(['l','d'].includes(m)){if(!coveredComponent(d,m,p,'sabzi'))rest=subtractIngredients(rest,originalComponent(d,m,p,'sabzi'));rest=subtractIngredients(rest,[L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]);}extras.push(...rest);}if(extras.length)groups.push([PERSON_NAMES[p]+' · Balanced starch / protein / dairy / extras',format(extras)]);continue;}
-  const ready=[],cook=[];for(const m of ['b','l','d']){if(!kept(d,m))continue;const cfg=ketoConfig(d,p,m);const extra=subtractIngredients(freshMeal(d,m,p),coveredComponent(d,m,p,'sabzi')?[]:ketoComponent(d,p,m,'sabzi'));for(const x of extra)(['egg','chicken','soyN','soyS'].includes(x.id)||x.id==='oil'?cook:ready).push(x);}
+  const ready=[],cook=[];for(const m of ['b','l','d']){if(!kept(d,m))continue;const cfg=ketoConfig(d,p,m);const extra=subtractIngredients(freshMeal(d,m,p),coveredComponent(d,m,p,'sabzi')?[]:ketoComponent(d,p,m,'sabzi'));for(const x of extra)(['egg','eggWhite','palak','chicken','soyN','soyS'].includes(x.id)||x.id==='oil'?cook:ready).push(x);}
   if(cook.length)groups.push([PERSON_NAMES[p]+' · self-cooked protein (one batch; reserve portions if needed)',format(cook)]);
   if(ready.length)groups.push([PERSON_NAMES[p]+' · ready portions / no extra cooked recipe',format(ready)]);
  }

@@ -2,6 +2,8 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
+ "almonds":{"k":579,"p":21.15,"c":21.55,"fb":12.5,"f":49.93,"sat":3.802,"s":4.35,"added":0,"fdc":170567,"source":"USDA SR Legacy (raw plain generic estimate)","basis":"100 g raw edible kernels","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg12.pdf"},
+ "eggWhite":{"k":17.16,"p":3.597,"c":0.2409,"fb":0,"f":0.0561,"sat":0,"s":0.2343,"added":0,"fdc":172183,"source":"USDA SR Legacy (generic estimate)","basis":"1 large raw egg white, estimated 33 g; cook before eating","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg01.pdf"},
  "paneerMM":{"k":283,"p":16.1,"c":5.1,"s":5.1,"added":0,"f":22,"sat":12,"fb":null,"source":"Milky Mist regular 500 g packet image, audited 2026-10-12","basis":"100 g as sold","ingredients":"Milk solids, vinegar","url":"https://www.bbassets.com/media/uploads/p/xxl/40003150-3_5-milky-mist-paneer-premium-fresh.jpg"},
  "cashews":{"k":553,"p":18.2,"c":30.2,"s":5.91,"added":0,"f":43.8,"sat":7.783,"fb":3.3,"fdc":170162,"source":"USDA SR Legacy (plain raw generic estimate)","basis":"100 g raw","url":"https://fdc.nal.usda.gov/food-details/170162/nutrients"},
  "corn":{"source":"USDA SR Legacy (generic estimate)","fdc":169998,"basis":"100 g raw edible kernels","k":86,"p":3.27,"c":18.7,"f":1.35,"s":6.26,"fb":2,"sat":0.325,"name":"Corn, sweet, yellow, raw","url":"https://fdc.nal.usda.gov/food-details/169998/nutrients"},
@@ -41,7 +43,7 @@ const COMPARE_NUTRIENTS={
  "pasta":{"c":72,"f":1.5,"s":2.5,"added":0,"sat":0.5,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g dry","url":"https://www.dmart.in/product/borges-penne-rigate-durum-wheat-pasta?selectedProd=11614"},
  "butter":{"c":0,"f":80,"s":0,"added":0,"sat":48,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g","url":"https://www.dmart.in/product/amul-butter?selectedProd=113502"},
  "arhar":{"c":64.3,"f":1.3,"s":0.5,"added":0,"sat":0.4,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g dry","url":"https://www.dmart.in/product/tata-sampann-toor-dal?selectedProd=99529"},
- "curd":{"c":4.8,"f":3,"s":4.8,"added":0,"sat":"<1.9","source":"Matched public packet panel, audited 2026-10-04","basis":"100 g","url":"https://www.bigbasket.com/pd/40262046/milky-mist-curd-fresh-no-preservatives-creamy-1-kg/"},
+ "curd":{"c":4.8,"f":3,"s":4.8,"added":0,"sat":"<1.9","source":"Milky Mist 1 kg pouch image checked 2026-10-12","ingredients":"Pasteurized toned milk and active lactic culture","basis":"100 g as sold","url":"https://www.bbassets.com/media/uploads/p/xxl/40262046-2_3-milky-mist-curd-fresh-no-preservatives-creamy.jpg"},
  "paneer":{"c":3,"f":22,"s":null,"added":0,"sat":14.5,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g","url":"https://www.bigbasket.com/pd/214024/heritage-paneer-500-g-pouch/"},
  "milk":{"c":4.6,"f":3,"s":null,"added":0,"sat":2,"source":"Matched public packet panel, audited 2026-10-04","basis":"100 g (NOT100 ml)","url":"https://www.bigbasket.com/pd/40147597/heritage-daily-health-toned-milk-500-ml-pouch/"},
  "soyN":{"c":33.5,"f":0.82,"s":7.18,"added":0,"sat":"<=0.19","source":"Matched public packet panel, audited 2026-10-04","basis":"100 g dry","url":"https://www.dmart.in/product/nutrela-soya-chunks?selectedProd=46502"},
@@ -62,7 +64,7 @@ function comparisonSum(lines){
   const density=x.id==='milk'?milkDensity():x.id==='oil'?.91:1;
   const n=!DB[x.id]?{k:ref.k*factor,p:ref.p*factor,fb:ref.fb*factor}:val(x);
   out.k+=n.k;out.p+=n.p;out.fb+=n.fb||0;
-  const f=factor*density,upper=x.id==='egg'?50:x.id==='whey'?35:100;
+  const f=factor*density,upper=x.id==='egg'?50:x.id==='eggWhite'?33:x.id==='whey'?35:100;
   // Old batches never snapshotted these macros. Do not substitute current profiles.
   const legacy=!!x.n,override=!!state.labels[x.id],known=!legacy&&!override;
   const c=known&&typeof ref.c==='number'?ref.c:0;
@@ -89,7 +91,7 @@ function ketoMealKey(i,p,m,scope=state.weekKey||'template'){return `keto/${scope
 function ketoDefaultConfig(day,p,m,i,scope=state.weekKey||'template'){
  const h=p==='h',protein=h&&m==='d'?([1,4].includes(i)?'chicken':'eggs'):'paneer';
  const record=sharedRecipes[`keto/shared/${scope}/day/${i}`]||{},recipe=plannedRecipe(record[p]||record.recipe||day.s,scope);
- return {protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare({...day,s:recipe},p,m)};
+ return {whey:m==='b'&&(h?day.wheyH:day.wheyW)?1:0,eggWhites:0,spinach:0,almonds:0,protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare({...day,s:recipe},p,m)};
 }
 function ketoConfig(day,p,m,i=state.days.indexOf(day),scope=state.weekKey||'template'){i=Math.max(0,i);const saved=structuredClone(ketoMeals[ketoMealKey(i,p,m,scope)]||{}),defaults=ketoDefaultConfig(day,p,m,i,scope);if(Object.hasOwn(saved,'walnuts')&&!Object.hasOwn(saved,'cashews'))defaults.cashews=0;return {...defaults,...saved};}
 function ketoDraftMeal(day,p,m){return typeof householdKetoBase==='function'?householdKetoBase(day,p,m):[];}

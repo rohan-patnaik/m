@@ -77,6 +77,7 @@ function buildBatchPreview(requireWeight=false){const b=batchDraft,servings=[];f
  }servings.sort((a,b)=>a.date.localeCompare(b.date)||(['l','d'].indexOf(a.meal)-['l','d'].indexOf(b.meal))||a.person.localeCompare(b.person));
  if(!servings.length)throw Error('Select at least one meal and person.');
  const total=servings.reduce((n,s)=>n+s.factor,0),lines=sourceRecipe(b.recipe).map(x=>L(x.id,x.q*total));
+ for(const s of servings){if(s.component==='protein'&&typeof isKeto==='function'&&isKeto(s.person)){const cfg=ketoConfig(batchDay(s.date),s.person,s.meal,(new Date(s.date+'T12:00:00Z').getUTCDay()+6)%7,mondayOf(s.date));if(cfg.eggWhites)lines.push(L('eggWhite',cfg.eggWhites));if(cfg.spinach)lines.push(L('palak',cfg.spinach));}}
  const estimatedOil=['P','Y','Q','C','E'].includes(b.recipe)?servings.reduce((n,s)=>n+(typeof isKeto==='function'&&isKeto(s.person)?ketoConfig(batchDay(s.date),s.person,s.meal,(new Date(s.date+'T12:00:00Z').getUTCDay()+6)%7,mondayOf(s.date)).oil:originalComponent(batchDay(s.date),s.meal,s.person,'protein',s.date).filter(x=>x.id==='oil').reduce((n,x)=>n+x.q,0)),0):oilUse().sabzi*total;const oil=b.oil===null?estimatedOil:b.oil;
  if(!Number.isFinite(oil)||oil<0||oil>5000)throw Error('Enter oil between 0 and 5,000 ml.');if(oil>0)lines.push(L('oil',oil));
  const tare=b.includeVessel?state.utensils[b.vessel]||0:0;
