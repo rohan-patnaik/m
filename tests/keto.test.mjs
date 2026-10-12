@@ -567,7 +567,7 @@ test('round 3 UI: retired K3 pickers, resolved selections, purchase records, mil
 });
 
 test('husband keto controls: whey scoops, extra egg whites, almonds and guarded Root helpers',()=>{
- const {run}=app(true);run("householdDiets={w:'keto',h:'keto'};state.days[0].wheyH=true;state.days[0].off=false;state.days[0].skip={}");
+ const {run,root}=app(true);run("householdDiets={w:'keto',h:'keto'};state.days[0].wheyH=true;state.days[0].off=false;state.days[0].skip={}");
  const h=run("ketoEditHTML(state.days[0],0,'h','b')"),w=run("ketoEditHTML(state.days[0],0,'w','b')");
  assert.match(h,/Whey scoops<input[^>]*min="0" max="3" step="0.5" value="1"[^>]*data-keto-field="whey"><small class="keto-hint">today 1 of 3 scoops<\/small>/);
  assert.match(h,/Extra egg whites<input[^>]*min="0" max="12" step="1" value="0"[^>]*data-keto-field="eggWhites"><small class="keto-hint">whole eggs keep yolks/);
@@ -592,4 +592,21 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  assert.match(run("shoppingBuy({id:'egg',unit:'egg',needed:10,buy:10})"),/^10 eggs<small class="ux-buy-note">Whole eggs plus any extra eggs bought only for their whites; those yolks go unused<\/small>$/);
  assert.doesNotMatch(run("shoppingBuy({id:'chicken',unit:'g',needed:250,buy:250,packs:1,largePacks:1,largeLeftover:250})"),/ux-buy-note/);
  assert.doesNotMatch(run('ketoApplyPlanHTML()'),/strict|keto-ready/i);
+ // Spinach in the protein pan: husband field, empty config renders 0, non-zero values always render.
+ assert.match(h,/Spinach in protein pan \(raw g\)<input[^>]*min="0" max="1000" step="1" value="0"[^>]*data-keto-field="spinach"><small class="keto-hint">cooked in the same egg\/protein pan/);
+ assert.doesNotMatch(w,/data-keto-field="spinach"/);
+ run("ketoMeals[ketoMealKey(0,'w','b')]={...ketoConfig(state.days[0],'w','b'),spinach:150}");assert.match(run("ketoEditHTML(state.days[0],0,'w','b')"),/value="150"[^>]*data-keto-field="spinach"/);
+ // Carb-budget info cites ISSN and interpolates Root's budget.
+ run('ketoOptions.carbBudget=47');run('renderKeto()');const info=root.innerHTML;
+ assert.match(info,/20–50 g carbs\/day is a common keto guideline, but 47 g of counted carbs does not guarantee ketosis[^<]*no blanket net-carb subtraction\. <a href="https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/38934469\/"/);
+ assert.match(info,/g estimated total carbs/);assert.match(info,/counted available carbs/);
+ // "Keto trial" labels replace "Strict keto" in keto, assignment and index markup.
+ const assign=run('householdAssignmentHTML()');assert.match(assign,/>Keto trial<\/button>/);
+ const indexSrc=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ for(const html of [info,assign,indexSrc])assert.doesNotMatch(html,/Strict keto/i);
+ assert.equal((indexSrc.match(/'Keto trial':'Balanced'/g)||[]).length,2);
+ assert.match(info,/Husband · Keto trial/);
+ // Fullness: nuts are a substantial counted part of the plan; no fixed 10 g cashew default.
+ assert.match(run('trialHTML()'),/Measured nuts are a substantial counted part of the plan \(about 120 g\/day in the current draft\), counted foods, not free snacks\./);
+ assert.doesNotMatch(info,/10 g once a day|10 g cashew/);
 });

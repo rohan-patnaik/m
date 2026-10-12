@@ -767,7 +767,7 @@ function ratioText(wShare,hShare,cooked){
   return `W : H = ${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
 }
 function splitRatio(d,m){
- if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d))){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Strict keto':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
+ if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d))){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Keto trial':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
 
   if(m==='b'){
     if(d.b==='B4')return[
@@ -1037,7 +1037,7 @@ function render(){
   const w=avgForMode(personMode('w'),'w'),h=avgForMode(personMode('h'),'h');
   $('#stats').innerHTML=['w','h'].map(p=>{
     const a=p==='w'?w:h,n=p==='w'?'Wife':'Husband';
-    return`<div class="stat"><div class="who">${n} · ${typeof isKeto==='function'&&isKeto(p)?'Strict keto':'Balanced'} daily avg <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
+    return`<div class="stat"><div class="who">${n} · ${typeof isKeto==='function'&&isKeto(p)?'Keto trial':'Balanced'} daily avg <button class="infobtn" data-info="${p}" title="${personBlurb(p)}" aria-label="About ${n}">ⓘ</button></div><strong>${R(a.k)} <span style="font-size:15px">kcal</span></strong> <span class="p">· ${R(a.p)} g protein · ${R(a.fb)} g fibre</span></div>`;
   }).join('');
   $('#customStatus').textContent=state.custom?'Customised':'';
   $('#presetW').value=personMode('w');$('#presetH').value=personMode('h');
