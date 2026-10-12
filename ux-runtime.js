@@ -14,16 +14,20 @@ function uxMealName(i,p,m){const day=state.days[i];return m==='e'?'Planned snack
 function uxMealBasis(i,m){return JSON.stringify(['w','h'].map(p=>meal(state.days[i],m,p)));}
 function uxMealDone(i,m){const r=activityRecords[`done/${dateForDay(i)}/${m}`];return !!r?.complete&&r.basis===uxMealBasis(i,m);}
 const UX_FOOD_NAMES={atta:'Roti atta',rice:'Rice',oats:'Oats',besan:'Besan',poha:'Poha',whey:'Whey',egg:'Whole eggs',eggWhite:'Extra whites',paneer:'Heritage paneer',paneerHP:'Heritage high-protein paneer',paneerMM:'Milky Mist paneer',soyN:'Nutrela chunks',soyS:'Saffola chunks',curd:'Milky Mist curd',curdH:'Heritage curd',milk:'Milk',nuts:'Mixed nuts',cashews:'Cashews',almonds:'Almonds',walnuts:'Walnuts',flax:'Ground flaxseed',butter:'Amul butter',butterH:'Heritage butter',chicken:'Chicken breast',corn:'Sweetcorn kernels'};
+// Meal cards show generic food names; Settings, Shopping, carbs evidence and Adjust portions keep product names.
+const UX_MEAL_LABELS={paneer:'Paneer',paneerMM:'Paneer',paneerHP:'High-protein paneer',soyN:'Soya chunks',soyS:'Soya chunks',curd:'Curd',curdH:'Curd',butter:'Butter',butterH:'Butter'};
+function uxMealLabel(id){return UX_MEAL_LABELS[id]||UX_FOOD_NAMES[id]||String(DB[id]?.[0]||id).split(' · ')[0];}
+function uxMealText(s){return String(s).replace(/(?:Heritage |Milky Mist )?high-protein paneer/gi,'High-protein paneer').replace(/(?:Heritage|Milky Mist) paneer/g,'Paneer').replace(/(?:Heritage|Milky Mist) curd/g,'Curd').replace(/(?:Amul|Heritage) butter/g,'Butter').replace(/(?:Nutrela|Saffola) chunks/g,'Soya chunks').replace(/ · (?:Nutrela|Saffola)\b/g,'');}
 const UX_DRY_FOODS=new Set(['atta','rice','oats','besan','poha','soyN','soyS','moong','masoor','arhar','rajma','chickpea','kalachana','pasta','maida']);
 const UX_RAW_FOODS=new Set(['chicken','onion','tomato','carrot','potato','gobi','bhindi','palak','arbi','mushroom','cucumber','beans','cabbage','corn']);
-function uxFoodRow(x){const unit=x.id==='eggWhite'?'egg':DB[x.id]?.[3]||'g',label=UX_FOOD_NAMES[x.id]||DB[x.id]?.[0]||x.id;if(unit==='serving')return {label,quantity:`${F(x.q)} ${F(x.q)>1?'scoops':'scoop'}`,detail:`${F(x.q*35)} g powder`};if(x.id==='eggWhite')return {label,quantity:`${F(x.q)} ${x.q===1?'white':'whites'}`,detail:'extra eggs needed'};const quantity=unit==='egg'?`${F(x.q)} ${x.q===1?'egg':'eggs'}`:`${F(x.q)} ${unit}${UX_DRY_FOODS.has(x.id)?' dry':UX_RAW_FOODS.has(x.id)?' raw':''}`;return {label,quantity};}
+function uxFoodRow(x){const unit=x.id==='eggWhite'?'egg':DB[x.id]?.[3]||'g',label=uxMealLabel(x.id);if(unit==='serving')return {label,quantity:`${F(x.q)} ${F(x.q)>1?'scoops':'scoop'}`,detail:`${F(x.q*35)} g powder`};if(x.id==='eggWhite')return {label,quantity:`${F(x.q)} ${x.q===1?'white':'whites'}`,detail:'extra eggs needed'};const quantity=unit==='egg'?`${F(x.q)} ${x.q===1?'egg':'eggs'}`:`${F(x.q)} ${unit}${UX_DRY_FOODS.has(x.id)?' dry':UX_RAW_FOODS.has(x.id)?' raw':''}`;return {label,quantity};}
 function uxDishRow(i,m,p,component,lines){
  const d=state.days[i],date=mealDate(d),link=date&&batchLink(date,m,p,component);
- if(link)return {label:batchName(link.batch),quantity:`${link.serving.grams} g cooked`,detail:'Prepared '+fmtMon(link.batch.cookedOn)};
+ if(link)return {label:uxMealText(batchName(link.batch)),quantity:`${link.serving.grams} g cooked`,detail:'Prepared '+fmtMon(link.batch.cookedOn)};
  if(component==='protein'&&coveredComponent(d,m,p,'protein'))return null;
  const dish=component==='sabzi'?(differentSabzis(d)?'sabzi-'+p:'sabzi'):component==='dal'?'dal':'prot';
  const r=currentWeigh(i,dish),portion=r?.portions.find(x=>x.meal===m&&x.person===p);
- const label=component==='sabzi'?recipeName(personRecipe(d,p)):component==='dal'?DALNAMES[d.dal]+' dal':UX_FOOD_NAMES[lines.find(x=>!['oil','spice'].includes(x.id))?.id]||'Dinner protein';
+ const pid=lines.find(x=>!['oil','spice'].includes(x.id))?.id,label=component==='sabzi'?uxMealText(recipeName(personRecipe(d,p))):component==='dal'?DALNAMES[d.dal]+' dal':UX_MEAL_LABELS[pid]||UX_FOOD_NAMES[pid]||'Dinner protein';
  if(portion)return {label,quantity:`${portion.grams} g cooked`,detail:m==='d'&&r.scope==='all'?'Reserved from the same daily batch':''};
  if(component==='protein')return null;
  const specs=weighSpecs(i,dish),mine=specs.find(x=>x.meal===m&&x.person===p),total=specs.reduce((n,x)=>n+x.factor,0);
@@ -51,7 +55,7 @@ function uxCellHTML(r){if(!r)return '<td class="meal-empty">—</td>';return `<t
 function uxMealTable(i,m){
  const d=state.days[i],rows=uxMealRows(i,m),unweighed=rows.some(r=>['w','h'].some(p=>r[p]?.unweighed)),t=['w','h'].map(p=>comparisonSum(meal(d,m,p)));
  const head=`<thead><tr><th scope="col"><span class="sr-only">Food</span></th>${['w','h'].map(p=>`<th scope="col">${PERSON_NAMES[p]}<small>${uxDietName(p)}</small></th>`).join('')}</tr></thead>`;
- const names=['w','h'].map(p=>uxMealName(i,p,m)),menu=m!=='b'?'':`<p class="meal-menu">${names[0]===names[1]?esc(names[0]):['w','h'].map((p,n)=>`<b>${PERSON_NAMES[p]}</b> ${esc(names[n])}`).join(' <span>·</span> ')}</p>`;
+ const names=['w','h'].map(p=>uxMealText(uxMealName(i,p,m))),menu=m!=='b'?'':`<p class="meal-menu">${names[0]===names[1]?esc(names[0]):['w','h'].map((p,n)=>`<b>${PERSON_NAMES[p]}</b> ${esc(names[n])}`).join(' <span>·</span> ')}</p>`;
  const body=rows.length?rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th>${uxCellHTML(r.w)}${uxCellHTML(r.h)}</tr>`).join(''):'<tr><td colspan="3" class="meal-none">None planned</td></tr>';
  // Footer rows follow Show macros; a person with a macro off gets an empty cell. Food rows above never change.
  const metrics=[['k','<th scope="row">kcal</th>',x=>R(x.k)],['p','<th scope="row">Protein</th>',x=>F(x.p)+' g'],['c','<th scope="row" title="Counted available carbs">Carbs<span class="sr-only"> (counted available)</span></th>',x=>comparisonRange(x.a,x.aHi)+' g']].filter(([k])=>['w','h'].some(p=>uxMacros[p][k]));
