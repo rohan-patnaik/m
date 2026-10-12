@@ -85,6 +85,29 @@ function comparisonSum(lines){
  return out;
 }
 function comparisonAdd(a,b,scale=1){for(const k of COMPARISON_NUMBERS)a[k]+=(b[k]||0)*scale;for(const k of COMPARISON_FLAGS)a[k] ||= !!b[k];return a;}
+// Read-only attribution of the same ingredient lines and frozen snapshots used by daily totals.
+// Keep live and prepared origins separate; unknown carbohydrate ranges are never presented as zero.
+function dayCarbBreakdown(i,p){
+ const foods=new Map(),meals=[];
+ for(const m of ['b','l','d','e']){
+  const lines=meal(state.days[i],m,p).filter(x=>x.q>0);
+  meals.push({meal:m,nutrition:comparisonSum(lines)});
+  for(const x of lines){
+   const nutrition=comparisonSum([x]),ref=COMPARE_NUTRIENTS[x.id]||{};
+   const kind=x.n?.version===2?'frozen':x.n?'legacy':state.labels[x.id]?'override':'live';
+   const reasons=nutrition.carbUnknown?[kind==='frozen'?'frozen-carbohydrate-data-incomplete':kind==='legacy'?'legacy-batch-missing-carbohydrates':kind==='override'?'manual-label-missing-carbohydrates':'missing-carbohydrate-profile']:[];
+   const source=kind==='frozen'?x.n.source||'Saved batch snapshot':kind==='legacy'?'Legacy saved batch':ref.source||'Unverified estimate';
+   const basis=kind==='frozen'?x.n.basis||'ingredient total':kind==='legacy'?'saved ingredient amount':ref.basis||'';
+   const carbConvention=kind==='frozen'?x.n.carbConvention||'saved carbohydrate accounting':kind==='legacy'?'not recorded':/USDA|IFCT/.test(ref.source||'')&&x.id!=='nuts'?'documented fibre counted once':'full declared carbs';
+   const key=JSON.stringify([x.id,kind,source,basis,carbConvention,reasons]);
+   let row=foods.get(key);
+   if(!row){row={id:x.id,quantity:0,unit:DB[x.id]?.[3]||'g',kind,source,basis,carbConvention,reasons,nutrition:comparisonEmpty(),meals:{}};foods.set(key,row);}
+   row.quantity+=x.q;comparisonAdd(row.nutrition,nutrition);
+   comparisonAdd(row.meals[m]||(row.meals[m]=comparisonEmpty()),nutrition);
+  }
+ }
+ return {dayIndex:i,person:p,totals:assignedDayNutrition(i,p),foods:[...foods.values()],meals};
+}
 function nutrientSnapshot(x){const ref=COMPARE_NUTRIENTS[x.id]||{};return {...comparisonSum([x]),version:2,profileId:x.id,profileVersion:'2026-10-12',basis:'ingredient total',carbConvention:/USDA|IFCT/.test(ref.source||'')?'documented fibre counted once':'full declared carbs',source:ref.source||'Unverified estimate'};}
 // Explicit example portions, not a prescribed diet. All weights are raw edible or packet weights.
 function ketoMealKey(i,p,m,scope=state.weekKey||'template'){return `keto/${scope}/day/${i}/${p}/${m}`;}
