@@ -71,7 +71,9 @@ function ketoBreakfastOptions(i,p){
  const day=state.days[i],old=ketoConfig(day,p,'b',i),rest=comparisonEmpty();
  for(const m of ['l','d','e'])comparisonAdd(rest,comparisonSum(meal(day,m,p)));
  return Object.entries(KETO_BREAKFASTS).filter(([,x])=>p==='h'||x.portion.protein==='paneer').map(([id,x])=>{
-  const config=old.breakfastRecipe===id?{...old}:{...old,spinach:0,eggWhites:0,soya:0,cucumber:0,curd:0,milk:0,butter:0,almonds:0,walnuts:0,cashews:0,flax:0,avocado:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,whey:0,...x.portion,breakfastRecipe:id};
+  // Changing only the three-egg cooking method keeps the person's existing sides.
+  const eggMethod=['boiledEggs','eggPoach'].includes(id)&&['boiledEggs','eggPoach'].includes(old.breakfastRecipe);
+  const config=old.breakfastRecipe===id?{...old}:eggMethod?{...old,oil:x.portion.oil,breakfastRecipe:id}:{...old,spinach:0,eggWhites:0,soya:0,cucumber:0,curd:0,milk:0,butter:0,almonds:0,walnuts:0,cashews:0,flax:0,avocado:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,whey:0,...x.portion,breakfastRecipe:id};
   const nutrition=comparisonSum(householdKetoBase(day,p,'b',config)),dayNutrition=comparisonAdd(comparisonAdd(comparisonEmpty(),rest),nutrition);
   const whey=(day[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(day,m)?ketoConfig(day,p,m,i).whey||0:0),0);
   const otherChicken=state.days.reduce((n,d,j)=>n+['b','l','d'].filter(m=>!(j===i&&m==='b')&&meal(d,m,p).some(x=>x.id==='chicken'&&x.q>0)).length,0);

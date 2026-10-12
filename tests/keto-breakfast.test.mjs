@@ -59,3 +59,11 @@ test('a selected breakfast shows the saved portions and their actual macros',()=
  const run=ready();run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoBreakfastOptions(0,'h').find(x=>x.id==='boiledEggs').config,avocado:160}");
  const offered=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h').find(x=>x.id==='boiledEggs'))"));near(offered.nutrition.k,run("comparisonSum(meal(state.days[0],'b','h')).k"));assert.equal(offered.config.avocado,160);
 });
+
+test('three-egg method comparison keeps identical sides and differs only by measured oil',()=>{
+ const run=ready();run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoBreakfastOptions(0,'h').find(x=>x.id==='boiledEggs').config,avocado:160}");
+ const choices=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h').filter(x=>['boiledEggs','eggPoach'].includes(x.id)))")),b=choices.find(x=>x.id==='boiledEggs'),p=choices.find(x=>x.id==='eggPoach');
+ near(b.nutrition.k,887.3);near(p.nutrition.k,928.1135);near(p.nutrition.k-b.nutrition.k,40.8135);for(const k of ['p','a','aHi','c','fb'])near(p.nutrition[k],b.nutrition[k]);const strip=({oil,breakfastRecipe,...x})=>x;assert.deepEqual(strip(p.config),strip(b.config));
+ const before=JSON.parse(run('JSON.stringify(ledger())'));assert.equal(run("applyKetoBreakfast(0,'h','eggPoach')"),true);const after=JSON.parse(run('JSON.stringify(ledger())'));for(const k of Object.keys(before).filter(k=>k!=='oil'))near(after[k],before[k]);near(after.oil-before.oil,5);
+ const back=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'}))"));assert.equal(Object.values(back)[0].avocado,160);assert.equal(Object.values(back)[0].oil,0);
+});
