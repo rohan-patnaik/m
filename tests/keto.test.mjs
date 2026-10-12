@@ -964,3 +964,9 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.match(phone,/\.meal-adjust:not\(:has\(>\.keto-adjust\[open\]\)\)\{display:flex;align-items:center;flex-wrap:nowrap\}/);assert.match(phone,/\.meal-adjust:not\(:has\(>\.keto-adjust\[open\]\)\)>span\{float:none\}/);assert.match(phone,/\.meal-card-actions\{flex:0 0 auto;flex-wrap:wrap\}/);
  assert.match(css,/\.meal-adjust:has\(>\.keto-adjust\[open\]\)\{flex:1 1 100%/,'open form stays full width');
 });
+
+test('pot ratios follow the chosen cooking scope instead of reserving an uncooked meal',()=>{
+ const {run}=app(true);run("householdDiets={w:'balanced',h:'balanced'};state.days[0].off=false;state.days[0].skip={b:false,l:false,d:false}");
+ assert.equal(run("uxPotParts(0,'dal','all').length"),4);assert.equal(run("uxPotParts(0,'dal','l').length"),2);assert.equal(run("uxPotParts(0,'dal','l').every(x=>x.meal==='l')"),true);
+ const html=run("uxServePartsHTML(0,'dal','l','l')");assert.match(html,/<h4>Lunch/);assert.doesNotMatch(html,/<h4>Dinner/);
+});
