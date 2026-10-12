@@ -34,21 +34,21 @@ function ketoVegetableBase(recipe){if(recipe==='K5')return [L('palak',500),L('co
 function sharedSabzi(day){return [...ketoVegetableBase(sharedRecipe(day)),L('oil',oilUse().sabzi)];}
 function personSabzi(day,p,date=mealDate(day)){return [...ketoVegetableBase(personRecipe(day,p,date)),L('oil',oilUse().sabzi)];}
 function assignedDalShare(p){return isKeto(p)?0:dalShare(p);}
-function ketoComponent(day,p,m,component){
+function ketoComponent(day,p,m,component,cfg=ketoConfig(day,p,m)){
  if(!kept(day,m))return [];
- const cfg=ketoConfig(day,p,m);
  if(component==='sabzi'&&['l','d'].includes(m))return personSabzi(day,p).map(x=>L(x.id,x.q*cfg.sabziFraction));
  if(component==='protein'){
-  const extras=[...(cfg.eggWhites?[L('eggWhite',cfg.eggWhites)]:[]),...(cfg.spinach?[L('palak',cfg.spinach)]:[])];
+  const extras=[...(cfg.eggWhites?[L('eggWhite',cfg.eggWhites)]:[]),...(cfg.spinach?[L('palak',cfg.spinach)]:[]),...(m==='b'?['mushroom','tomato','onion'].filter(id=>cfg[id]>0).map(id=>L(id,cfg[id])):[])];
   if(m!=='b'&&personRecipe(day,p)==='S12')return [...extras,...(extras.length&&cfg.oil?[L('oil',cfg.oil)]:[])];
   return [...extras,L(cfg.protein==='eggs'?'egg':cfg.protein==='paneer'?cfg.paneerType:'chicken',cfg.quantity),...(cfg.soya?[L(soyaId(),cfg.soya)]:[]),...(cfg.oil?[L('oil',cfg.oil)]:[])];
  }
  return [];
 }
-function householdKetoBase(day,p,m){
+function householdKetoBase(day,p,m,cfg=ketoConfig(day,p,m)){
  if(!kept(day,m)||m==='e')return [];
- const cfg=ketoConfig(day,p,m),h=p==='h';
- const a=[...ketoComponent(day,p,m,'protein'),...ketoComponent(day,p,m,'sabzi'),L('cucumber',cfg.cucumber)];
+ const h=p==='h';
+ const a=[...ketoComponent(day,p,m,'protein',cfg),...ketoComponent(day,p,m,'sabzi',cfg),L('cucumber',cfg.cucumber)];
+ if(m==='b'&&cfg.avocado)a.push(L('avocado',cfg.avocado));
  if(cfg.whey&&(m!=='b'||(h?day.wheyH:day.wheyW)))a.push(L('whey',cfg.whey));
  if(cfg.curd)a.push(L(cfg.curdType,cfg.curd));
  if(cfg.milk)a.push(L('milk',cfg.milk));if(cfg.butter)a.push(L(butterId(),cfg.butter));
@@ -56,6 +56,31 @@ function householdKetoBase(day,p,m){
  if(cfg.cashews)a.push(L('cashews',cfg.cashews));
  if(cfg.walnuts)a.push(L('walnuts',cfg.walnuts));if(cfg.flax)a.push(L('flax',cfg.flax));
  if(m!=='b')a.push(L('spice',1));return a;
+}
+const KETO_BREAKFASTS={
+ omelette:{name:'Mushroom omelette',prep:'Cook the whole egg, extra whites, mushrooms and tomato in measured oil. Whey and weighed nuts are included sides.',portion:{protein:'eggs',quantity:1,eggWhites:4,mushroom:150,tomato:50,oil:5,whey:1,almonds:20,walnuts:25}},
+ eggAvocado:{name:'Eggs & avocado',prep:'Cook the eggs and whites in measured oil; serve with weighed avocado flesh. Whey and almonds are included.',portion:{protein:'eggs',quantity:2,eggWhites:4,avocado:100,oil:5,whey:1,almonds:20}},
+ paneerBhurji:{name:'Paneer bhurji',prep:'Scramble paneer with mushrooms, tomato and onion in measured oil. Whey and almonds are included.',portion:{protein:'paneer',quantity:125,mushroom:100,tomato:50,onion:20,oil:5,whey:1,almonds:15}},
+ chickenBowl:{name:'Chicken & mushroom bowl',prep:'Cook raw boneless chicken with mushrooms and tomato in measured oil. Avocado, whey and almonds are included; this counts toward occasional chicken meals.',portion:{protein:'chicken',quantity:150,mushroom:150,tomato:50,avocado:125,oil:5,whey:1,almonds:15}},
+ dahiBowl:{name:'Dahi protein bowl',prep:'Mix plain dahi with whey; add the weighed nuts. Avocado is a separate side. No added oil.',portion:{protein:'paneer',quantity:0,curd:100,whey:1.5,avocado:50,almonds:20,walnuts:20}}
+};
+function ketoBreakfastName(cfg){return KETO_BREAKFASTS[cfg.breakfastRecipe]?.name||(cfg.protein==='eggs'?(cfg.spinach?'Egg & spinach scramble':'Egg breakfast'):cfg.protein==='chicken'?'Chicken breakfast':cfg.quantity?'Paneer breakfast':'Protein breakfast');}
+function ketoBreakfastOptions(i,p){
+ const day=state.days[i],old=ketoConfig(day,p,'b',i),rest=comparisonEmpty();
+ for(const m of ['l','d','e'])comparisonAdd(rest,comparisonSum(meal(day,m,p)));
+ return Object.entries(KETO_BREAKFASTS).filter(([,x])=>p==='h'||x.portion.protein==='paneer').map(([id,x])=>{
+  const config={...old,spinach:0,eggWhites:0,soya:0,cucumber:0,curd:0,milk:0,butter:0,almonds:0,walnuts:0,cashews:0,flax:0,avocado:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,whey:0,...x.portion,breakfastRecipe:id};
+  const nutrition=comparisonSum(householdKetoBase(day,p,'b',config)),dayNutrition=comparisonAdd(comparisonAdd(comparisonEmpty(),rest),nutrition);
+  const whey=(day[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(day,m)?ketoConfig(day,p,m,i).whey||0:0),0);
+  const otherChicken=state.days.reduce((n,d,j)=>n+['b','l','d'].filter(m=>!(j===i&&m==='b')&&meal(d,m,p).some(x=>x.id==='chicken'&&x.q>0)).length,0);
+  const reason=!isKeto(p)?'Choose Keto for this person first.':!kept(day,'b')?'Breakfast is skipped.':id==='chickenBowl'&&otherChicken>=2?'Swap an existing chicken meal first to keep chicken to 1–2 meals this week.':id==='dahiBowl'&&!day[p==='h'?'wheyH':'wheyW']?'Enable breakfast whey for this recipe.':whey>3?'This would exceed 3 whey scoops today.':dayNutrition.aHi>ketoOptions.carbBudget?`This day would reach ${F(dayNutrition.aHi)} g counted carbs (budget ${ketoOptions.carbBudget} g).`:'';
+  return {id,name:x.name,prep:x.prep,config,nutrition,dayNutrition,eligible:!reason,reason};
+ });
+}
+function applyKetoBreakfast(i,p,id){
+ if(!cloudReady||cloudSaving)return false;
+ const option=ketoBreakfastOptions(i,p).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);
+ MealCloud.validateRecord(ketoMealKey(i,p,'b'),option.config);ketoMeals[ketoMealKey(i,p,'b')]=option.config;save();render();return true;
 }
 function ketoWheyDailyTotal(day,p){return ['b','l','d'].reduce((q,m)=>q+(!kept(day,m)||m==='b'&&!(p==='h'?day.wheyH:day.wheyW)?0:ketoConfig(day,p,m).whey||0),0);}
 // Reviewed pantry-based trial. Targets describe intake; they do not confirm ketosis.

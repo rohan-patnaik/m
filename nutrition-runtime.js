@@ -2,6 +2,7 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
+ "avocado":{"k":160,"p":2,"c":8.53,"fb":6.7,"f":14.66,"sat":2.126,"s":0.66,"added":0,"source":"USDA SR Legacy NDB09037 (raw generic estimate)","basis":"100 g edible flesh, skin and stone excluded","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf"},
  "almonds":{"k":579,"p":21.15,"c":21.55,"fb":12.5,"f":49.93,"sat":3.802,"s":4.35,"added":0,"fdc":170567,"source":"USDA SR Legacy (raw plain generic estimate)","basis":"100 g raw edible kernels","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg12.pdf"},
  "eggWhite":{"k":17.16,"p":3.597,"c":0.2409,"fb":0,"f":0.0561,"sat":0,"s":0.2343,"added":0,"fdc":172183,"source":"USDA SR Legacy (generic estimate)","basis":"1 large raw egg white, estimated 33 g; cook before eating","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg01.pdf"},
  "paneerMM":{"k":283,"p":16.1,"c":5.1,"s":5.1,"added":0,"f":22,"sat":12,"fb":null,"source":"Milky Mist regular 500 g packet image, audited 2026-10-12","basis":"100 g as sold","ingredients":"Milk solids, vinegar","url":"https://www.bbassets.com/media/uploads/p/xxl/40003150-3_5-milky-mist-paneer-premium-fresh.jpg"},

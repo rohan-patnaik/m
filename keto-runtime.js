@@ -36,7 +36,7 @@ function ketoSuggestion(day,p,m){
  if(m==='e')return {name:'Water / unsweetened tea',note:'Planned nuts are counted with meals; no unlimited extra snacks.'};
  const cfg=ketoConfig(day,p,m),date=mealDate(day),prepared=date&&['l','d'].includes(m)?batchLink(date,m,p,'sabzi'):null;
  const veg=prepared?batchName(prepared.batch):recipeName(personRecipe(day,p));
- const savedProtein=date&&batchLink(date,m,p,'protein'),inside=coveredComponent(day,m,p,'protein')&&!savedProtein;const proteinName=savedProtein?batchName(savedProtein.batch):inside?'protein already in prepared sabzi':{paneer:{paneerHP:'high-protein paneer',paneerMM:'Milky Mist paneer',paneer:'Heritage paneer'}[cfg.paneerType]||'paneer',eggs:'eggs',chicken:'chicken breast'}[cfg.protein];const name=m!=='b'&&personRecipe(day,p)==='S12'?veg:(m==='b'?'Ready portions':veg)+' + '+proteinName;
+ const savedProtein=date&&batchLink(date,m,p,'protein'),inside=coveredComponent(day,m,p,'protein')&&!savedProtein;const proteinName=savedProtein?batchName(savedProtein.batch):inside?'protein already in prepared sabzi':{paneer:{paneerHP:'high-protein paneer',paneerMM:'Milky Mist paneer',paneer:'Heritage paneer'}[cfg.paneerType]||'paneer',eggs:'eggs',chicken:'chicken breast'}[cfg.protein];const name=m==='b'?ketoBreakfastName(cfg):personRecipe(day,p)==='S12'?veg:veg+' + '+proteinName;
  const scoops=ketoWheyScoops(day,p,m,cfg),whey=scoops>0?F(scoops)+' scoop'+(scoops===1?'':'s')+' whey with water':'';
  return {name,note:m==='b'?'No separate vegetable recipe. Ready protein and cucumber'+(whey?', plus '+whey+'.':'.'):'Share the cook’s actual sabzi. Rice/roti and default dal are omitted for this keto person. Protein choice replaces the separate paneer portion; paneer already inside a shared/prepared recipe still counts.'+(whey?' Plus '+whey+'.':'')};
 }
@@ -121,6 +121,7 @@ function updateKetoPortion(key,field,value){
  else if(['paneerType','curdType'].includes(field))cfg[field]=value;
  else cfg[field]=field==='sabziFraction'?Number(value)/ketoVegetableBase(personRecipe(state.days[i],p)).reduce((n,x)=>n+x.q,0):Number(value);
  if(field==='cashews'&&cfg.cashews>0)cfg.walnuts=0;
+ if(m==='b')delete cfg.breakfastRecipe;
  MealCloud.validateRecord(key,cfg);
  const total=['b','l','d'].reduce((q,meal)=>q+(!kept(state.days[i],meal)||meal==='b'&&!(p==='h'?state.days[i].wheyH:state.days[i].wheyW)?0:(meal===m?cfg:ketoConfig(state.days[i],p,meal,i)).whey||0),0);
  if(total>3+1e-8)throw Error('Maximum 3 whey scoops per day. Reduce another meal first.');

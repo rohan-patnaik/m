@@ -1,5 +1,6 @@
 // One household list, independent of the planner/comparison view.
 const PRODUCE_DEFAULTS={
+ avocado:{yield:.7,step:100,form:'Whole avocado · 70% flesh estimate; weigh after peeling'},
  gobi:{yield:.6,step:100,form:'Whole cauliflower, trimmed'},arbi:{yield:650/750,step:250,form:'Whole arbi'},
  bhindi:{yield:.95,step:250,form:'Whole bhindi'},palak:{yield:.8,step:250,form:'Spinach bunch'},
  carrot:{yield:.9,step:250,form:'Whole carrots'},potato:{yield:.9,step:250,form:'Whole potatoes'},onion:{yield:.9,step:250,form:'Whole onions'},
@@ -8,7 +9,7 @@ const PRODUCE_DEFAULTS={
 };
 const PRODUCE_OPTION_DEFAULTS={yields:Object.fromEntries(Object.entries(PRODUCE_DEFAULTS).map(([id,x])=>[id,x.yield])),mushroomPacketSize:180};
 let produceOptions=structuredClone(PRODUCE_OPTION_DEFAULTS);
-function shoppingProduce(){return Object.fromEntries(Object.entries(PRODUCE_DEFAULTS).map(([id,x])=>[id,{...x,yield:produceOptions.yields[id],step:id==='mushroom'?produceOptions.mushroomPacketSize:x.step}]));}
+function shoppingProduce(){return Object.fromEntries(Object.entries(PRODUCE_DEFAULTS).map(([id,x])=>[id,{...x,yield:produceOptions.yields[id]??x.yield,step:id==='mushroom'?produceOptions.mushroomPacketSize:x.step}]));}
 function updateProduceYield(id,percent){if(!cloudReady||cloudSaving)return false;const next=structuredClone(produceOptions);next.yields[id]=Number(percent)/100;MealCloud.validateRecord('setting/produceOptions',next);produceOptions=next;save();render();return true;}
 function updateMushroomPacketSize(size){if(!cloudReady||cloudSaving)return false;const next={...produceOptions,mushroomPacketSize:Number(size)};MealCloud.validateRecord('setting/produceOptions',next);produceOptions=next;save();render();return true;}
 const SHOP_PACKETS={almonds:200,paneerMM:500,cashews:200,chicken:250,paneerHP:240,curdH:400,butterH:100,walnuts:200,flax:200,atta:1000,rice:1000,moong:500,masoor:500,arhar:500,besan:500,oats:500,poha:500,chana:200,rajma:500,chickpea:500,kalachana:500,pasta:500,maida:500,butter:100,paneer:500,soyN:200,soyS:200,curd:1000,milk:500,nuts:200,oil:1000};
@@ -54,7 +55,7 @@ function shoppingBuy(row){
 // Display-only labels and buying forms; quantities come from householdShopping().
 const SHOP_LABELS={paneerMM:'Milky Mist paneer · 500 g',cashews:'Cashews · raw, plain'};
 const SHOP_FORMS={gobi:'Whole head',cabbage:'Whole head',palak:'Bunch',corn:'Loose kernels',mushroom:'Packaged',arbi:'Whole roots',bhindi:'Loose pods',carrot:'Loose',potato:'Loose',onion:'Loose',tomato:'Loose',cucumber:'Whole',beans:'Loose'};
-const SHOP_YIELD_NAMES={gobi:'Cauliflower',arbi:'Arbi',bhindi:'Bhindi',palak:'Palak / spinach',carrot:'Carrot',potato:'Potato',onion:'Onion',tomato:'Tomato',mushroom:'Mushrooms',cucumber:'Cucumber',cabbage:'Cabbage',beans:'Beans',corn:'Sweetcorn'};
+const SHOP_YIELD_NAMES={avocado:'Avocado',gobi:'Cauliflower',arbi:'Arbi',bhindi:'Bhindi',palak:'Palak / spinach',carrot:'Carrot',potato:'Potato',onion:'Onion',tomato:'Tomato',mushroom:'Mushrooms',cucumber:'Cucumber',cabbage:'Cabbage',beans:'Beans',corn:'Sweetcorn'};
 function shoppingYields(){const produce=shoppingProduce(),saved=typeof produceOptions!=='undefined'?produceOptions?.yields:null;return Object.fromEntries(Object.keys(SHOP_YIELD_NAMES).map(id=>[id,{yield:saved?.[id]??produce[id]?.yield,form:produce[id]?.form||SHOP_FORMS[id]}]));}
 function shoppingForm(row,yields){const y=row.yield??yields[row.id]?.yield,form=row.form||yields[row.id]?.form;return [form,typeof y==='number'?`${F(y*100)}% usable`:null].filter(Boolean).join(' · ');}
 function shoppingAssumptionsHTML(){

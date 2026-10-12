@@ -21,11 +21,11 @@ export function validateKetoWheyTotals(rows){
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
- if(key==='setting/nutritionVersion'){if(![9,10].includes(value))throw Error('Invalid nutrition version');return;}
+ if(key==='setting/nutritionVersion'){if(![9,10,11].includes(value))throw Error('Invalid nutrition version');return;}
  if(key==='setting/foodChoices'){if(!value||Object.keys(value).sort().join(',')!=='butter,nuts,paneer'||!['paneerMM','paneer','paneerHP'].includes(value.paneer)||!['butter','butterH'].includes(value.butter)||value.nuts!=='cashews')throw Error('Invalid food choices');return;}
  if(key==='setting/produceOptions'){
   const ids=['gobi','arbi','bhindi','palak','carrot','potato','onion','tomato','mushroom','cucumber','cabbage','beans','corn'];
-  if(!value||Object.keys(value).sort().join(',')!=='mushroomPacketSize,yields'||![180,200].includes(value.mushroomPacketSize)||!value.yields||Object.keys(value.yields).sort().join(',')!==ids.sort().join(',')||Object.values(value.yields).some(x=>typeof x!=='number'||!Number.isFinite(x)||x<.01||x>1))throw Error('Invalid produce buying assumptions');return;
+ if(!value||Object.keys(value).sort().join(',')!=='mushroomPacketSize,yields'||![180,200].includes(value.mushroomPacketSize)||!value.yields||ids.some(id=>!Object.hasOwn(value.yields,id))||Object.keys(value.yields).some(id=>!ids.includes(id)&&id!=='avocado')||Object.values(value.yields).some(x=>typeof x!=='number'||!Number.isFinite(x)||x<.01||x>1))throw Error('Invalid produce buying assumptions');return;
  }
  if(/^(serve|done|buy)\//.test(key)){validateActivity(key,value);return;}
  if(key==='setting/curdType'){if(value!==null&&!['curd','curdH'].includes(value))throw Error('Invalid Balanced curd variant');return;}
@@ -43,9 +43,10 @@ export function validateRecord(key,value){
  if(match[1]!=='template'){const date=new Date(match[1]+'T00:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==match[1]||date.getUTCDay()!==1)throw Error('Invalid keto week');}
  if(value===null)return;
  const number=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
- if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction','whey','eggWhites','almonds','spinach'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
+ if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction','whey','eggWhites','almonds','spinach','avocado','mushroom','tomato','onion','breakfastRecipe'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
  if(value.paneerType!==undefined&&!['paneer','paneerHP','paneerMM'].includes(value.paneerType)||value.curdType!==undefined&&!['curd','curdH'].includes(value.curdType))throw Error('Invalid dairy product');
- for(const [field,max]of Object.entries({whey:3,eggWhites:12,spinach:1000,almonds:150,curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,cashews:150,flax:50,sabziFraction:2}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
+ for(const [field,max]of Object.entries({whey:3,eggWhites:12,spinach:1000,almonds:150,curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,cashews:150,flax:50,sabziFraction:2,avocado:500,mushroom:500,tomato:500,onion:200}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
+ if(value.breakfastRecipe!==undefined&&(match[4]!=='b'||!['omelette','eggAvocado','paneerBhurji','chickenBowl','dahiBowl'].includes(value.breakfastRecipe)||match[3]==='w'&&!['paneerBhurji','dahiBowl'].includes(value.breakfastRecipe)))throw Error('Invalid keto breakfast');
  if(value.eggWhites!==undefined&&(!Number.isInteger(value.eggWhites)||match[3]==='w'&&value.eggWhites>0))throw Error('Invalid extra egg whites');
  if(value.whey!==undefined&&!Number.isInteger(value.whey*2))throw Error('Use whole or half whey scoops');
  if(!number(value.quantity,0,value.protein==='eggs'?6:1000)||value.protein==='eggs'&&!Number.isInteger(value.quantity)||!number(value.soya,0,100)||!number(value.oil,0,50))throw Error('Invalid keto portion');

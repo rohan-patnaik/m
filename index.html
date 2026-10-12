@@ -482,6 +482,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="ux-runtime.js"></script>
 <script>
 const DB={
+ avocado:['Avocado flesh · raw generic estimate',160,2,'g'],
  almonds:['Almonds · raw plain estimate',579,21.15,'g'],eggWhite:['Extra egg whites · approx 33 g each',17.16,3.597,'egg'],
  paneerMM:['Paneer · Milky Mist regular 500 g',283,16.1,'g'],cashews:['Kaju · plain raw cashews (estimate)',553,18.2,'g'],
  chicken:['Chicken breast · raw boneless skinless',120,22.5,'g'],paneerHP:['Heritage NOURISH+ high protein paneer',202.6,25,'g'],curdH:['Heritage Total Curd',58,3.3,'g'],butterH:['Heritage table butter',723.2,.4,'g'],walnuts:['Planned walnuts · generic estimate',654,15.23,'g'],flax:['Ground flaxseed · generic estimate',534,18.29,'g'],cabbage:['Cabbage · raw',25,1.28,'g'],
@@ -505,7 +506,7 @@ const DB={
 // null = not declared on the matched panel: excluded from sums and flagged in the UI, NOT counted as zero.
 // Dals use ICMR-NIN IFCT 2017 reference means (kJ/4.184); atta uses the Pillsbury Chakki Fresh table
 // (its page shows a stray 333 kcal line beside the structured 364 kcal/100 g table — table value used).
-const FIB={almonds:12.5,eggWhite:0,paneerMM:null,cashews:3.3,chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:2.81,oats:10.4,besan:10.8,moong:9.37,masoor:10.43,arhar:11.6,poha:3.46,chana:17,
+const FIB={avocado:6.7,almonds:12.5,eggWhite:0,paneerMM:null,cashews:3.3,chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:2.81,oats:10.4,besan:10.8,moong:9.37,masoor:10.43,arhar:11.6,poha:3.46,chana:17,
   whey:null,egg:0,curd:0,milk:0,paneer:0,soyN:null,soyS:15.5,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,corn:2,rajma:15.2,chickpea:12.2,spice:null,
   kalachana:12.2,pasta:2.9,maida:2.76,butter:0,beans:2.7};
