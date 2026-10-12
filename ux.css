@@ -137,7 +137,7 @@ h4{font-size:14px;margin:0}
 .meal-adjust>span{float:left;color:var(--muted);font-weight:600;white-space:nowrap;line-height:28px;margin-right:8px}
 .meal-adjust .keto-adjust{margin:0;border:0;padding:0}
 .meal-adjust .keto-adjust>summary{font-size:12px;min-height:28px;display:flex;align-items:center}
-.meal-adjust .keto-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.meal-adjust .keto-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
 .meal-adjust .keto-fields label{font-size:12px}
 .meal-adjust .keto-fields input,.meal-adjust .keto-fields select{width:100%;font-size:13px;padding:5px 7px;min-height:32px}
 .meal-adjust .keto-protein-field{grid-column:1/-1}
@@ -185,8 +185,12 @@ h4{font-size:14px;margin:0}
 .shopping-table td small{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:400}
 .shopping-table th .ux-buy-form{display:block;margin-top:2px;color:var(--muted);font-size:12px;font-weight:400}
 .shopping-table th .ux-recheck{display:block;margin-top:2px;color:var(--muted);font-size:11px;font-weight:400;font-style:italic}
-.keto-legacy-nuts{grid-column:1/-1;margin:0;color:var(--muted);font-size:12px}
-.keto-legacy-nuts button{margin-left:6px;font-size:11px;padding:3px 8px}
+.keto-fields .keto-hint{font-size:11px;line-height:1.3;color:var(--muted);overflow-wrap:anywhere}
+.keto-fields .keto-hint.keto-over{color:var(--warn);font-weight:600}
+.keto-fields input{min-height:32px}
+.keto-apply-plan{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.keto-apply-plan button{min-height:32px}
+.keto-apply-plan small{color:var(--muted)}
 /* Buying assumptions: purchase-only edible yields and mushroom packet size */
 .ux-buying>div>.ux-note{margin-top:0}
 .ux-yield-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 18px;max-width:900px}
@@ -326,7 +330,7 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .meal-table th,.meal-table td{padding:5px 4px}
  .meal-table thead th{width:29%}
  .meal-table td b{font-size:13px}
- .meal-adjust .keto-fields{grid-template-columns:1fr 1fr}
+ .meal-adjust .keto-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
  .meal-recipe-fields{grid-template-columns:1fr}
  .meal-day .ut-use label{flex-basis:100%}
  .ux-nutrition{grid-template-columns:1fr;gap:10px}
