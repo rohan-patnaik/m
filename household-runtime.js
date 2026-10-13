@@ -20,7 +20,7 @@ function copyDietScope(source,target){
   for(const [key,value]of copied)records[key]=value;
  }
 }
-const KETO_SHARED={K1:'Cabbage',K2:'Cauliflower',K3:'Spinach',K4:'Bhindi',K5:'Spinach corn sabzi'};
+const KETO_SHARED={K1:'Cabbage',K2:'Cauliflower',K3:'Spinach',K4:'Bhindi',K5:'Palak-corn sabzi'};
 // Historical recipes stay readable but are not offered for new selections.
 const KETO_RETIRED=['K3'];
 function sharedRecipe(day,date=mealDate(day)){const i=date?(new Date(date+'T12:00:00Z').getUTCDay()+6)%7:Math.max(0,state.days.indexOf(day)),scope=date?mondayOf(date):state.weekKey||'template';return plannedRecipe(sharedRecipes[`keto/shared/${scope}/day/${i}`]?.recipe||day.s,scope);}

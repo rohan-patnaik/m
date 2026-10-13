@@ -222,7 +222,7 @@ test('palak corn counts raw corn, shared portions and shopping under every diet 
   assert.ok(expected>0);assert.ok(Math.abs(after.corn-expected)<1e-8);
   for(const [id,q] of Object.entries(before))assert.ok(Math.abs(after[id]-q)<1e-8,`${w}/${h}: ${id} unchanged`);
   assert.equal(run("householdShopping().market.find(x=>x.id==='corn').buy"),Math.ceil(expected/100-1e-8)*100);
-  assert.match(run('uxWeekRow(state.days[1],1)'),/Spinach corn sabzi/);
+  assert.match(run('uxWeekRow(state.days[1],1)'),/Palak-corn sabzi/);
   run('snapshotDraft();sharedRecipes={};hydrateDraft()');
   assert.equal(run("personRecipe(state.days[1],'w')"),'K5');
  }
@@ -280,7 +280,7 @@ test('meal cards reuse measured lunch and dinner portions and reject stale cooke
  }
  assert.equal(run('JSON.stringify(ledger())'),before);
  run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");
- assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Spinach corn sabzi').unweighed"));
+ assert.ok(run("uxServingRows(0,'l','h').find(x=>x.label==='Palak-corn sabzi').unweighed"));
 });
 
 test('compact quantity tables retain every person’s food and distinguish shared from individual portions',()=>{
@@ -1021,31 +1021,27 @@ test('Edit meals offers Spinach corn (K5) via a shared-recipe intent; phone meal
  run(`var els={},order=[],hook=[];document.querySelector=s=>els[s]||null;state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};delete d.readyB});save=()=>order.push('save');saveChanges=async()=>{order.push('saveChanges');return true};render=()=>{};var dlg={open:true,close(){this.open=false}};var box={dataset:{},textContent:''};document.createElement=()=>box`);
  run("householdDiets={w:'balanced',h:'keto'};state.days[0].s='S1';delete sharedRecipes[sharedKey(0)]");
  let f=run('editFormHTML(editValsFromState(0),0)');const sel=f.match(/data-ek="s">[\s\S]*?<\/select>/)[0];
- assert.match(sel,/<option value="K5">K5 · Spinach corn sabzi<\/option>/);assert.match(sel,/<option value="S1" selected>/);assert.doesNotMatch(sel,/value="K3"/);
+ assert.match(sel,/<option value="K5">K5 · Palak-corn sabzi<\/option>/);assert.match(sel,/<option value="S1" selected>/);assert.doesNotMatch(sel,/value="K3"/);
  // The editor shows the sabzi actually planned when a shared override is active.
  run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");assert.equal(run('editValsFromState(0).s'),'K5');f=run('editFormHTML(editValsFromState(0),0)');
- assert.match(f,/<option value="K5" selected>K5 · Spinach corn sabzi<\/option>/);assert.match(f,/<label>Dinner protein<select data-ek="p">/,'K5 has no protein inside');
+ assert.match(f,/<option value="K5" selected>K5 · Palak-corn sabzi<\/option>/);assert.match(f,/<label>Dinner protein<select data-ek="p">/,'K5 has no protein inside');
  run("sharedRecipes[sharedKey(0)]={recipe:'S12'}");assert.doesNotMatch(run('editFormHTML(editValsFromState(0),0)'),/data-ek="p"/,'effective protein sabzi hides dinner protein');
  run("sharedRecipes[sharedKey(0)]={recipe:'K4'}");assert.match(run('editFormHTML(editValsFromState(0),0)'),/<option value="K4" selected>K4 · Bhindi<\/option>/);
- // Save: K never reaches day.s; without Root's hook the editor says so and changes nothing.
+ // Save uses the existing validated shared record; K ids never enter the legacy day.s field.
  run("delete sharedRecipes[sharedKey(0)]");
- const setup=s=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:${JSON.stringify(s)}},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:''},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}order=[];hook=[];dlg.open=true`);
- const before=run('JSON.stringify([state.days,sharedRecipes,ketoMeals])');
- run('globalThis.applyEditSharedRecipe=undefined');setup('K5');await run('saveEdit()');
- assert.equal(run('box.textContent'),'Spinach corn sabzi needs the latest update.');assert.equal(run('JSON.stringify([state.days,sharedRecipes,ketoMeals])'),before);assert.equal(run('order.length'),0);
- run("globalThis.applyEditSharedRecipe=(i,intent)=>hook.push({i,intent,week:state.weekKey})");setup('K5');await run('saveEdit()');
- assert.equal(run('JSON.stringify(hook)'),JSON.stringify([{i:0,intent:'K5',week:run('state.weekKey')}]));assert.equal(run('state.days[0].s'),'S1','day.s stays S-series');assert.equal(run("order.join()"),'save,saveChanges');
- // Leaving an active K override for an S recipe asks Root to restore the saved menu.
- run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");setup('S7');await run('saveEdit()');assert.equal(run('hook[0].intent'),'original');assert.equal(run('state.days[0].s'),'S7');
- run("delete sharedRecipes[sharedKey(0)]");setup('S2');await run('saveEdit()');assert.equal(run('hook.length'),0,'plain S change needs no shared intent');assert.equal(run('state.days[0].s'),'S2');
+ const setup=s=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:${JSON.stringify(s)}},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:''},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}order=[];dlg.open=true`);
+ setup('K5');await run('saveEdit()');
+ assert.equal(run('sharedRecipe(state.days[0])'),'K5');assert.equal(run('state.days[0].s'),'S1');assert.equal(run("order.join()"),'save,saveChanges');
+ setup('S7');await run('saveEdit()');assert.equal(run('sharedRecipe(state.days[0])'),'S7');assert.equal(run('state.days[0].s'),'S7');
+ const before=run('JSON.stringify([state.days,sharedRecipes,ketoMeals])');setup('invalid');await run('saveEdit()');assert.equal(run('JSON.stringify([state.days,sharedRecipes,ketoMeals])'),before);assert.match(run('box.textContent'),/recipe/);
  // Phone accordion: collapsed headers, one open meal per day, tap again closes, wide screens unchanged.
  run("globalThis.matchMedia=q=>({matches:q==='(max-width:600px)',addEventListener(){}});uxOpenMeal={}");
  let day=run('uxDayHTML(0)');
- for(const m of ['b','l','d','e'])assert.match(day,new RegExp(`data-ux-meal-toggle="0,${m}" aria-expanded="false" aria-controls="meal-body-0-${m}"`));
- assert.equal((day.match(/class="meal-body" id="meal-body-0-[blde]" hidden>/g)||[]).length,4);
+ for(const m of ['b','l','d','e'])assert.match(day,new RegExp(`data-ux-meal-toggle="0,${m}" aria-expanded="false" aria-controls="meal-body-week-0-${m}"`));
+ assert.equal((day.match(/class="meal-body" id="meal-body-week-0-[blde]" hidden>/g)||[]).length,4);
  run(`uxOpenMeal[uxMealKey(0)]='l'`);day=run('uxDayHTML(0)');
- assert.match(day,/data-ux-meal-toggle="0,l" aria-expanded="true"/);assert.match(day,/id="meal-body-0-l">/);assert.equal((day.match(/aria-expanded="true"/g)||[]).length,1);
- assert.match(day.slice(day.indexOf('id="meal-body-0-l"')),/data-weigh="0" data-weigh-meal="l"[\s\S]*data-ing="0,l"/,'Weigh & serve and Details live inside the opened body');
+ assert.match(day,/data-ux-meal-toggle="0,l" aria-expanded="true"/);assert.match(day,/id="meal-body-week-0-l">/);assert.equal((day.match(/aria-expanded="true"/g)||[]).length,1);
+ assert.match(day.slice(day.indexOf('id="meal-body-week-0-l"')),/data-weigh="0" data-weigh-meal="l"[\s\S]*data-ing="0,l"/,'Weigh & serve and Details live inside the opened body');
  assert.match(run('uxMealSummary(0,"b")'),/^W (\d+ kcal|—) · H (\d+ kcal|—)$/);
  run("globalThis.matchMedia=q=>({matches:false,addEventListener(){}})");day=run('uxDayHTML(0)');assert.doesNotMatch(day,/data-ux-meal-toggle| hidden>/);
  assert.equal(run("JSON.stringify(uxOpenMeal)"),JSON.stringify({[run('uxMealKey(0)')]:'l'}),'view-only state, no records');

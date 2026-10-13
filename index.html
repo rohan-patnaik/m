@@ -1040,16 +1040,13 @@ function openEdit(i,iso){
   $('#dlgBody').innerHTML=`<p class="ux-scope${!iso&&!state.weekKey?' ux-scope-template':''}">${esc(scope)}</p>`+editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
 }
-// Shared-recipe intent from the sabzi select: a K id when one is picked, 'original' when an S id replaces an active
-// shared override, otherwise null. Root writes it into the existing sharedRecipes record (current or new week scope).
-function editSharedIntent(v){const snap=editSnap?JSON.parse(editSnap):{};if(!v.s||v.s===snap.s)return null;if(/^K\d$/.test(v.s))return v.s;const rec=typeof sharedRecipes==='object'&&sharedRecipes[sharedKey(editCtx.i)];return rec&&rec.recipe?'original':null;}
 function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
 async function saveEdit(){
   if(!editCtx)return;
   // Build the tentative day first; nothing is mutated until breakfast recipes validate.
   const v=collectEdit(),d=structuredClone(state.days[editCtx.i]);
-  const sharedIntent=editSharedIntent(v);
-  if(sharedIntent&&typeof applyEditSharedRecipe!=='function')return editMessage('Spinach corn sabzi needs the latest update.');
+  let recipeEdit=null;
+  try{recipeEdit=prepareEditedSabzi(editCtx.i,v.s);}catch(e){return editMessage(e.message);}
   if(v.s&&/^S\d+$/.test(v.s)&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}
   if(v.b)d.b=v.b;
   if(v.dal)d.dal=v.dal;
@@ -1062,13 +1059,13 @@ async function saveEdit(){
   let prepared=null;
   if(sel.h||sel.w){
     if(typeof prepareKetoBreakfasts!=='function')return editMessage('Breakfast recipes need the latest update.');
-    try{prepared=prepareKetoBreakfasts(editCtx.i,sel,d);}catch(e){return editMessage(e&&e.message||String(e));}
+    try{prepared=prepareKetoBreakfasts(editCtx.i,sel,d,recipeEdit?.value);}catch(e){return editMessage(e&&e.message||String(e));}
   }
   // A first Day edit belongs to its calendar week. Clone untouched source portions before applying the edit.
   const mon=editCtx.iso&&mondayOf(editCtx.iso),newWeek=mon&&!lockedWeeks[mon],sourceScope=state.weekKey||'template';
   if(newWeek){ensureUtDay();ensureOilUse();copyDietScope(sourceScope,mon);state.weekKey=mon;}
   Object.assign(state.days[editCtx.i],d);if(!d.readyB)delete state.days[editCtx.i].readyB;
-  if(sharedIntent)applyEditSharedRecipe(editCtx.i,sharedIntent);
+  if(recipeEdit)sharedRecipes[sharedKey(editCtx.i)]=recipeEdit.value;
   if(prepared)for(const [key,value]of Object.entries(prepared))ketoMeals[newWeek?key.replace('keto/'+sourceScope+'/','keto/'+mon+'/'):key]=value;
   state.custom=true;
   if(newWeek){lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}
