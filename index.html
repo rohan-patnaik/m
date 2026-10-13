@@ -901,7 +901,7 @@ function presetCard(){
   const rows=['easy','medium','hard'].map(m=>`<tr><th scope="row">${{easy:'Low',medium:'Medium',hard:'High'}[m]}</th>${cell(m,'w')}${cell(m,'h')}</tr>`).join('');
   const maintenance=p=>'<td class="num">Unconfirmed</td>';
   return `<div class="comparison"><table><thead><tr><th>Plan</th><th class="num">Wife</th><th class="num">Husband</th></tr></thead><tbody>${rows}<tr class="maintenance"><th scope="row">Maintenance<span>Estimated</span></th>${maintenance('w')}${maintenance('h')}</tr></tbody></table>
-  <details class="explanation"><summary>How the plans differ</summary><p>Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged.</p><p>Low / Medium / High controls Balanced portions only. Keto has independent raw portions in the Keto view. Values reflect your current meal choices and toggles. Eating-out meals count as zero home food, not zero total intake.</p></details></div>`;
+  <details class="explanation"><summary>How the plans differ</summary><p>Low reduces carbs, milk and nuts, plus 20% less dinner sabzi and separate paneer/soya than Medium. Breakfast whey and lunch dal stay unchanged.</p><p>Low / Medium / High controls Balanced portions only. Keto has independent portions measured before cooking in the Keto view. Values reflect your current meal choices and toggles. Eating-out meals count as zero home food, not zero total intake.</p></details></div>`;
 }
 const kept=(d,m)=>!d.off&&!(d.skip&&d.skip[m]);
 function freshCookRows(i){
