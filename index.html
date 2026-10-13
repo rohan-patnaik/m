@@ -1003,7 +1003,7 @@ const EDIT_NOCOOK='__nocook';
 function editReady(d,p){return !!(d.readyB&&d.readyB[p]);}
 function editSabzi(d){return typeof sharedRecipe==='function'?sharedRecipe(d):d.s;}
 // K-series vegetable bases live in sharedRecipes, never in day.s (records accept S1–S12 only).
-function editSabziOptions(cur){const k={K5:KETO_SHARED.K5};if(/^K\d$/.test(cur)&&!KETO_RETIRED.includes(cur))k[cur]=KETO_SHARED[cur];return opts(SABZIS,cur)+opts(k,cur);}
+function editSabziOptions(cur){const k={K5:'Palak-corn sabzi (spinach corn)'};if(/^K\d$/.test(cur)&&cur!=='K5'&&!KETO_RETIRED.includes(cur))k[cur]=KETO_SHARED[cur];return opts(SABZIS,cur)+opts(k,cur);}
 function editValsFromState(i){const d=state.days[i];return{readyW:editReady(d,'w'),readyH:editReady(d,'h'),b:d.b,bw:isKeto('w')&&editReady(d,'w')?EDIT_NOCOOK:editKetoRecipe(i,'w'),bh:isKeto('h')&&editReady(d,'h')?EDIT_NOCOOK:editKetoRecipe(i,'h'),s:editSabzi(d),p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
 function editFormHTML(v,i=editCtx?editCtx.i:0){
   // Protein sabzis already include protein: the Dinner protein field is hidden, and collectEdit keeps its last value.

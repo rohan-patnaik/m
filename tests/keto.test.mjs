@@ -1021,10 +1021,10 @@ test('Edit meals offers Spinach corn (K5) via a shared-recipe intent; phone meal
  run(`var els={},order=[],hook=[];document.querySelector=s=>els[s]||null;state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};delete d.readyB});save=()=>order.push('save');saveChanges=async()=>{order.push('saveChanges');return true};render=()=>{};var dlg={open:true,close(){this.open=false}};var box={dataset:{},textContent:''};document.createElement=()=>box`);
  run("householdDiets={w:'balanced',h:'keto'};state.days[0].s='S1';delete sharedRecipes[sharedKey(0)]");
  let f=run('editFormHTML(editValsFromState(0),0)');const sel=f.match(/data-ek="s">[\s\S]*?<\/select>/)[0];
- assert.match(sel,/<option value="K5">K5 · Palak-corn sabzi<\/option>/);assert.match(sel,/<option value="S1" selected>/);assert.doesNotMatch(sel,/value="K3"/);
+ assert.match(sel,/<option value="K5">K5 · Palak-corn sabzi \(spinach corn\)<\/option>/);assert.match(sel,/<option value="S1" selected>/);assert.doesNotMatch(sel,/value="K3"/);
  // The editor shows the sabzi actually planned when a shared override is active.
  run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");assert.equal(run('editValsFromState(0).s'),'K5');f=run('editFormHTML(editValsFromState(0),0)');
- assert.match(f,/<option value="K5" selected>K5 · Palak-corn sabzi<\/option>/);assert.match(f,/<label>Dinner protein<select data-ek="p">/,'K5 has no protein inside');
+ assert.match(f,/<option value="K5" selected>K5 · Palak-corn sabzi \(spinach corn\)<\/option>/);assert.match(f,/<label>Dinner protein<select data-ek="p">/,'K5 has no protein inside');
  run("sharedRecipes[sharedKey(0)]={recipe:'S12'}");assert.doesNotMatch(run('editFormHTML(editValsFromState(0),0)'),/data-ek="p"/,'effective protein sabzi hides dinner protein');
  run("sharedRecipes[sharedKey(0)]={recipe:'K4'}");assert.match(run('editFormHTML(editValsFromState(0),0)'),/<option value="K4" selected>K4 · Bhindi<\/option>/);
  // Save uses the existing validated shared record; K ids never enter the legacy day.s field.
