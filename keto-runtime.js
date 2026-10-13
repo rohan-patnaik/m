@@ -118,6 +118,7 @@ document.addEventListener('click',e=>{
  const apply=e.target.closest('[data-keto-apply-plan]');if(apply&&typeof applyKetoInventoryPlan==='function'&&cloudReady&&!cloudSaving){try{if(applyKetoInventoryPlan()!==false)render();}catch(error){apply.title=error.message;}return;}
  const b=e.target.closest('[data-keto-choice]');if(b)updateKetoPortion(b.dataset.ketoKey,b.dataset.ketoChoice,b.dataset.ketoValue);
 });
+const KETO_SIDE_FIELDS=['whey','curd','milk','avocado','almonds','walnuts','cashews'];
 function updateKetoPortion(key,field,value){
  if(!cloudReady||cloudSaving)return false;const match=/\/day\/([0-6])\/(w|h)\/(b|l|d)$/.exec(key);if(!match)return false;
  const [,index,p,m]=match,i=Number(index);if(key!==ketoMealKey(i,p,m))return false;const cfg=ketoConfig(state.days[i],p,m,i);
@@ -125,7 +126,7 @@ function updateKetoPortion(key,field,value){
  else if(['paneerType','curdType'].includes(field))cfg[field]=value;
  else cfg[field]=field==='sabziFraction'?Number(value)/ketoVegetableBase(personRecipe(state.days[i],p)).reduce((n,x)=>n+x.q,0):Number(value);
  if(field==='cashews'&&cfg.cashews>0)cfg.walnuts=0;
- if(m==='b')delete cfg.breakfastRecipe;
+ if(m==='b'&&!KETO_SIDE_FIELDS.includes(field))delete cfg.breakfastRecipe;
  MealCloud.validateRecord(key,cfg);
  const total=['b','l','d'].reduce((q,meal)=>q+(!kept(state.days[i],meal)||meal==='b'&&!(p==='h'?state.days[i].wheyH:state.days[i].wheyW)?0:(meal===m?cfg:ketoConfig(state.days[i],p,meal,i)).whey||0),0);
  if(total>3+1e-8)throw Error('Maximum 3 whey scoops per day. Reduce another meal first.');

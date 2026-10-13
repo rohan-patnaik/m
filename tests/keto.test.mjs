@@ -1097,7 +1097,12 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  // No cooked: avocado input hidden but its saved value is kept (not silently deleted); dahi hides intrinsic whey/curd.
  run("householdDiets={w:'balanced',h:'keto'}");v=JSON.parse(run('JSON.stringify(editValsFromState(0))'));
  f=run(`editFormHTML({...editValsFromState(0),bh:'__nocook'},0)`);assert.doesNotMatch(f,/data-es="h\.avocado"/);assert.match(f,/sides · whey \+ nuts 45 g/);
- f=run(`editFormHTML({...editValsFromState(0),bh:'dahiBowl'},0)`);assert.doesNotMatch(f,/data-es="h\.(whey|curd)"/);assert.match(f,/Curd and whey are part of the dahi bowl/);
+ // Picking a different dish seeds its sides from that dish's config (no old avocado carried over); dahi shows its actual bowl curd/whey.
+ run("editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0))");
+ const seeded=JSON.parse(run(`JSON.stringify(editSidesForPick({...editValsFromState(0),bh:'dahiBowl'},0,'h'))`)),opt=JSON.parse(run(`JSON.stringify(editKetoOptions(0,'h').find(o=>o.id==='dahiBowl').config)`));
+ assert.equal(seeded.curd,opt.curd||0);assert.equal(seeded.whey,opt.whey||0);
+ assert.deepEqual(JSON.parse(run(`JSON.stringify(editSidesForPick({...editValsFromState(0),bh:'eggPoach'},0,'h'))`)),v.sidesH,'same saved dish keeps its saved sides');
+ f=run(`editFormHTML({...editValsFromState(0),bh:'dahiBowl',sidesH:${JSON.stringify(seeded)}},0)`);assert.doesNotMatch(f,/data-es="h\.(whey|curd)"/);assert.match(f,new RegExp(`Bowl uses curd ${seeded.curd} g \\+ whey ${seeded.whey} scoops`));
  const setup=(bh,sides)=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:state.days[0].s},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:${JSON.stringify(bh)}},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};for(const [k,val] of Object.entries(${JSON.stringify(sides)}))els['[data-es="h.'+k+'"]']={value:String(val)};}order=[];calls=[];dlg.open=true`);
  run("globalThis.prepareKetoBreakfasts=(i,sel,day,recipe,sides)=>{calls.push({sel,sides:sides||null,ready:day.readyB||null});return {}}");
  setup('__nocook',{whey:1,almonds:20,walnuts:25,cashews:0,curd:0,milk:0});assert.equal(run('collectEdit().sidesH.avocado'),50,'hidden avocado keeps the saved value');
@@ -1106,6 +1111,13 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  // Changed sides only: staged through prepareKetoBreakfasts' sideOverrides, dish untouched.
  setup('eggPoach',{whey:1,avocado:0,almonds:20,walnuts:25,cashews:0,curd:0,milk:0});await run('saveEdit()');
  assert.equal(run('JSON.stringify(calls[0].sel)'),'{}');assert.deepEqual(JSON.parse(run('JSON.stringify(calls[0].sides)')),{h:{whey:1,avocado:0,almonds:20,walnuts:25,cashews:0,curd:0,milk:0}});
+ // No cooked → the same saved dish is still sent as a selection so it is revalidated.
+ run("state.days[0].readyB={w:false,h:true}");setup('eggPoach',{whey:1,avocado:50,almonds:20,walnuts:25,cashews:0,curd:0,milk:0});await run('saveEdit()');
+ assert.equal(run('JSON.stringify(calls[0].sel)'),'{"h":"eggPoach"}');assert.equal(run('calls[0].ready'),null,'flag cleared on the tentative day');
+ // Adjust portions: a side-only change keeps the chosen dish; a dish field change turns it Custom.
+ run("delete state.days[0].readyB;cloudReady=true;cloudSaving=false;ketoMeals[ketoMealKey(0,'h','b')]=JSON.parse(globalThis.storedBf=JSON.stringify({...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'eggPoach'}))");
+ run("updateKetoPortion(ketoMealKey(0,'h','b'),'avocado',0)");assert.equal(run("ketoMeals[ketoMealKey(0,'h','b')].breakfastRecipe"),'eggPoach');assert.equal(run("ketoMeals[ketoMealKey(0,'h','b')].avocado"),0);
+ run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',2)");assert.equal(run("'breakfastRecipe' in ketoMeals[ketoMealKey(0,'h','b')]"),false);
  // Helper missing: inline message, no mutation.
  run("globalThis.prepareKetoBreakfasts=undefined");const before=run('JSON.stringify([state.days,ketoMeals])');setup('eggPoach',{avocado:10});await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);
  // Quiet day status: Husband's shortfall vs the working range, and nuts today with kcal; no orange warning class.
