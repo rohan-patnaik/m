@@ -154,7 +154,7 @@ test('wife Keto defaults resolve exact scope recipe and preserve explicit share 
 test('legacy walnut overrides neither duplicate nuts nor block unrelated edits',()=>{
  const {run}=app();
  for(const amount of [0,33]){run(`ketoMeals[ketoMealKey(0,'h','b')]={protein:'paneer',quantity:75,soya:0,oil:0,paneerType:'paneerHP',walnuts:${amount}}`);assert.equal(run("ketoConfig(state.days[0],'h','b').cashews"),0);assert.equal(run("ketoConfig(state.days[0],'h','b').walnuts"),amount);assert.doesNotThrow(()=>run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',80)"));}
- run("ketoMeals[ketoMealKey(0,'h','b')]={protein:'paneer',quantity:75,soya:0,oil:0,walnuts:33};updateKetoPortion(ketoMealKey(0,'h','b'),'cashews',10)");assert.equal(run("ketoConfig(state.days[0],'h','b').walnuts"),0);
+ run("ketoMeals[ketoMealKey(0,'h','b')]={protein:'paneer',quantity:75,soya:0,oil:0,walnuts:33};updateKetoPortion(ketoMealKey(0,'h','b'),'cashews',10)");assert.equal(run("ketoConfig(state.days[0],'h','b').walnuts"),33);
  run('ketoMeals={}');assert.equal(run("ketoConfig(state.days[0],'h','b').cashews"),10);
 });
 test('P and Y batches conserve default fresh oil with chilla boosts and portion modes',()=>{
@@ -657,7 +657,7 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  // Apply button appears only when Root provides an available plan.
  assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
  run("globalThis.applyKetoInventoryPlan=()=>true;globalThis.ketoInventoryPlanAvailable=()=>false");assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
- run("globalThis.ketoInventoryPlanAvailable=()=>true");assert.match(run('ketoReviewHTML()'),/data-keto-apply-plan>Apply suggested husband plan to draft<\/button><small>Fills the draft only; review each day, then save\./);
+ run("globalThis.ketoInventoryPlanAvailable=()=>true");assert.match(run('ketoReviewHTML()'),/data-keto-apply-plan>Load example husband plan<\/button><small>Draft only; adjust daily calorie and protein gaps before saving\./);
  const trial=run('trialHTML()');assert.match(trial,/4–5 strength sessions\/week/);assert.doesNotMatch(trial,/45 min|no seeds|flax[^.]*fullness/);assert.match(trial,/Ground flaxseed is an optional historical field\./);assert.match(trial,/maintenance is unconfirmed/);assert.match(trial,/not measured needs/);
  // Egg display: whites are separate eggs; whole eggs keep their own label; guarded while DB.eggWhite is absent.
  assert.deepEqual(JSON.parse(run("JSON.stringify(uxFoodRow(L('eggWhite',3)))")),{label:'Extra whites',quantity:'3 whites',detail:'extra eggs needed'});
@@ -1128,7 +1128,7 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  run("globalThis.prepareKetoBreakfasts=undefined");const before=run('JSON.stringify([state.days,ketoMeals])');setup('eggPoach',{avocado:10});await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);
  // Quiet day status: Husband's shortfall vs the working range, and nuts today with kcal; no orange warning class.
  run("globalThis.realDay=assignedDayNutrition;globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:1531,p:104}:realDay(i,p)");
- const st=run('uxDayStatus(0)');assert.match(st,/^<p class="ux-day-status">Husband: 1531 kcal · 104 g protein, below the 1900–2100 kcal \/ 120\+ g protein working range\./);assert.match(st,/Husband nuts today: \d+ g \(\d+ kcal\)\./);assert.doesNotMatch(st,/ux-warning/);
- run("globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:2000,p:140}:realDay(i,p)");assert.doesNotMatch(run('uxDayStatus(0)'),/below the/);
+ const st=run('uxDayStatus(0)');assert.match(st,/^<p class="ux-day-status">Husband: 1531 kcal below 1900–2100 · 104 g protein below 120 g working target\./);assert.match(st,/Husband nuts today: \d+ g \(\d+ kcal\)\./);assert.doesNotMatch(st,/ux-warning/);
+ run("globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:2000,p:140}:realDay(i,p)");assert.doesNotMatch(run('uxDayStatus(0)'),/below/);
  run("globalThis.assignedDayNutrition=realDay");assert.match(run('uxDayHTML(0)'),/<p class="ux-day-status">/);
 });

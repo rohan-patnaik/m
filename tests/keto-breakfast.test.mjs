@@ -120,3 +120,14 @@ test('breakfast suggestions never top up calories or fibre with unchosen avocado
  const run=ready();run("ketoOptions.carbBudget=100");
  for(const i of [0,1,2,4,5])assert.equal(run(`recommendedKetoBreakfast(${i}).avocado`),0);
 });
+
+test('custom and ready previews use explicit sides and a staged recipe without changing stored data',()=>{
+ const run=ready();run("state.days[0].s='S1';sharedRecipes[sharedKey(0)]={recipe:'K2'};delete ketoMeals[ketoMealKey(0,'h','b')].breakfastRecipe;ketoOptions.carbBudget=100");
+ const before=run('JSON.stringify({state,ketoMeals,sharedRecipes})');
+ const preview=JSON.parse(run("JSON.stringify(ketoBreakfastPreview(0,'h',state.days[0],{avocado:0,almonds:10},{recipe:'K5'}))"));
+ const options=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h',state.days[0],{almonds:10},{recipe:'K5'}))"));
+ assert.notEqual(options[0].dayNutrition.k,JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h',state.days[0],{almonds:10},{recipe:'K2'}))"))[0].dayNutrition.k);
+ const readyPreview=JSON.parse(run("JSON.stringify(ketoBreakfastPreview(0,'h',{...state.days[0],readyB:{h:true}},{almonds:10,avocado:160},{recipe:'K5'}))"));
+ near(readyPreview.nutrition.k,357.4);assert.ok(preview.dayNutrition.k>preview.nutrition.k);
+ assert.equal(run('JSON.stringify({state,ketoMeals,sharedRecipes})'),before);
+});

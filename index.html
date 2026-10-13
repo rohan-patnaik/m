@@ -997,7 +997,7 @@ function openCal(pick){calPickMon=typeof pick==='string'&&mondayOf(pick)||null;c
 function dayViewISO(){const vd=new Date();vd.setDate(vd.getDate()+dayOff);return vd.getFullYear()+'-'+String(vd.getMonth()+1).padStart(2,'0')+'-'+String(vd.getDate()).padStart(2,'0');}
 let editCtx=null,editSnap='',editP=null;
 // Keto breakfast recipes in Edit meals are form state only; saveEdit hands changed picks to Root's prepareKetoBreakfasts.
-function editKetoOptions(i,p,day,sides){try{const o=isKeto(p)&&typeof ketoBreakfastOptions==='function'?(day?ketoBreakfastOptions(i,p,day,sides||null):ketoBreakfastOptions(i,p)):null;return Array.isArray(o)?o:[];}catch{return[];}}
+function editKetoOptions(i,p,day,sides,recipe){try{const o=isKeto(p)&&typeof ketoBreakfastOptions==='function'?(day?ketoBreakfastOptions(i,p,day,sides||null,recipe):ketoBreakfastOptions(i,p)):null;return Array.isArray(o)?o:[];}catch{return[];}}
 // Breakfast sides are edited separately from the dish. Values come from the saved breakfast as stored (Root's
 // ketoBreakfastSides when present), so opening or cancelling never changes them.
 const EDIT_SIDES=[['whey','Whey','scoops',3,.5],['avocado','Avocado','g',500,1],['almonds','Almonds','g',150,1],['walnuts','Walnuts','g',150,1],['cashews','Cashews','g',150,1],['curd','Curd','g',500,1],['milk','Milk','ml',500,1]];
@@ -1006,9 +1006,10 @@ function editSides(i,p){return isKeto(p)?editSidesOf(ketoConfig(state.days[i],p,
 // Where a person's sides start for the current pick: the saved sides for Current/Custom, No cooked or the saved dish;
 // otherwise the picked option's own config (so old avocado is not carried into a dish that does not include it).
 let editSideBase={};
-function editSidesForPick(v,i,p){const P=p.toUpperCase(),snap=editSnap?JSON.parse(editSnap):{},pick=v['b'+p];if(!pick||pick===EDIT_NOCOOK||pick===editKetoRecipe(i,p)&&!snap['ready'+P])return snap['sides'+P];const o=editKetoOptions(i,p,editTentativeDay(v,i),null).find(x=>x.id===pick);return o&&o.config?editSidesOf(o.config):snap['sides'+P];}
+function editRecipePreview(v,i){return typeof prepareEditedSabzi==='function'?prepareEditedSabzi(i,v.s)?.value:undefined;}
+function editSidesForPick(v,i,p){const P=p.toUpperCase(),snap=editSnap?JSON.parse(editSnap):{},pick=v['b'+p];if(!pick||pick===EDIT_NOCOOK||pick===editKetoRecipe(i,p)&&!snap['ready'+P])return snap['sides'+P];const o=editKetoOptions(i,p,editTentativeDay(v,i),null,editRecipePreview(v,i)).find(x=>x.id===pick);return o&&o.config?editSidesOf(o.config):snap['sides'+P];}
 // The day as it would be after this edit (same rules as saveEdit), for previews and validation.
-function editTentativeDay(v,i){const d=structuredClone(state.days[i]);if(v.s&&/^S\d+$/.test(v.s)&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}if(v.b)d.b=v.b;if(v.dal)d.dal=v.dal;if(v.p&&!NO_EXTRA(v.s||d.s))d.p=v.p;d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;d.skip={b:v.skipB,l:v.skipL,d:v.skipD};if(v.readyW||v.readyH)d.readyB={w:!!v.readyW,h:!!v.readyH};else delete d.readyB;return d;}
+function editTentativeDay(v,i){const d=structuredClone(state.days[i]);if(v.s&&/^S\d+$/.test(v.s)&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}if(v.b)d.b=v.b;if(v.dal)d.dal=v.dal;if(v.p&&editProteinEaters(v,i).length)d.p=v.p;d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;d.skip={b:v.skipB,l:v.skipL,d:v.skipD};if(v.readyW||v.readyH)d.readyB={w:!!v.readyW,h:!!v.readyH};else delete d.readyB;return d;}
 // Which Balanced eaters need a separate dinner protein (their effective sabzi has none inside).
 function editProteinEaters(v,i){const rec=typeof sharedRecipes==='object'&&sharedRecipes[sharedKey(i)]||{};return ['w','h'].filter(p=>!isKeto(p)&&!NO_EXTRA(rec[p]||v.s));}
 function editKetoRecipe(i,p){const r=isKeto(p)&&ketoConfig(state.days[i],p,'b',i).breakfastRecipe;return r&&editKetoOptions(i,p).some(o=>o.id===r)?r:'';}
@@ -1022,18 +1023,19 @@ function editSideSummary(sides,dish,ready){if(!sides)return '';const n=(sides.al
  if(sides.avocado&&!ready)out.push(`avocado ${F(sides.avocado)} g`);if(sides.whey&&!dahi)out.push(sides.whey===1?'whey':`whey ${F(sides.whey)} scoops`);if(n)out.push(`nuts ${F(n)} g`);if(sides.curd&&!dahi)out.push(`curd ${F(sides.curd)} g`);if(sides.milk)out.push(`milk ${F(sides.milk)} ml`);return out.join(' + ');}
 function editBreakfastPreview(v,i,p){
  const P=p.toUpperCase(),pick=v['b'+p],sides=v['sides'+P],day=editTentativeDay(v,i);
- if(pick===EDIT_NOCOOK){const t=comparisonSum(['whey','curd','milk','almonds','walnuts','cashews'].filter(f=>sides&&sides[f]>0&&(f!=='whey'||day[p==='h'?'wheyH':'wheyW'])).map(f=>L(f==='curd'?ketoConfig(state.days[i],p,'b',i).curdType:f,sides[f])));return `No cooked breakfast · ready foods ${R(t.k)} kcal · ${F(t.p)} g protein`;}
- const id=pick||editKetoRecipe(i,p),o=id?editKetoOptions(i,p,day,sides).find(x=>x.id===id):null;
- if(o&&o.nutrition){const dn=o.dayNutrition;return `Breakfast total ${R(o.nutrition.k)} kcal · ${F(o.nutrition.p)} g protein${dn&&typeof dn.k==='number'?` · day ${R(dn.k)} kcal`:''}`;}
- const t=comparisonSum(meal(state.days[i],'b',p));return `Current breakfast total ${R(t.k)} kcal · ${F(t.p)} g protein`;}
+ const record=editRecipePreview(v,i);
+ const id=pick===EDIT_NOCOOK?'':pick||editKetoRecipe(i,p),o=id?editKetoOptions(i,p,day,sides,record).find(x=>x.id===id):null;
+ const preview=o||ketoBreakfastPreview(i,p,day,sides,record),t=preview.nutrition;
+ return `${pick===EDIT_NOCOOK?'No cooked breakfast · ready foods':'Breakfast total'} ${R(t.k)} kcal · ${F(t.p)} g protein · day ${R(preview.dayNutrition.k)} kcal${o?.reason?' · '+o.reason:''}`;
+}
 function editFormHTML(v,i=editCtx?editCtx.i:0){
   const tgl=(k,txt)=>`<label><input type="checkbox" data-et="${k}"${v[k]?' checked':''}> ${txt}</label>`;
   const bal=['w','h'].filter(p=>!isKeto(p)),name=n=>typeof uxMealText==='function'?uxMealText(n):n,eaters=editProteinEaters(v,i);
   // Keto breakfast: pick the DISH; sides (whey, avocado, nuts, curd, milk) are a separate small disclosure.
-  const kb=p=>{const P=p.toUpperCase(),o=editKetoOptions(i,p),cur=o.some(x=>x.id===v['b'+p])?v['b'+p]:'',nc=v['b'+p]===EDIT_NOCOOK,dish=nc?'':cur||editKetoRecipe(i,p),sides=v['sides'+P]||{};
+  const kb=p=>{const P=p.toUpperCase(),o=editKetoOptions(i,p,editTentativeDay(v,i),null,editRecipePreview(v,i)),cur=o.some(x=>x.id===v['b'+p])?v['b'+p]:'',nc=v['b'+p]===EDIT_NOCOOK,dish=nc?'':cur||editKetoRecipe(i,p),sides=v['sides'+P]||{};
    const opt=x=>{const off=x.eligible===false&&x.reason,dk=x.dishNutrition&&typeof x.dishNutrition.k==='number'?`dish ${R(x.dishNutrition.k)} kcal`:x.nutrition&&typeof x.nutrition.k==='number'?`breakfast total ${R(x.nutrition.k)} kcal`:'',oil=x.config&&x.config.oil>0?`${F(x.config.oil)} ml oil`:'';return`<option value="${esc(x.id)}"${x.id===cur?' selected':''}${x.eligible===false?' disabled':''}${off?` title="${esc(x.reason)}"`:''}>${esc([name(x.name),oil,dk].filter(Boolean).join(' · '))}${off?` (${esc(x.reason)})`:''}</option>`;};
    const fields=EDIT_SIDES.filter(([f])=>!(nc&&f==='avocado')&&!(dish==='dahiBowl'&&(f==='whey'||f==='curd'))).map(([f,l,u,max,step])=>`<label>${l} (${u})<input type="number" min="0" max="${max}" step="${step}" inputmode="decimal" value="${sides[f]??0}" data-es="${p}.${f}"></label>`).join('');
-   const sum=editSideSummary(sides,dish,nc),dahiNote=dish==='dahiBowl'?`Bowl uses curd ${F(sides.curd||0)} g + whey ${F(sides.whey||0)} scoops.`:'';
+   const sum=editSideSummary({...sides,whey:v[p==='h'?'wheyH':'wheyW']?sides.whey:0},dish,nc),dahiNote=dish==='dahiBowl'?`Bowl uses curd ${F(sides.curd||0)} g + whey ${F(sides.whey||0)} scoops.`:'';
    return`<label>${PERSON_NAMES[p]} breakfast dish<select data-ek="b${p}"><option value=""${cur||nc?'':' selected'}>Current / Custom</option><option value="${EDIT_NOCOOK}"${nc?' selected':''}>No cooked breakfast</option>${o.map(opt).join('')}</select></label><small class="hintline" data-bf-preview="${p}">${esc(editBreakfastPreview(v,i,p))}</small>
    <details class="edit-sides" data-edit-sides="${p}"><summary>${PERSON_NAMES[p]} breakfast sides${sum?` · ${esc(sum)}`:' · none'}</summary><div class="edit-sides-grid">${fields}</div>${nc?'<small class="hintline">No cooked breakfast counts whey, curd, milk and nuts only.</small>':dish==='dahiBowl'?`<small class="hintline">${esc(dahiNote)}</small>`:''}</details>`;};
   return`<div class="editform">
@@ -1066,10 +1068,11 @@ function openEdit(i,iso){
   $('#dlgBody').innerHTML=`<p class="ux-scope${!iso&&!state.weekKey?' ux-scope-template':''}">${esc(scope)}</p>`+editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
 }
-function editRefreshPreviews(){if(!editCtx)return;const v=collectEdit();for(const p of ['w','h'].filter(isKeto)){const el=document.querySelector(`[data-bf-preview="${p}"]`);if(el)el.textContent=editBreakfastPreview(v,editCtx.i,p);const sum=document.querySelector(`[data-edit-sides="${p}"]>summary`),P=p.toUpperCase(),nc=v['b'+p]===EDIT_NOCOOK;if(sum)sum.textContent=`${PERSON_NAMES[p]} breakfast sides · ${editSideSummary(v['sides'+P],nc?'':v['b'+p]||editKetoRecipe(editCtx.i,p),nc)||'none'}`;}}
+function editRefreshPreviews(){if(!editCtx)return;const v=collectEdit();for(const p of ['w','h'].filter(isKeto)){const el=document.querySelector(`[data-bf-preview="${p}"]`);if(el)el.textContent=editBreakfastPreview(v,editCtx.i,p);const sum=document.querySelector(`[data-edit-sides="${p}"]>summary`),P=p.toUpperCase(),nc=v['b'+p]===EDIT_NOCOOK;if(sum)sum.textContent=`${PERSON_NAMES[p]} breakfast sides · ${editSideSummary({...v['sides'+P],whey:v[p==='h'?'wheyH':'wheyW']?v['sides'+P]?.whey:0},nc?'':v['b'+p]||editKetoRecipe(editCtx.i,p),nc)||'none'}`;}}
 function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
 async function saveEdit(){
   if(!editCtx)return;
+  for(const el of document.querySelectorAll('#dlgBody [data-es]'))if(!el.checkValidity()){el.reportValidity();return;}
   // Build the tentative day first; nothing is mutated until breakfast recipes validate.
   const v=collectEdit();
   let recipeEdit=null;
@@ -1237,7 +1240,7 @@ document.addEventListener('change',e=>{
     else editRefreshPreviews();
     refreshEditDirty();return;
   }
-  if(t.dataset&&(t.dataset.et||t.dataset.es)){editRefreshPreviews();refreshEditDirty();return;}
+  if(t.dataset&&(t.dataset.et||t.dataset.es)){if(t.dataset.et){const cur=collectEdit(),form=$('#dlgBody .editform'),open=[...document.querySelectorAll('#dlgBody details[open]')].map(x=>x.dataset.editSides);if(form){form.outerHTML=editFormHTML(cur);open.forEach(p=>{const el=p&&document.querySelector(`#dlgBody [data-edit-sides="${p}"]`);if(el)el.open=true;});}}else editRefreshPreviews();refreshEditDirty();return;}
   if(t.dataset&&t.dataset.ut){
     const v=parseFloat(t.value);
     state.utensils[t.dataset.ut]=(!Number.isFinite(v)||v<0)?0:Math.round(v);

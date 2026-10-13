@@ -88,8 +88,8 @@ function ketoBreakfastBreakdown(day,p,cfg){
  const dishLines=lines.filter(x=>!sideIds.has(x.id)||intrinsic.has(x.id));
  return {dishLines,sideLines,dishNutrition:comparisonSum(dishLines),sidesNutrition:comparisonSum(sideLines)};
 }
-function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null){
- const original=state.days[i];
+function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null,recipeOverride){
+ const original=state.days[i],rk=sharedKey(i),originalRecipe=sharedRecipes[rk];if(recipeOverride!==undefined)sharedRecipes[rk]=recipeOverride;
  // Alternatives are cooked breakfasts even when the currently saved choice is No cooked breakfast.
  const day={...dayOverride,readyB:{...dayOverride.readyB,[p]:false}};state.days[i]=day;
  try{
@@ -109,7 +109,11 @@ function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null){
    const custom=Object.entries(x.portion).some(([k,v])=>!KETO_BREAKFAST_SIDE_KEYS.includes(k)&&config[k]!==v);
    return {id,name:x.name,prep:x.prep,config,nutrition,dayNutrition,...ketoBreakfastBreakdown(day,p,config),custom,eligible:!reason,reason};
   });
- }finally{state.days[i]=original;}
+ }finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[rk];else sharedRecipes[rk]=originalRecipe;}}
+}
+function ketoBreakfastPreview(i,p,dayOverride=state.days[i],sides=null,recipeOverride){
+ const original=state.days[i],rk=sharedKey(i),originalRecipe=sharedRecipes[rk];state.days[i]=dayOverride;if(recipeOverride!==undefined)sharedRecipes[rk]=recipeOverride;
+ try{const cfg=breakfastSideOverride(ketoConfig(dayOverride,p,'b',i),sides),nutrition=comparisonSum(householdKetoBase(dayOverride,p,'b',cfg)),dayNutrition=comparisonAdd(comparisonEmpty(),nutrition);for(const m of ['l','d','e'])comparisonAdd(dayNutrition,comparisonSum(meal(dayOverride,m,p)));return {nutrition,dayNutrition,...ketoBreakfastBreakdown(dayOverride,p,cfg)};}finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[rk];else sharedRecipes[rk]=originalRecipe;}}
 }
 // Explicit breakfast examples. Review daily totals; never fill energy or fibre gaps with unchosen food.
 const KETO_WEEK_BREAKFASTS=[['boiledEggs',{}],['omelette',{whey:.5,eggWhites:3,mushroom:250}],['dahiBowl',{curd:75,almonds:15}],['eggAvocado',{avocado:150}],['eggPoach',{}],['dahiBowl',{curd:75,almonds:15}],['eggAvocado',{avocado:150}]];
