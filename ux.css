@@ -496,3 +496,10 @@ button.danger{color:var(--warn);border-color:var(--warn)}
 .meal-collapsed{padding-bottom:6px}
 .meal-collapsed .meal-card-head{margin-bottom:0}
 .meal-collapsible .meal-card-head h3{width:100%}
+/* Edit meals breakfast sides and the quiet day status line. */
+.edit-sides{border:1px solid var(--line);border-radius:8px;padding:4px 10px;margin:-4px 0 4px}
+.edit-sides>summary{cursor:pointer;font-size:13px;font-weight:600;min-height:32px;display:flex;align-items:center;overflow-wrap:anywhere}
+.edit-sides-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:6px 0 8px}
+.edit-sides-grid label{display:grid;gap:4px;font-size:12px;font-weight:600}
+.edit-sides-grid input{width:100%;min-width:0}
+.ux-day-status{font-size:12px;color:var(--muted);margin:0 0 10px;overflow-wrap:anywhere}
