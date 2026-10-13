@@ -564,7 +564,7 @@ const SRC=[
 const FIB_INF=new Set(['egg','curd','milk','paneer','butter','oil']); // 0 by composition inference, not printed
 function fibCell(id){const v=FIB[id];if(v===null||v===undefined)return'ND';if(v===0&&FIB_INF.has(id))return'0*';return v;}
 function srcTableHTML(){
-  const rows=SRC.map(r=>`<tr><td>${r.name}<div style="font-size:11px;color:var(--muted)">${r.per}</div></td><td class="num">${r.k} · ${r.p} · ${fibCell(r.id)}</td><td><a href="${r.url}" target="_blank" rel="noopener">${r.st}</a></td></tr>`).join('');
+  const rows=SRC.map(r=>`<tr><td>${(typeof uxDisplayText==='function'?uxDisplayText(r.name):r.name)}<div style="font-size:11px;color:var(--muted)">${r.per}</div></td><td class="num">${r.k} · ${r.p} · ${fibCell(r.id)}</td><td><a href="${r.url}" target="_blank" rel="noopener">${r.st}</a></td></tr>`).join('');
   return `<table><thead><tr><th>Item</th><th class="num">kcal · prot · fibre /100</th><th>Panel</th></tr></thead><tbody>${rows}
   <tr><td>Rice, besan, poha, rajma, chana, kala chana, maida, mixed nuts<div style="font-size:11px;color:var(--muted)">brand/mix varies per user</div></td><td class="num">generic estimates</td><td>Variable — editable</td></tr></tbody></table>
   <p class="hintline">ND = panel silent (excluded); 0* = inferred zero, not measured. Milk 100 ml = 58/3.1 × density ${F(milkDensity())} → ${F(milkPer100ml()[0])}/${F(milkPer100ml()[1])}. Oil 100 ml = 897 × 0.91 (1 L = 910 g) = 816.27.</p>`;
@@ -771,7 +771,7 @@ function ratioText(wShare,hShare,cooked){
   return `W : H = ${r&&!r.exact?'≈ ':''}${W/g} : ${H/g}`+(cooked<1?` · of cooked ${cooked===.5?'half':'×'+F(cooked)} batch`:'');
 }
 function splitRatio(d,m){
- if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d))){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Keto trial':'Balanced'),meal(d,m,p).map(x=>DB[x.id][0]+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
+ if(typeof isKeto==='function'&&(['w','h'].some(isKeto)||assignedRecipesChanged(d))){const rows=['w','h'].map(p=>[PERSON_NAMES[p]+' · '+(isKeto(p)?'Keto trial':'Balanced'),meal(d,m,p).map(x=>(typeof uxDisplayText==='function'?uxDisplayText(DB[x.id][0]):DB[x.id][0])+' '+F(x.q)+' '+DB[x.id][3]).join(' · ')]);return rows;}
 
   if(m==='b'){
     if(d.b==='B4')return[
@@ -915,7 +915,7 @@ function freshCookRows(i){
   const bfMap={};
   if(kept(d,'b')){
     for(const per of['w','h'])for(const x of breakfast(d.b,per,d))if(x.id!=='whey'&&x.id!=='egg')bfMap[x.id]=(bfMap[x.id]||0)+x.q;
-    const bitems=Object.entries(bfMap).map(([id,v])=>`${DB[id][0]} — ${F(v)} ${DB[id][3]}`);
+    const bitems=Object.entries(bfMap).map(([id,v])=>`${(typeof uxDisplayText==='function'?uxDisplayText(DB[id][0]):DB[id][0])} — ${F(v)} ${DB[id][3]}`);
     const nw=(d.wheyW?1:0)+(d.wheyH?1:0);
     if(nw)bitems.push(`Whey — ${nw} serving${nw>1?'s':''} (35 g each)`);
     if(d.eggH&&!(d.readyB&&d.readyB.h))bitems.push('Eggs — 2');
@@ -931,7 +931,7 @@ function freshCookRows(i){
     const dalBatchG=150*batchScale(d,'dal'); // dal-batch dry dal only (breakfast grain shown under Breakfast)
     groups.push(['Dal + starch',['Dry '+DALNAMES[d.dal].toLowerCase()+' dal — '+F(dalBatchG)+' g (wash, for the day)',...starch]]);
     const freshSab=freshSabziLines(d);
-    if(freshSab.length)groups.push(['Fresh sabzi · '+SABZIS[d.s],freshSab.filter(x=>x.id!=='oil').map(x=>`${DB[x.id][0]} — ${F(x.q)} ${DB[x.id][3]}`)]);
+    if(freshSab.length)groups.push(['Fresh sabzi · '+SABZIS[d.s],freshSab.filter(x=>x.id!=='oil').map(x=>`${(typeof uxDisplayText==='function'?uxDisplayText(DB[x.id][0]):DB[x.id][0])} — ${F(x.q)} ${DB[x.id][3]}`)]);
 
   }
   if(dinner||lunch){
@@ -1143,7 +1143,7 @@ function render(){
   const keys=['whey','paneerMM','paneer','paneerHP','curd','curdH','milk','butter','butterH'].filter(id=>DB[id]);
   $('#labelTable').innerHTML=`<table><thead><tr><th>Item</th><th class="num">kcal</th><th class="num">Protein g</th></tr></thead><tbody>${keys.map(id=>{
     const n=nut(id),basis=id==='milk'?'100 ml (58/3.1 per 100 g × density)':DB[id][3]==='serving'?'serving':DB[id][3]==='egg'?'egg':'100 '+DB[id][3];
-    return`<tr><td>${DB[id][0]}<div style="font-size:11px;color:var(--muted)">per ${basis}</div></td>
+    return`<tr><td>${(typeof uxDisplayText==='function'?uxDisplayText(DB[id][0]):DB[id][0])}<div style="font-size:11px;color:var(--muted)">per ${basis}</div></td>
     <td class="num"><input type="number" step="0.1" min="0" value="${n[0]}" data-lab="${id}" data-c="0" style="width:84px"></td>
     <td class="num"><input type="number" step="0.1" min="0" value="${n[1]}" data-lab="${id}" data-c="1" style="width:84px"></td></tr>`;
   }).join('')}</tbody></table>`;

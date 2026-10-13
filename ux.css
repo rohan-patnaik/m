@@ -475,9 +475,6 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .ux-week-row{grid-template-columns:2.6em minmax(0,1fr);row-gap:2px}
  .ux-week-kcal{grid-column:2;white-space:normal;flex-wrap:wrap;gap:4px 10px}
  .ux-save-status{order:0}
- /* Meals/Shopping row hides while scrolling down and returns on scroll up; the sync bar follows the header height. */
- body.ux-scrolled{--header-h:62px}
- body.ux-scrolled .tabs.ux-nav{display:none}
 }
 .shopping-table td small.ux-shop-need{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
 .shopping-table th:nth-child(2){width:auto}
