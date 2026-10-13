@@ -869,15 +869,15 @@ test('Edit meals breakfast recipes: per-assignment selects, form-only until Save
  run(`var els={},calls=[],order=[];document.querySelector=s=>els[s]||null;state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false}});save=()=>order.push('save');saveChanges=async()=>{order.push('saveChanges');return true};render=()=>{};var dlg={open:true,close(){this.open=false}}`);
  const optCount=html=>(html.match(/<option/g)||[]).length;
  // Both Balanced: single "Breakfast", no keto selects.
- let f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Breakfast<select data-ek="b">/);assert.doesNotMatch(f,/data-ek="b[hw]"/);
+ let f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Breakfast recipe \(both\)<select data-ek="b">/);assert.doesNotMatch(f,/data-ek="b[hw]"/);assert.match(f,/<label>Wife breakfast<select data-ek="rw"><option value="cook">Cooked recipe<\/option><option value="__nocook">No cooked breakfast<\/option>/);
  // Husband Keto: Balanced select labelled for Wife plus the Husband recipe select from the real helper.
  run("householdDiets={w:'balanced',h:'keto'}");const n=run("ketoBreakfastOptions(0,'h').length");assert.equal(n,7);
  f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/<label>Wife breakfast<select data-ek="b">/);
- const bh=f.match(/<label>Husband breakfast<select data-ek="bh">[\s\S]*?<\/select>/)[0];assert.equal(optCount(bh),n+1);assert.match(bh,/^<label>Husband breakfast<select data-ek="bh"><option value="" selected>Current \/ Custom<\/option><option value="omelette"[^>]*>Mushroom omelette · \d+ kcal/);assert.match(bh,/<option value="eggAvocado">Eggs &amp; avocado · \d+ kcal<\/option>/);assert.doesNotMatch(f,/data-ek="bw"/);
+ const bh=f.match(/<label>Husband breakfast<select data-ek="bh">[\s\S]*?<\/select>/)[0];assert.equal(optCount(bh),n+2);assert.match(bh,/^<label>Husband breakfast<select data-ek="bh"><option value="" selected>Current \/ Custom<\/option><option value="__nocook">No cooked breakfast<\/option><option value="omelette"[^>]*>Mushroom omelette · \d+ kcal/);assert.match(bh,/<option value="eggAvocado">Eggs &amp; avocado · \d+ kcal<\/option>/);assert.doesNotMatch(f,/data-ek="bw"/);
  // Both Keto: no common select; chicken disabled with the reason once two chicken meals exist.
  run("householdDiets={w:'keto',h:'keto'};for(const j of [1,2])ketoMeals[ketoMealKey(j,'h','l')]={...ketoConfig(state.days[j],'h','l'),protein:'chicken',quantity:150}");
  f=run('editFormHTML(editValsFromState(0),0)');assert.doesNotMatch(f,/data-ek="b"/);
- assert.equal(optCount(f.match(/data-ek="bh">[\s\S]*?<\/select>/)[0]),n+1);assert.equal(optCount(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0]),run("ketoBreakfastOptions(0,'w').length")+1);
+ assert.equal(optCount(f.match(/data-ek="bh">[\s\S]*?<\/select>/)[0]),n+2);assert.equal(optCount(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0]),run("ketoBreakfastOptions(0,'w').length")+2);
  assert.match(f,/<label>Wife breakfast<select data-ek="bw">/);assert.doesNotMatch(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0],/chicken|omelette|eggAvocado/i);
  assert.match(f,/<option value="chickenBowl" disabled title="Swap an existing chicken meal first[^"]*">Chicken &amp; mushroom bowl · \d+ kcal \(Swap an existing chicken meal first[^)]*\)<\/option>/);
  // Existing recipe preselects; selection is dirty, survives the sabzi re-render and touches nothing until Save.
@@ -946,7 +946,7 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  run("state.days[0].readyB={w:false,h:false};normalizeState()");assert.equal(run("'readyB' in state.days[0]"),false,'false flags are not stored');
  run("state.days[1].readyB={w:false,h:true};normalizeState()");assert.equal(run("JSON.stringify(state.days[1].readyB)"),'{"w":false,"h":true}');
  // Edit meals offers the toggles and a line saying what the edit changes.
- assert.match(run("editFormHTML(editValsFromState(1))"),/No cooked breakfast<\/div><div class="tglrow"><label><input type="checkbox" data-et="readyW"> Wife<\/label><label><input type="checkbox" data-et="readyH" checked> Husband<\/label>/);
+ assert.match(run("editFormHTML(editValsFromState(1))"),/<select data-ek="bh"><option value="">Current \/ Custom<\/option><option value="__nocook" selected>No cooked breakfast<\/option>/);assert.doesNotMatch(run("editFormHTML(editValsFromState(1))"),/data-et="ready[WH]"/);
  assert.match(run("ketoEditHTML(state.days[1],1,'h','b')"),/No cooked breakfast today: only whey, curd, milk and nuts below are counted/);
  // Day page: the first meal change saves the calendar week from the template instead of editing the template.
  run("state.weekKey=null;state.view='day';ketoMeals['keto/template/day/0/h/l']={...ketoConfig(state.days[0],'h','l'),almonds:20};delete lockedWeeks[mondayOf(dayViewISO())]");
@@ -969,4 +969,41 @@ test('pot ratios follow the chosen cooking scope instead of reserving an uncooke
  const {run}=app(true);run("householdDiets={w:'balanced',h:'balanced'};state.days[0].off=false;state.days[0].skip={b:false,l:false,d:false}");
  assert.equal(run("uxPotParts(0,'dal','all').length"),4);assert.equal(run("uxPotParts(0,'dal','l').length"),2);assert.equal(run("uxPotParts(0,'dal','l').every(x=>x.meal==='l')"),true);
  const html=run("uxServePartsHTML(0,'dal','l','l')");assert.match(html,/<h4>Lunch/);assert.doesNotMatch(html,/<h4>Dinner/);
+});
+
+test('breakfast dropdowns carry No cooked breakfast; cook list shows only what the cook prepares',async()=>{
+ const {run}=app(true);
+ run(`var els={},calls=[],order=[];document.querySelector=s=>els[s]||null;state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};delete d.readyB});save=()=>order.push('save');saveChanges=async()=>{order.push('saveChanges');return true};render=()=>{};var dlg={open:true,close(){this.open=false}};var box={dataset:{},textContent:''};document.createElement=()=>box`);
+ const form=(i=0)=>run(`editFormHTML(editValsFromState(${i}),${i})`);
+ // Wife Balanced + Husband Keto: each person's own dropdown has the no-cooking choice; no separate checkboxes.
+ run("householdDiets={w:'balanced',h:'keto'}");let f=form();
+ assert.match(f,/<label>Wife breakfast<select data-ek="b"><option value="__nocook">No cooked breakfast<\/option><option value="B\d"/);
+ assert.match(f,/<label>Husband breakfast<select data-ek="bh"><option value="" selected>Current \/ Custom<\/option><option value="__nocook">No cooked breakfast<\/option>/);
+ assert.doesNotMatch(f,/data-et="ready|<div class="lbl">No cooked breakfast/);
+ run("state.days[0].readyB={w:true,h:false}");f=form();assert.match(f,/data-ek="b"><option value="__nocook" selected>No cooked breakfast/);
+ // Both Keto / both Balanced render without pretending per-person Balanced recipes.
+ run("householdDiets={w:'keto',h:'keto'}");f=form();assert.match(f,/data-ek="bw"><option value="">Current \/ Custom<\/option><option value="__nocook" selected>/);assert.doesNotMatch(f,/data-ek="b"/);
+ run("householdDiets={w:'balanced',h:'balanced'}");f=form();assert.equal((f.match(/data-ek="b"/g)||[]).length,1);assert.match(f,/data-ek="rw"><option value="cook">Cooked recipe<\/option><option value="__nocook" selected>/);assert.match(f,/data-ek="rh"><option value="cook">Cooked recipe<\/option><option value="__nocook">/);
+ // Save: No cooked bypasses prepareKetoBreakfasts; a cooked pick clears only that person's flag and is validated with it cleared.
+ run("householdDiets={w:'balanced',h:'keto'};state.days[0].readyB={w:true,h:false};delete ketoMeals[ketoMealKey(0,'h','b')]");
+ const setup=(bh,b)=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:state.days[0].s},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:${JSON.stringify(b)}},'[data-ek="bh"]':{value:${JSON.stringify(bh)}},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}calls=[];order=[];dlg.open=true`);
+ run("globalThis.prepareKetoBreakfasts=(i,sel,day)=>{calls.push({sel,ready:structuredClone(day.readyB||null)});return {}}");
+ setup('__nocook','__nocook');await run('saveEdit()');
+ assert.equal(run('calls.length'),0,'sentinel never reaches the helper');assert.equal(run('JSON.stringify(state.days[0].readyB)'),'{"w":true,"h":true}');assert.equal(run("order.join()"),'save,saveChanges');
+ const hand=run("JSON.stringify(ketoConfig(state.days[0],'h','b'))");
+ setup('','__nocook');await run('saveEdit()');assert.equal(run('calls.length'),0,'Current / Custom keeps hand-tuned portions');assert.equal(run('JSON.stringify(state.days[0].readyB)'),'{"w":true,"h":false}','only the Husband flag cleared');assert.equal(run("JSON.stringify(ketoConfig(state.days[0],'h','b'))"),hand);
+ setup('eggAvocado','__nocook');await run('saveEdit()');assert.equal(run('JSON.stringify(calls[0].sel)'),'{"h":"eggAvocado"}');assert.equal(run('JSON.stringify(calls[0].ready)'),'{"w":true,"h":false}','validated on the tentative day with his flag cleared');
+ run("state.days[0].readyB={w:true,h:false}");setup('','B2');await run('saveEdit()');assert.equal(run("'readyB' in state.days[0]"),false,'Wife cooked pick clears her flag');assert.equal(run('state.days[0].b'),'B2');
+ // Helper throws: nothing mutated.
+ run("state.days[0].readyB={w:false,h:true};globalThis.prepareKetoBreakfasts=()=>{throw Error('Over the carb budget.')}");const before=run('JSON.stringify([state.days,ketoMeals])');
+ setup('omelette','B1');await run('saveEdit()');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);assert.equal(run('box.textContent'),'Over the carb budget.');
+ // Cook list: dishes the cook prepares; nutrition and shopping unchanged.
+ run("state.days[0].readyB=undefined;delete state.days[0].readyB;state.days[0].wheyW=true;householdDiets={w:'balanced',h:'keto'}");const ledger=run('JSON.stringify(ledger())');
+ const groups=JSON.parse(run('JSON.stringify(uxCookGroups(0))')),text=groups.flat(2).join('\n');
+ assert.equal(run('JSON.stringify(ledger())'),ledger);
+ assert.ok(groups.some(([t])=>/^Sabzi · /.test(t)));assert.ok(groups.some(([t])=>/^Dal · /.test(t)));assert.ok(groups.some(([t])=>t==='Rice / roti'));assert.ok(groups.some(([t])=>/^Breakfast · .*\(Wife\)$/.test(t)));
+ for(const id of ['oil','spice','whey','curd','curdH','milk','almonds','cashews','walnuts','cucumber','avocado'])if(run(`DB['${id}']?1:0`))assert.ok(!text.includes(run(`DB['${id}'][0]`)+' —'),id);
+ assert.doesNotMatch(text,/self-cooked|Husband protein|Chicken breast —/,'Keto husband protein is self-cooked');
+ assert.match(run('cookCard(0)'),/<h4[^>]*>Sabzi · /);
+ run("state.days[0].off=true");assert.match(JSON.stringify(run('JSON.stringify(uxCookGroups(0))')),/Eating out/);
 });

@@ -207,6 +207,31 @@ document.addEventListener('pointerdown',e=>{uxDialogPress=e.isPrimary===false?nu
 document.addEventListener('click',e=>{const d=uxDialogPress,m=uxMacrosPress;uxDialogPress=null;uxMacrosPress=false;if(d&&uxDialogOutside(e)===d)d.close();if(m&&uxMacrosOutside(e))uxSetMacrosOpen(false);},true);
 document.addEventListener('DOMContentLoaded',()=>{document.querySelector('#settingsDlg').addEventListener('close',()=>{if(['#settings','#labels','#utensils','#keto'].includes(location.hash))location.hash=uxRoute==='shop'?'shopping':uxRoute;});});
 
+// Cook list = what the cook actually prepares, grouped by dish. Presentation only: oil, spices, whey and ready foods
+// (dairy, milk, nuts, cucumber, avocado) are left out here but stay in nutrition, shopping and batch snapshots.
+// A Keto husband cooks his own breakfast and protein, so only his share of the shared sabzi pot appears.
+const UX_COOK_SKIP=new Set(['oil','spice','whey','curd','curdH','milk','almonds','cashews','walnuts','nuts','flax','cucumber','avocado']);
+function uxCookLines(lines){return aggregateBatchLines(lines).filter(x=>x.q>0&&!UX_COOK_SKIP.has(x.id)).map(x=>`${DB[x.id]?.[0]||x.id} — ${uxFoodRow(x).quantity}`);}
+function uxSelfCooks(p){return p==='h'&&isKeto(p);}
+function uxCookGroups(i){
+ const d=state.days[i],skipNames=['oil','spice'].map(id=>DB[id]?.[0]).filter(Boolean),groups=[],add=(title,lines)=>{const rows=uxCookLines(lines);if(rows.length)groups.push([title,rows]);};
+ const batch=batchCookGroups(i).map(([t,rows])=>[t,rows.filter(r=>!skipNames.some(n=>r.startsWith(n+' —')))]);
+ if(d.off)return [['Note',['Eating out — nothing to cook at home today.']],...batch];
+ if(kept(d,'b')){
+  const bal=['w','h'].filter(p=>!isKeto(p)&&!uxReadyBreakfast(d,p));
+  if(bal.length)add(`Breakfast · ${BREAKFASTS[d.b]} (${bal.map(p=>PERSON_NAMES[p]).join(' + ')})`,bal.flatMap(p=>breakfast(d.b,p,d)));
+  for(const p of ['w','h'].filter(p=>isKeto(p)&&!uxSelfCooks(p)&&!uxReadyBreakfast(d,p)))add(`Breakfast · ${PERSON_NAMES[p]} ${uxMealText(uxMealName(i,p,'b'))}`,meal(d,'b',p));
+ }
+ if(differentSabzis(d)){for(const p of ['w','h'])add(`Sabzi · ${uxMealText(recipeName(personRecipe(d,p)))} for ${PERSON_NAMES[p]} (lunch + dinner)`,['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:originalComponent(d,m,p,'sabzi')));}
+ else add(`Sabzi · ${uxMealText(recipeName(sharedRecipe(d)))} (one pot for lunch + dinner)`,freshSabziLines(d));
+ const balanced=['w','h'].filter(p=>!isKeto(p));
+ add(`Dal · ${DALNAMES[d.dal]} (one pot for lunch + dinner)`,balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).map(()=>L(d.dal,150*dalShare(p)))));
+ add('Dinner paneer / soya',balanced.filter(p=>kept(d,'d')&&!coveredComponent(d,'d',p,'protein')).flatMap(p=>originalComponent(d,'d',p,'protein')));
+ for(const p of ['w','h'].filter(p=>isKeto(p)&&!uxSelfCooks(p)))add(`${PERSON_NAMES[p]} protein (lunch + dinner)`,['l','d'].filter(m=>kept(d,m)&&!coveredComponent(d,m,p,'protein')).flatMap(m=>ketoComponent(d,p,m,'protein')));
+ add('Rice / roti',balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).flatMap(m=>freshMeal(d,m,p).filter(x=>['rice','atta'].includes(x.id)))));
+ return [...groups,...batch];
+}
+
 // A single dish at a time. Existing allocation, global tare and frozen batches are reused.
 let serveStep=1,serveDish='sabzi',serveRecord=null;
 function serveDishes(i){return Object.keys(DISH_NAMES).filter(d=>weighSpecs(i,d).length);}
