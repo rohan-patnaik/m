@@ -121,14 +121,25 @@ function uxCarbsHTML(i,p){
 }
 function openUXCarbs(i,p){const dlg=document.querySelector('#dlg');document.querySelector('#dlgTitle').textContent=`Carbs · ${uxCarbDay(i)}`;document.querySelector('#dlgBody').innerHTML=uxCarbsHTML(i,p);if(!dlg.open)dlg.showModal();document.querySelector(`#dlgBody [data-ux-carbs="${i},${p}"]`)?.focus();}
 document.addEventListener('click',e=>{const b=e.target.closest?.('[data-ux-carbs]');if(!b)return;e.preventDefault();const [i,p]=b.dataset.uxCarbs.split(',');openUXCarbs(Number(i),p);});
+// Phones: Breakfast / Lunch / Dinner / Snacks start collapsed; one meal open per day. View-only memory for this tab
+// (never saved). Wider screens keep every card open.
+let uxOpenMeal={};
+function uxIsPhone(){return typeof matchMedia==='function'&&matchMedia('(max-width:600px)').matches;}
+function uxMealKey(i){return (state.weekKey||'template')+':'+i;}
+function uxMealSummary(i,m){const d=state.days[i];if(!(kept(d,m)||m==='e'&&!d.off))return 'Skipped';return ['w','h'].map(p=>{const t=comparisonSum(meal(d,m,p));return `${PERSON_NAMES[p][0]} ${t.k?R(t.k)+' kcal':'—'}`;}).join(' · ');}
 function uxMealHTML(i,m){
  const d=state.days[i],planned=kept(d,m)||m==='e'&&!d.off;
  const adjust=planned&&m!=='e'?['w','h'].filter(isKeto).map(p=>{const h=ketoEditHTML(d,i,p,m);return h?`<div class="meal-adjust"><span>${PERSON_NAMES[p]}</span>${h}</div>`:'';}).join(''):'';
  // One action band under the heading in every meal card: per-person Adjust portions left, Weigh & serve | Details right.
  // Breakfast has no weighing; an empty slot keeps Details in the same place as in Lunch and Dinner.
  const actions=planned&&m!=='e'?`<div class="meal-card-actions">${['l','d'].includes(m)?`<button class="ing" data-weigh="${i}" data-weigh-meal="${m}">Weigh &amp; serve</button>`:'<span class="meal-action-slot" aria-hidden="true"></span>'}<button class="ing meal-details-link" data-ing="${i},${m}" title="Ingredients, split ratios and nutrition">Details</button></div>`:'';
- return `<section class="meal-card${m==='e'?' meal-snacks':''}" data-ux-meal="${m}"><div class="meal-card-head"><h3>${UX_MEALS[m]}</h3></div>${actions?`<div class="meal-actions">${adjust}${actions}</div>`:''}${planned?uxMealTable(i,m)+(m==='e'&&['w','h'].some(isKeto)?'<p class="meal-note">Keto nuts are measured, counted foods listed with meals (about 120 g/day in the current draft); a snack from those portions is not extra food.</p>':''):'<p class="meal-none">Eating out / skipped. Home-food quantities excluded.</p>'}</section>`;
+ const phone=uxIsPhone(),open=!phone||uxOpenMeal[uxMealKey(i)]===m,id=`meal-body-${i}-${m}`;
+ const head=phone?`<div class="meal-card-head"><h3><button type="button" class="meal-toggle" data-ux-meal-toggle="${i},${m}" aria-expanded="${open}" aria-controls="${id}"><span>${UX_MEALS[m]}</span><small>${esc(uxMealSummary(i,m))}</small></button></h3></div>`:`<div class="meal-card-head"><h3>${UX_MEALS[m]}</h3></div>`;
+ return `<section class="meal-card${m==='e'?' meal-snacks':''}${phone?' meal-collapsible':''}${open?'':' meal-collapsed'}" data-ux-meal="${m}">${head}<div class="meal-body" id="${id}"${open?'':' hidden'}>${actions?`<div class="meal-actions">${adjust}${actions}</div>`:''}${planned?uxMealTable(i,m)+(m==='e'&&['w','h'].some(isKeto)?'<p class="meal-note">Keto nuts are measured, counted foods listed with meals (about 120 g/day in the current draft); a snack from those portions is not extra food.</p>':''):'<p class="meal-none">Eating out / skipped. Home-food quantities excluded.</p>'}</div></section>`;
 }
+// Tap a meal header: open it and close the day's other meal; tap again to close. Re-renders keep the open meal.
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-ux-meal-toggle]');if(!b)return;const [i,m]=b.dataset.uxMealToggle.split(','),k=uxMealKey(Number(i));uxOpenMeal[k]=uxOpenMeal[k]===m?null:m;const page=b.closest('main')?.id;renderToday();renderWeek();document.querySelector(`#${page||'todayPage'} [data-ux-meal-toggle="${i},${m}"]`)?.focus();});
+if(typeof matchMedia==='function')matchMedia('(max-width:600px)').addEventListener?.('change',()=>{if(typeof cloudReady!=='undefined'&&cloudReady){renderToday();renderWeek();}});
 function uxResolvedRecipe(raw){return raw&&typeof plannedRecipe==='function'?plannedRecipe(raw,state.weekKey||'template'):raw;}
 function uxWeekRow(day,i){const r=Object.fromEntries(Object.entries(sharedRecipes[sharedKey(i)]||{}).map(([k,v])=>[k,uxResolvedRecipe(v)]));return `<div class="meal-recipe-fields" data-ux-week-day="${i}"><label>Shared sabzi<select aria-label="${DAYS[i]} shared sabzi" data-ux-recipe="${i}" data-ux-person="shared"><option value="original"${!r.recipe?' selected':''}>${esc(SABZIS[day.s])}</option>${uxRecipeOptions(r.recipe)}</select></label>${['w','h'].map(p=>`<label>${PERSON_NAMES[p]} sabzi<select aria-label="${DAYS[i]} ${PERSON_NAMES[p]} sabzi" data-ux-recipe="${i}" data-ux-person="${p}"><option value="shared"${!r[p]?' selected':''}>Use shared</option>${uxRecipeOptions(r[p])}</select></label>`).join('')}</div>`;}
 function uxRecipeOptions(selected){return Object.entries({...SABZIS,...KETO_SHARED}).filter(([id])=>!KETO_RETIRED.includes(id)||id===selected).map(([id,name])=>`<option value="${id}"${selected===id?' selected':''}>${esc(name)}</option>`).join('');}

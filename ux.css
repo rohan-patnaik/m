@@ -164,15 +164,16 @@ h4{font-size:14px;margin:0}
 @media(min-width:1001px){
  .meal-cards{align-items:stretch}
  .meal-card:not(.meal-snacks){display:flex;flex-direction:column}
- .meal-card:not(.meal-snacks)>.meal-table-foot{margin-top:auto}
- .meal-card:not(.meal-snacks)>.meal-foot{margin-bottom:8px}
+ .meal-body{display:contents}
+ .meal-card:not(.meal-snacks)>.meal-body>.meal-table-foot{margin-top:auto}
+ .meal-card:not(.meal-snacks)>.meal-body>.meal-foot{margin-bottom:8px}
  .meal-cards:has(.meal-menu) .meal-menu{min-height:34px}
  /* Flex cards do not collapse margins: 40px + the band's 6px bottom margin = the menu line's slot */
- .meal-cards:has(.meal-menu)>.meal-card:not(.meal-snacks)>.meal-actions+.meal-table{margin-top:40px}
+ .meal-cards:has(.meal-menu)>.meal-card:not(.meal-snacks)>.meal-body>.meal-actions+.meal-table{margin-top:40px}
  .meal-snacks{display:grid;grid-template-columns:minmax(0,620px) minmax(0,1fr);column-gap:28px;align-items:start}
- .meal-snacks>*{grid-column:1}
+ .meal-snacks>*,.meal-snacks>.meal-body>*{grid-column:1}
  .meal-snacks>.meal-card-head{grid-column:1/-1}
- .meal-snacks>.meal-note{grid-column:2;grid-row:2;margin:0;padding-left:14px;border-left:2px solid var(--line);max-width:60ch}
+ .meal-snacks>.meal-body>.meal-note{grid-column:2;grid-row:2;margin:0;padding-left:14px;border-left:2px solid var(--line);max-width:60ch}
 }
 
 /* Keto per-person adjustments: a compact "Wife · Adjust portions" control in the band, closed by default */
@@ -489,3 +490,12 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  .meal-adjust:not(:has(>.keto-adjust[open]))::after{content:none}
  .meal-card-actions{flex:0 0 auto;flex-wrap:wrap}
 }
+/* Phone meal accordion: collapsed headers are full-width buttons with a one-line kcal summary. */
+.meal-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:var(--tap);padding:4px 0;border:0;background:none;font:inherit;font-size:15px;font-weight:650;color:var(--ink);text-align:left;border-radius:6px}
+.meal-toggle small{font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.meal-toggle::after{content:'▾';color:var(--muted);flex:0 0 auto}
+.meal-toggle[aria-expanded=true]::after{content:'▴'}
+.meal-toggle span{flex:0 0 auto}
+.meal-collapsed{padding-bottom:6px}
+.meal-collapsed .meal-card-head{margin-bottom:0}
+.meal-collapsible .meal-card-head h3{width:100%}
