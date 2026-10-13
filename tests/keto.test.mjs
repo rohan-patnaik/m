@@ -1063,7 +1063,7 @@ test('stable phone header, no-cooked breakfast shows only counted ready foods, a
  run("delete state.days[0].readyB");const cooked=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(cooked,/data-keto-field="avocado"[\s\S]*data-keto-field="oil"/,'cooked choice shows the old portions again');
  // Visible wording: food rows, cook list, Adjust, shopping, batch and carbs evidence never say "raw".
  assert.equal(run("uxDisplayText('Chicken breast · raw boneless skinless')"),'Chicken breast · boneless skinless');
- assert.equal(run("uxDisplayText('Arbi (raw)')"),'Arbi');assert.equal(run("uxDisplayText('Cabbage · raw')"),'Cabbage');assert.equal(run("uxDisplayText('100 g raw edible')"),'100 g edible');assert.equal(run("uxDisplayText('Kaju · plain raw cashews (estimate)')"),'Kaju · plain cashews (estimate)');
+ assert.equal(run("uxDisplayText('Arbi (raw)')"),'Arbi');assert.equal(run("uxDisplayText('Cabbage · raw')"),'Cabbage');assert.equal(run("uxBasisText('100 g raw edible')"),'100 g edible (before cooking)');assert.equal(run("uxBasisText('100 g dry')"),'100 g dry');assert.equal(run("uxDisplayText('Kaju · plain raw cashews (estimate)')"),'Kaju · plain cashews (estimate)');
  const strip=h=>h.replace(/<[^>]*>/g,' ');
  for(const [w,h] of [['balanced','keto'],['keto','keto'],['balanced','balanced']]){
   run(`householdDiets={w:'${w}',h:'${h}'}`);
