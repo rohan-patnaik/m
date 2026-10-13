@@ -214,8 +214,8 @@ const UX_COOK_SKIP=new Set(['oil','spice','whey','curd','curdH','milk','almonds'
 function uxCookLines(lines){return aggregateBatchLines(lines).filter(x=>x.q>0&&!UX_COOK_SKIP.has(x.id)).map(x=>`${DB[x.id]?.[0]||x.id} — ${uxFoodRow(x).quantity}`);}
 function uxSelfCooks(p){return p==='h'&&isKeto(p);}
 function uxCookGroups(i){
- const d=state.days[i],skipNames=['oil','spice'].map(id=>DB[id]?.[0]).filter(Boolean),groups=[],add=(title,lines)=>{const rows=uxCookLines(lines);if(rows.length)groups.push([title,rows]);};
- const batch=batchCookGroups(i).map(([t,rows])=>[t,rows.filter(r=>!skipNames.some(n=>r.startsWith(n+' —')))]);
+ const d=state.days[i],groups=[],add=(title,lines)=>{const rows=uxCookLines(lines);if(rows.length)groups.push([title,rows]);};
+ const batch=batchCookGroups(i);
  if(d.off)return [['Note',['Eating out — nothing to cook at home today.']],...batch];
  if(kept(d,'b')){
   const bal=['w','h'].filter(p=>!isKeto(p)&&!uxReadyBreakfast(d,p));
