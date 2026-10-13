@@ -1012,5 +1012,6 @@ test('breakfast dropdowns carry No cooked breakfast; cook list shows only what t
  assert.match(cooked,/Bhindi — 475 g/);assert.match(cooked,/Cooked food: 600 g · Covers: /);assert.ok(bg.some(([t])=>t.startsWith('Already prepared')));
  assert.equal(run('savedBatches.cl.ingredients.length'),4,'record unchanged');assert.equal(run("savedBatches.cl.ingredients.find(x=>x.id==='oil').q"),14);
  assert.match(readFileSync(new URL('../batch-runtime.js',import.meta.url),'utf8'),/data-batch-oil/,'measured-oil field still in the batch editor');
+ run("householdDiets={w:'balanced',h:'balanced'};state.days[0].off=false;state.days[0].cardioW=false");assert.match(run('cookCard(0)'),/Rest day \(Wife skipped cardio\): no dinner roti — the atta below is already reduced\./);assert.doesNotMatch(run('cookCard(0)'),/nuts below/);
  run("state.days[0].off=true");assert.match(JSON.stringify(run('JSON.stringify(uxCookGroups(0))')),/Eating out/);
 });
