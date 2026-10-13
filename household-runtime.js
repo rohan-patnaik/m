@@ -63,43 +63,80 @@ const KETO_BREAKFASTS={
  omelette:{name:'Mushroom omelette',prep:'Cook the whole egg, extra whites, mushrooms and tomato in measured oil. Whey and weighed nuts are included sides.',portion:{protein:'eggs',quantity:1,eggWhites:4,mushroom:150,tomato:50,oil:5,whey:1,almonds:20,walnuts:25}},
  eggAvocado:{name:'Eggs & avocado',prep:'Cook the eggs and whites in measured oil; serve with weighed avocado flesh. Whey and almonds are included.',portion:{protein:'eggs',quantity:2,eggWhites:4,avocado:100,oil:5,whey:1,almonds:20}},
  paneerBhurji:{name:'Paneer bhurji',prep:'Scramble paneer with mushrooms, tomato and onion in measured oil. Whey and almonds are included.',portion:{protein:'paneer',quantity:125,mushroom:100,tomato:50,onion:20,oil:5,whey:1,almonds:15}},
- chickenBowl:{name:'Chicken & mushroom bowl',prep:'Cook raw boneless chicken with mushrooms and tomato in measured oil. Avocado, whey and almonds are included; this counts toward occasional chicken meals.',portion:{protein:'chicken',quantity:150,mushroom:150,tomato:50,avocado:125,oil:5,whey:1,almonds:15}},
- boiledEggs:{name:'3 boiled eggs',prep:'Boil three whole eggs. Whey, weighed nuts and avocado are counted sides; no cooking oil.',portion:{protein:'eggs',quantity:3,oil:0,whey:1,almonds:20,walnuts:25,avocado:50}},
- eggPoach:{name:'3 Egg Poach',prep:'Sunny-side-up eggs (your requested label): cook three whole eggs in 5 ml measured oil. Whey, weighed nuts and avocado are counted sides. Water-poached eggs need no oil; edit oil to zero for that method.',portion:{protein:'eggs',quantity:3,oil:5,whey:1,almonds:20,walnuts:25,avocado:50}},
- dahiBowl:{name:'Dahi protein bowl',prep:'Mix plain dahi with whey; add the weighed nuts. Avocado is a separate side. No added oil.',portion:{protein:'paneer',quantity:0,curd:100,whey:1.5,avocado:50,almonds:20,walnuts:20}}
+ chickenBowl:{name:'Chicken & mushroom bowl',prep:'Cook raw boneless chicken with mushrooms and tomato in measured oil. Whey and nuts are separate sides; this counts toward occasional chicken meals.',portion:{protein:'chicken',quantity:150,mushroom:150,tomato:50,oil:5,whey:1,almonds:15}},
+ boiledEggs:{name:'3 boiled eggs',prep:'Boil three whole eggs. No cooking oil. Whey, nuts and other sides are selected separately.',portion:{protein:'eggs',quantity:3,oil:0,whey:1,almonds:20,walnuts:25}},
+ eggPoach:{name:'3 Egg Poach',prep:'Sunny-side-up eggs (your requested label): cook three whole eggs in 5 ml measured oil. Sides are selected separately. Water-poached eggs need no oil; edit oil to zero for that method.',portion:{protein:'eggs',quantity:3,oil:5,whey:1,almonds:20,walnuts:25}},
+ dahiBowl:{name:'Dahi protein bowl',prep:'Mix plain dahi with whey; add the weighed nuts. Other sides are selected separately. No added oil.',portion:{protein:'paneer',quantity:0,curd:100,whey:1.5,almonds:20,walnuts:20}}
 };
 function ketoBreakfastName(cfg){return KETO_BREAKFASTS[cfg.breakfastRecipe]?.name||(cfg.protein==='eggs'?(cfg.spinach?'Egg & spinach scramble':'Egg breakfast'):cfg.protein==='chicken'?'Chicken breakfast':cfg.quantity?'Paneer breakfast':'Protein breakfast');}
-function ketoBreakfastOptions(i,p){
- const day=state.days[i],old=ketoConfig(day,p,'b',i),rest=comparisonEmpty();
- for(const m of ['l','d','e'])comparisonAdd(rest,comparisonSum(meal(day,m,p)));
- return Object.entries(KETO_BREAKFASTS).filter(([,x])=>p==='h'||x.portion.protein==='paneer').map(([id,x])=>{
-  // Changing only the three-egg cooking method keeps the person's existing sides.
-  const eggMethod=['boiledEggs','eggPoach'].includes(id)&&['boiledEggs','eggPoach'].includes(old.breakfastRecipe);
-  const config=old.breakfastRecipe===id?{...old}:eggMethod?{...old,oil:x.portion.oil,breakfastRecipe:id}:{...old,spinach:0,eggWhites:0,soya:0,cucumber:0,curd:0,milk:0,butter:0,almonds:0,walnuts:0,cashews:0,flax:0,avocado:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,whey:0,...x.portion,breakfastRecipe:id};
-  const nutrition=comparisonSum(householdKetoBase(day,p,'b',config)),dayNutrition=comparisonAdd(comparisonAdd(comparisonEmpty(),rest),nutrition);
-  const whey=(day[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(day,m)?ketoConfig(day,p,m,i).whey||0:0),0);
-  const otherChicken=state.days.reduce((n,d,j)=>n+['b','l','d'].filter(m=>!(j===i&&m==='b')&&meal(d,m,p).some(x=>x.id==='chicken'&&x.q>0)).length,0);
-  const reason=!isKeto(p)?'Choose Keto for this person first.':!kept(day,'b')?'Breakfast is skipped.':id==='chickenBowl'&&otherChicken>=2?'Swap an existing chicken meal first to keep chicken to 1–2 meals this week.':id==='dahiBowl'&&!day[p==='h'?'wheyH':'wheyW']?'Enable breakfast whey for this recipe.':whey>3?'This would exceed 3 whey scoops today.':dayNutrition.aHi>ketoOptions.carbBudget?`This day would reach ${F(dayNutrition.aHi)} g counted carbs (budget ${ketoOptions.carbBudget} g).`:'';
-  return {id,name:x.name,prep:x.prep,config,nutrition,dayNutrition,eligible:!reason,reason};
- });
+// A dish selection and its explicit sides share one ingredient ledger. Saved portions are never migrated on read.
+const KETO_BREAKFAST_SIDE_KEYS=['whey','curd','milk','avocado','almonds','walnuts','cashews'];
+function ketoBreakfastSides(cfg){return Object.fromEntries(KETO_BREAKFAST_SIDE_KEYS.map(k=>[k,cfg[k]||0]));}
+function breakfastSideOverride(cfg,overrides){
+ if(!overrides)return cfg;
+ for(const [k,v]of Object.entries(overrides)){
+  if(!KETO_BREAKFAST_SIDE_KEYS.includes(k)||typeof v!=='number'||!Number.isFinite(v)||v<0)throw Error('Invalid breakfast side: '+k);
+  cfg[k]=v;
+ }
+ return cfg;
 }
-// Reviewed breakfast rotation: real dishes, with weighed avocado to support energy and fibre.
-const KETO_WEEK_BREAKFASTS=[['boiledEggs',{}],['omelette',{whey:.5,eggWhites:3,mushroom:250,avocado:25}],['dahiBowl',{curd:75,avocado:125,almonds:15}],['eggAvocado',{avocado:150}],['eggPoach',{}],['dahiBowl',{curd:75,avocado:125,almonds:15}],['eggAvocado',{avocado:150}]];
+function ketoBreakfastBreakdown(day,p,cfg){
+ const lines=householdKetoBase(day,p,'b',cfg).filter(x=>x.q>0);
+ const intrinsic=new Set(cfg.breakfastRecipe==='dahiBowl'?['whey',cfg.curdType]:cfg.breakfastRecipe==='eggAvocado'?['avocado']:[]);
+ const sideIds=new Set(['whey','curd','curdH','milk','avocado','almonds','walnuts','cashews']);
+ const sideLines=lines.filter(x=>sideIds.has(x.id)&&!intrinsic.has(x.id));
+ const dishLines=lines.filter(x=>!sideIds.has(x.id)||intrinsic.has(x.id));
+ return {dishLines,sideLines,dishNutrition:comparisonSum(dishLines),sidesNutrition:comparisonSum(sideLines)};
+}
+function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null){
+ const original=state.days[i];
+ // Alternatives are cooked breakfasts even when the currently saved choice is No cooked breakfast.
+ const day={...dayOverride,readyB:{...dayOverride.readyB,[p]:false}};state.days[i]=day;
+ try{
+  const old=ketoConfig(day,p,'b',i),rest=comparisonEmpty();
+  for(const m of ['l','d','e'])comparisonAdd(rest,comparisonSum(meal(day,m,p)));
+  return Object.entries(KETO_BREAKFASTS).filter(([,x])=>p==='h'||x.portion.protein==='paneer').map(([id,x])=>{
+   const eggMethod=['boiledEggs','eggPoach'].includes(id)&&['boiledEggs','eggPoach'].includes(old.breakfastRecipe);
+   // Named avocado dish includes avocado. Other newly selected dishes start without it; saved/current sides stay explicit.
+   const sides={...ketoBreakfastSides(old),avocado:id==='eggAvocado'?x.portion.avocado:0};
+   const config=old.breakfastRecipe===id?{...old}:eggMethod?{...old,oil:x.portion.oil,breakfastRecipe:id}:{...old,spinach:0,eggWhites:0,soya:0,cucumber:0,butter:0,flax:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,...x.portion,...sides,...(id==='dahiBowl'?{curd:x.portion.curd,whey:x.portion.whey}:{}),breakfastRecipe:id};
+   breakfastSideOverride(config,sideOverride);
+   MealCloud.validateRecord(ketoMealKey(i,p,'b'),config);
+   const nutrition=comparisonSum(householdKetoBase(day,p,'b',config)),dayNutrition=comparisonAdd(comparisonAdd(comparisonEmpty(),rest),nutrition);
+   const whey=(day[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(day,m)?ketoConfig(day,p,m,i).whey||0:0),0);
+   const otherChicken=state.days.reduce((n,d,j)=>n+['b','l','d'].filter(m=>!(j===i&&m==='b')&&meal(d,m,p).some(x=>x.id==='chicken'&&x.q>0)).length,0);
+   const reason=!isKeto(p)?'Choose Keto for this person first.':!kept(day,'b')?'Breakfast is skipped.':id==='chickenBowl'&&otherChicken>=2?'Swap an existing chicken meal first to keep chicken to 1–2 meals this week.':id==='dahiBowl'&&(!day[p==='h'?'wheyH':'wheyW']||!config.whey||!config.curd)?'Dahi protein bowl needs curd and breakfast whey.':whey>3?'This would exceed 3 whey scoops today.':dayNutrition.aHi>ketoOptions.carbBudget?`This day would reach ${F(dayNutrition.aHi)} g counted carbs (budget ${ketoOptions.carbBudget} g).`:'';
+   const custom=Object.entries(x.portion).some(([k,v])=>!KETO_BREAKFAST_SIDE_KEYS.includes(k)&&config[k]!==v);
+   return {id,name:x.name,prep:x.prep,config,nutrition,dayNutrition,...ketoBreakfastBreakdown(day,p,config),custom,eligible:!reason,reason};
+  });
+ }finally{state.days[i]=original;}
+}
+// Explicit breakfast examples. Review daily totals; never fill energy or fibre gaps with unchosen food.
+const KETO_WEEK_BREAKFASTS=[['boiledEggs',{}],['omelette',{whey:.5,eggWhites:3,mushroom:250}],['dahiBowl',{curd:75,almonds:15}],['eggAvocado',{avocado:150}],['eggPoach',{}],['dahiBowl',{curd:75,almonds:15}],['eggAvocado',{avocado:150}]];
 function recommendedKetoBreakfast(i){
- const [id,portion]=KETO_WEEK_BREAKFASTS[i],cfg={...ketoBreakfastOptions(i,'h').find(x=>x.id===id).config,...portion},rest=comparisonEmpty();
- for(const m of ['l','d','e'])comparisonAdd(rest,comparisonSum(meal(state.days[i],m,'h')));
- const totals=()=>comparisonAdd(comparisonAdd(comparisonEmpty(),rest),comparisonSum(householdKetoBase(state.days[i],'h','b',cfg)));
- const n=totals(),extra=Math.max(0,(2000-n.k)/1.6,(25-n.fb)/.067);
- cfg.avocado=(cfg.avocado||0)+Math.ceil(extra/5)*5;
- MealCloud.validateRecord(ketoMealKey(i,'h','b'),cfg);const t=totals();
- if(t.aHi>ketoOptions.carbBudget||t.k>2100||t.k<1900)throw Error('Breakfast rotation needs portion review for '+DAYS[i]+'.');
+ const [id,portion]=KETO_WEEK_BREAKFASTS[i],cfg={...ketoBreakfastOptions(i,'h').find(x=>x.id===id).config,...portion};
+ MealCloud.validateRecord(ketoMealKey(i,'h','b'),cfg);
+ // Calorie/protein gaps are surfaced for review rather than secretly changing the ingredients.
  return cfg;
 }
 // Validate Edit meal choices against its tentative day before touching any saved/draft meal.
-function prepareKetoBreakfasts(i,selections,dayOverride=state.days[i],recipeOverride){
+function prepareKetoBreakfasts(i,selections,dayOverride=state.days[i],recipeOverride,sideOverrides={}){
  const original=state.days[i],prepared={},recipeKey=sharedKey(i),originalRecipe=sharedRecipes[recipeKey];state.days[i]=dayOverride;
  if(recipeOverride!==undefined)sharedRecipes[recipeKey]=recipeOverride;
- try{for(const [p,id]of Object.entries(selections)){if(!id)continue;if(!['w','h'].includes(p))throw Error('Invalid breakfast person.');const option=ketoBreakfastOptions(i,p).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);const key=ketoMealKey(i,p,'b');MealCloud.validateRecord(key,option.config);prepared[key]=option.config;}return prepared;}finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[recipeKey];else sharedRecipes[recipeKey]=originalRecipe;}}
+ try{
+  for(const p of new Set([...Object.keys(selections),...Object.keys(sideOverrides)])){
+   const id=selections[p],sides=sideOverrides[p];if(!id&&!sides)continue;
+   if(!['w','h'].includes(p)||!isKeto(p))throw Error('Invalid breakfast person.');
+   let config;
+   if(id){const option=ketoBreakfastOptions(i,p,dayOverride,sides).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);config=option.config;}
+   else config=breakfastSideOverride(ketoConfig(dayOverride,p,'b',i),sides);
+   const key=ketoMealKey(i,p,'b');MealCloud.validateRecord(key,config);
+   const whey=(kept(dayOverride,'b')&&dayOverride[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(dayOverride,m)?ketoConfig(dayOverride,p,m,i).whey||0:0),0);
+   if(whey>3)throw Error('This would exceed 3 whey scoops today.');
+   prepared[key]=config;
+  }
+  return prepared;
+ }finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[recipeKey];else sharedRecipes[recipeKey]=originalRecipe;}}
 }
 // The Edit menu can choose an existing vegetable-base recipe without putting a K id in the legacy day.s field.
 // Keep explicit per-person sabzis and stage the shared record until Save has validated every choice.

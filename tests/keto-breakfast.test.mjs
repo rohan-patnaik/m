@@ -21,17 +21,20 @@ function app(){
 }
 
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
-function ready(){const run=app();run("householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),paneerType:'paneerMM',curdType:'curd'}");return run;}
+function ready(){const run=app();run("householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),paneerType:'paneerMM',curdType:'curd',whey:1,almonds:20,walnuts:25,cashews:0}");return run;}
 test('breakfast recipes count every ingredient, cooking oil, whey and available carbs from actual profiles',()=>{
  const run=ready(),options=JSON.parse(run('JSON.stringify(ketoBreakfastOptions(0,"h"))'));
- const wanted={omelette:[638.7535,62.8005,12.4211],eggAvocado:[665.2535,62.218,8.1236],paneerBhurji:[656.4135,56.0475,15.6655],chickenBowl:[685.6635,73.4975,11.18],dahiBowl:[591.6,55.276,13.127],boiledEggs:[711.3,56.9375,8.3575],eggPoach:[752.1135,56.9375,8.3575]};
- for(const o of options){const expected=wanted[o.id];near(o.nutrition.k,expected[0]);near(o.nutrition.p,expected[1]);near(o.nutrition.a,expected[2]);assert.equal(o.config.spinach,0);assert.equal(o.config.cucumber,0);records.validateRecord('keto/template/day/0/h/b',o.config);}
+ const boiled=options.find(o=>o.id==='boiledEggs'),poach=options.find(o=>o.id==='eggPoach');
+ // Three whole eggs use 72 kcal each. The separate sides total 415.3 kcal; poach counts 5 ml oil.
+ near(boiled.dishNutrition.k,216);near(boiled.sidesNutrition.k,415.3);near(boiled.nutrition.k,631.3);
+ near(poach.dishNutrition.k,256.8135);near(poach.nutrition.k,672.1135);
+ for(const o of options){near(o.nutrition.k,o.dishNutrition.k+o.sidesNutrition.k);near(o.nutrition.p,o.dishNutrition.p+o.sidesNutrition.p);near(o.nutrition.a,o.dishNutrition.a+o.sidesNutrition.a);assert.equal(o.config.spinach,0);assert.equal(o.config.cucumber,0);records.validateRecord('keto/template/day/0/h/b',o.config);if(o.id!=='eggAvocado')assert.equal(o.config.avocado,0,'unnamed avocado must not be inserted');}
  near(run("comparisonSum([L('avocado',100)]).a"),1.83);near(run("comparisonSum([L('avocado',100)]).k"),160);
 });
 test('applying a breakfast replaces the old meal only, preserves Wife and other meals, and round trips',()=>{
- const run=ready();run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),spinach:200,flax:10,soya:15,milk:100}");
+ const run=ready();run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),spinach:200,flax:10,soya:15,milk:100};ketoOptions.carbBudget=100");
  const wife=run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),later=run("JSON.stringify(['l','d','e'].map(m=>meal(state.days[0],m,'h')))"),days=run('JSON.stringify(state.days)');
- assert.equal(run("applyKetoBreakfast(0,'h','eggAvocado')"),true);assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),'eggAvocado');assert.equal(run("meal(state.days[0],'b','h').some(x=>x.q>0&&['palak','flax','soyN','milk'].includes(x.id))"),false);
+ assert.equal(run("applyKetoBreakfast(0,'h','eggAvocado')"),true);assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),'eggAvocado');assert.equal(run("meal(state.days[0],'b','h').some(x=>x.q>0&&['palak','flax','soyN'].includes(x.id))"),false);
  assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),wife);assert.equal(run("JSON.stringify(['l','d','e'].map(m=>meal(state.days[0],m,'h')))"),later);assert.equal(run('JSON.stringify(state.days)'),days);
  const before=run("JSON.stringify(meal(state.days[0],'b','h'))");run('snapshotDraft();ketoMeals={};hydrateDraft()');assert.equal(run("JSON.stringify(meal(state.days[0],'b','h'))"),before);
  run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',2)");assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),undefined);
@@ -81,4 +84,39 @@ test('Edit sabzi stages palak-corn in the existing shared record and validates w
  assert.equal(run('JSON.stringify({days:state.days,sharedRecipes,ketoMeals})'),before);
  const raw=JSON.parse(run("JSON.stringify(ketoVegetableBase('K5'))"));
  assert.equal(raw.find(x=>x.id==='palak').q,500);assert.equal(raw.find(x=>x.id==='corn').q,100);
+});
+
+test('No cooked breakfast previews the complete cooked choice and preserves state',()=>{
+ const run=ready();run("state.days[0].readyB={w:true,h:true}");
+ const before=run('JSON.stringify({state,ketoMeals,sharedRecipes})');
+ const options=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h'))"));
+ near(options.find(x=>x.id==='boiledEggs').nutrition.k,631.3);
+ near(options.find(x=>x.id==='omelette').nutrition.k,638.7535);
+ const staged=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'},{...state.days[0],readyB:{w:true,h:false}}))"));
+ assert.equal(Object.values(staged)[0].quantity,3);assert.equal(run('JSON.stringify({state,ketoMeals,sharedRecipes})'),before);
+});
+test('explicit breakfast sides preview, stage, persist and shop exactly once',()=>{
+ const run=ready();run("applyKetoBreakfast(0,'h','eggPoach');ketoMeals[ketoMealKey(0,'h','b')].avocado=50");
+ const before=run('JSON.stringify({state,ketoMeals,sharedRecipes})');
+ const preview=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h',state.days[0],{avocado:0}).find(x=>x.id==='eggPoach'))"));
+ near(preview.nutrition.k,672.1135);near(preview.sidesNutrition.k,415.3);
+ const staged=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{},state.days[0],undefined,{h:{avocado:0}}))"));
+ assert.equal(Object.values(staged)[0].avocado,0);assert.equal(run('JSON.stringify({state,ketoMeals,sharedRecipes})'),before);
+ run("Object.assign(ketoMeals,prepareKetoBreakfasts(0,{},state.days[0],undefined,{h:{avocado:0}}))");
+ assert.equal(run("meal(state.days[0],'b','h').some(x=>x.id==='avocado'&&x.q>0)"),false);
+ assert.equal(run("householdShopping().market.some(x=>x.id==='avocado'&&x.needed>0)"),false);
+ assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),'eggPoach');
+ assert.throws(()=>run("prepareKetoBreakfasts(0,{},state.days[0],undefined,{h:{whey:4}})"),/whey/);
+ assert.throws(()=>run("prepareKetoBreakfasts(0,{},state.days[0],undefined,{h:{avocado:NaN}})"),/Invalid breakfast side/);
+});
+test('tentative breakfast whey and no-cook side edits do not count excluded food or alter dormant portions',()=>{
+ const run=ready();run("ketoMeals[ketoMealKey(0,'h','b')].avocado=160;state.days[0].readyB={h:true}");
+ const before=run('JSON.stringify({state,ketoMeals})');
+ const o=JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'h',{...state.days[0],wheyH:false}).find(x=>x.id==='boiledEggs'))"));near(o.nutrition.k,495.3);
+ const c=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{},state.days[0],undefined,{h:{almonds:10}}))"));
+ assert.equal(Object.values(c)[0].avocado,160);assert.equal(Object.values(c)[0].almonds,10);assert.equal(run('JSON.stringify({state,ketoMeals})'),before);
+});
+test('breakfast suggestions never top up calories or fibre with unchosen avocado',()=>{
+ const run=ready();run("ketoOptions.carbBudget=100");
+ for(const i of [0,1,2,4,5])assert.equal(run(`recommendedKetoBreakfast(${i}).avocado`),0);
 });

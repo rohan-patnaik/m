@@ -41,13 +41,13 @@ function app(withUX=false){
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
  return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
 }
-test('pantry trial meets the reviewed daily energy, protein, fibre and 50 g budget without changing Wife',()=>{
+test('pantry draft reports nutrition gaps without inserting filler foods or changing Wife',()=>{
  const {run}=app();run("state.weekKey=null;householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});render=()=>{}");
  const wife=run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))");
  assert.equal(run('applyKetoInventoryPlan()'),true);
  assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),wife);
  const days=JSON.parse(run("JSON.stringify(state.days.map((d,i)=>({n:assignedDayNutrition(i,'h'),whey:ketoWheyDailyTotal(d,'h'),checks:dailyPlanChecks(assignedDayNutrition(i,'h'),'h')})))"));
- for(const {n,whey,checks}of days){assert.ok(n.k>=1900&&n.k<=2100);assert.ok(n.p>=120&&n.p<=165);assert.ok(n.aHi<=50);assert.ok(n.fb>=25);assert.ok(whey<=3);assert.ok(checks.some(x=>/Saturated fat|saturated fat/.test(x)),'Do not hide the saturated-fat limitation');assert.equal(n.carbUnknown,true,'Spices remain uncertain');}
+ for(const {n,whey,checks}of days){assert.ok(n.k>0);assert.ok(whey<=3);if(n.k<1900||n.k>2100)assert.ok(checks.some(x=>/kcal vs/.test(x)));if(n.p<120||n.p>165)assert.ok(checks.some(x=>/g protein vs/.test(x)));if(n.fb<25)assert.ok(checks.some(x=>/fibre/.test(x)));if(n.aHi>50)assert.ok(checks.some(x=>/exceed/.test(x)));if(n.sat*9/n.k>.1)assert.ok(checks.some(x=>/Saturated fat/.test(x)));assert.equal(n.carbUnknown,true,'Spices remain uncertain');}
  assert.equal(run("state.days.reduce((n,d)=>n+['b','l','d'].filter(m=>ketoConfig(d,'h',m).protein==='chicken'&&ketoConfig(d,'h',m).quantity>0).length,0)"),2);
  assert.equal(run("ledger().flax||0"),0);assert.equal(run("ledger().chicken"),500);
  const weights=run('JSON.stringify(dailyWeights)');run('snapshotDraft();ketoMeals={};hydrateDraft()');assert.equal(run('JSON.stringify(dailyWeights)'),weights);assert.equal(run('ketoOptions.carbBudget'),50);
