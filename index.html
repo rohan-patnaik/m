@@ -959,7 +959,7 @@ function cookCard(i){
   const skipNote=skipped.length&&!d.off
     ?`<p class="hintline" style="margin:0 0 4px">⛔ Skipped (${skipped.map(m=>({b:'breakfast',l:'lunch',d:'dinner'})[m]).join(', ')}) — cook list below excludes ${skipped.length>1?'them':'it'}.</p>`:'';
   const banner=!(typeof isKeto==='function'&&['w','h'].some(isKeto))&&(d.cardioW===false||d.cardioH===false)
-    ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): dinner roti + evening nuts removed — atta and nuts below are already reduced.</p>`:'';
+    ?`<p class="hintline" style="margin:0 0 4px">🔻 Rest day (${restWho(d)} skipped cardio): no dinner roti — the atta below is already reduced.</p>`:'';
   return skipNote+banner+(typeof uxCookGroups==='function'?uxCookGroups(i):cookRows(i)).map(g=>`<h4 style="margin:12px 0 4px;font-size:13px">${g[0]}</h4><table><tbody>${g[1].map(t=>`<tr><td>${t}</td></tr>`).join('')}</tbody></table>`).join('');
 }
 function localISO(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
