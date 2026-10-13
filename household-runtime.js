@@ -96,9 +96,17 @@ function recommendedKetoBreakfast(i){
  return cfg;
 }
 // Validate Edit meal choices against its tentative day before touching any saved/draft meal.
-function prepareKetoBreakfasts(i,selections,dayOverride=state.days[i]){
- const original=state.days[i],prepared={};state.days[i]=dayOverride;
- try{for(const [p,id]of Object.entries(selections)){if(!id)continue;if(!['w','h'].includes(p))throw Error('Invalid breakfast person.');const option=ketoBreakfastOptions(i,p).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);const key=ketoMealKey(i,p,'b');MealCloud.validateRecord(key,option.config);prepared[key]=option.config;}return prepared;}finally{state.days[i]=original;}
+function prepareKetoBreakfasts(i,selections,dayOverride=state.days[i],recipeOverride){
+ const original=state.days[i],prepared={},recipeKey=sharedKey(i),originalRecipe=sharedRecipes[recipeKey];state.days[i]=dayOverride;
+ if(recipeOverride!==undefined)sharedRecipes[recipeKey]=recipeOverride;
+ try{for(const [p,id]of Object.entries(selections)){if(!id)continue;if(!['w','h'].includes(p))throw Error('Invalid breakfast person.');const option=ketoBreakfastOptions(i,p).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);const key=ketoMealKey(i,p,'b');MealCloud.validateRecord(key,option.config);prepared[key]=option.config;}return prepared;}finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[recipeKey];else sharedRecipes[recipeKey]=originalRecipe;}}
+}
+// The Edit menu can choose an existing vegetable-base recipe without putting a K id in the legacy day.s field.
+// Keep explicit per-person sabzis and stage the shared record until Save has validated every choice.
+function prepareEditedSabzi(i,recipe){
+ if(recipe===sharedRecipe(state.days[i]))return null;
+ const key=sharedKey(i),value={...sharedRecipes[key],recipe};MealCloud.validateRecord(key,value);
+ return {key,value};
 }
 function applyKetoBreakfast(i,p,id){
  if(!cloudReady||cloudSaving)return false;

@@ -67,3 +67,18 @@ test('three-egg method comparison keeps identical sides and differs only by meas
  const before=JSON.parse(run('JSON.stringify(ledger())'));assert.equal(run("applyKetoBreakfast(0,'h','eggPoach')"),true);const after=JSON.parse(run('JSON.stringify(ledger())'));for(const k of Object.keys(before).filter(k=>k!=='oil'))near(after[k],before[k]);near(after.oil-before.oil,5);
  const back=JSON.parse(run("JSON.stringify(prepareKetoBreakfasts(0,{h:'boiledEggs'}))"));assert.equal(Object.values(back)[0].avocado,160);assert.equal(Object.values(back)[0].oil,0);
 });
+
+test('Edit sabzi stages palak-corn in the existing shared record and validates without mutating the household',()=>{
+ const run=ready();run("sharedRecipes[sharedKey(0)]={recipe:'K2',w:'S12'};ketoOptions.carbBudget=100");
+ const before=run('JSON.stringify({days:state.days,sharedRecipes,ketoMeals})');
+ const next=JSON.parse(run("JSON.stringify(prepareEditedSabzi(0,'K5'))"));
+ assert.equal(next.key,'keto/shared/template/day/0');assert.deepEqual(next.value,{recipe:'K5',w:'S12'});
+ assert.equal(run("prepareEditedSabzi(0,'K2')"),null);
+ assert.throws(()=>run("prepareEditedSabzi(0,'missing')"),/recipe/);
+ run("prepareKetoBreakfasts(0,{h:'boiledEggs'},state.days[0],prepareEditedSabzi(0,'K5').value)");
+ assert.equal(run('JSON.stringify({days:state.days,sharedRecipes,ketoMeals})'),before);
+ run("ketoOptions.carbBudget=1");assert.throws(()=>run("prepareKetoBreakfasts(0,{h:'boiledEggs'},state.days[0],{recipe:'K5'})"),/budget/);
+ assert.equal(run('JSON.stringify({days:state.days,sharedRecipes,ketoMeals})'),before);
+ const raw=JSON.parse(run("JSON.stringify(ketoVegetableBase('K5'))"));
+ assert.equal(raw.find(x=>x.id==='palak').q,500);assert.equal(raw.find(x=>x.id==='corn').q,100);
+});
