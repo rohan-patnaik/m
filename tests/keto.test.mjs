@@ -250,7 +250,7 @@ test('open meal cards preserve all four diet assignments and expose dry, raw and
  assert.ok(run("uxServingRows(0,'l','w').some(x=>x.label==='Roti atta'&&x.quantity.endsWith('dry'))"));
  assert.equal(run("uxServingRows(0,'e','h').length"),0);
  assert.ok(run("uxServingRows(0,'e','w').some(x=>x.label==='Milk')"));
- assert.equal(run("uxFoodRow(L('chicken',250)).quantity"),'250 g raw');
+ assert.equal(run("uxFoodRow(L('chicken',250)).quantity"),'250 g');assert.equal(run("uxFoodRow(L('atta',20)).quantity"),'20 g dry');
 });
 
 test('breakfast, lunch and dinner share one action band with the same slot order',()=>{
@@ -668,7 +668,7 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  assert.doesNotMatch(run("shoppingBuy({id:'chicken',unit:'g',needed:250,buy:250,packs:1,largePacks:1,largeLeftover:250})"),/ux-buy-note/);
  assert.doesNotMatch(run('ketoApplyPlanHTML()'),/strict|keto-ready/i);
  // Spinach in the protein pan: husband field, empty config renders 0, non-zero values always render.
- assert.match(h,/Spinach in protein pan \(raw g\)<input[^>]*min="0" max="1000" step="1" value="0"[^>]*data-keto-field="spinach"><small class="keto-hint">cooked in the same egg\/protein pan/);
+ assert.match(h,/Spinach in protein pan \(g, before cooking\)<input[^>]*min="0" max="1000" step="1" value="0"[^>]*data-keto-field="spinach"><small class="keto-hint">cooked in the same egg\/protein pan/);
  assert.doesNotMatch(w,/data-keto-field="spinach"/);
  run("ketoMeals[ketoMealKey(0,'w','b')]={...ketoConfig(state.days[0],'w','b'),spinach:150}");assert.match(run("ketoEditHTML(state.days[0],0,'w','b')"),/value="150"[^>]*data-keto-field="spinach"/);
  // Carb-budget info cites ISSN and interpolates Root's budget.
@@ -851,7 +851,7 @@ test('details popup, dinner-protein field, carb banner threshold, breakfast reci
  let b=run("ketoEditHTML(state.days[0],0,'h','b')");assert.doesNotMatch(b,/data-keto-breakfast/,'no picker in Adjust portions even when options exist');
  run(`globalThis.ketoBreakfastOptions=(i,p)=>[{id:'omelette',name:'Mushroom omelette',nutrition:{k:520,p:38,a:5,aHi:7},dayNutrition:{a:40,aHi:46},eligible:true}];ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'omelette',mushroom:120}`);
  b=run("ketoEditHTML(state.days[0],0,'h','b')");assert.doesNotMatch(b,/data-keto-breakfast/);
- assert.match(b,/Mushroom \(raw g\)<input[^>]*min="0" max="500" step="1" value="120"[^>]*data-keto-field="mushroom">/);assert.match(b,/Avocado \(raw g\)<input[^>]*value="0"[^>]*data-keto-field="avocado">/);
+ assert.match(b,/Mushroom \(g\)<input[^>]*min="0" max="500" step="1" value="120"[^>]*data-keto-field="mushroom">/);assert.match(b,/Avocado \(g\)<input[^>]*value="0"[^>]*data-keto-field="avocado">/);
  assert.doesNotMatch(b,/\bseeds?\b|tofu|brinjal|loki/i);
  run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),avocado:50};delete ketoMeals[ketoMealKey(0,'h','b')].breakfastRecipe;delete ketoMeals[ketoMealKey(0,'h','b')].mushroom");
  b=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(b,/data-keto-field="avocado"/);assert.doesNotMatch(b,/data-keto-field="mushroom"/);
@@ -1045,4 +1045,31 @@ test('Edit meals offers Spinach corn (K5) via a shared-recipe intent; phone meal
  assert.match(run('uxMealSummary(0,"b")'),/^W (\d+ kcal|—) · H (\d+ kcal|—)$/);
  run("globalThis.matchMedia=q=>({matches:false,addEventListener(){}})");day=run('uxDayHTML(0)');assert.doesNotMatch(day,/data-ux-meal-toggle| hidden>/);
  assert.equal(run("JSON.stringify(uxOpenMeal)"),JSON.stringify({[run('uxMealKey(0)')]:'l'}),'view-only state, no records');
+});
+
+test('stable phone header, no-cooked breakfast shows only counted ready foods, and no visible "raw" wording',()=>{
+ const {run,shopping}=app(true);
+ // The header no longer hides on scroll (that height change caused the flicker).
+ const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8'),ux=readFileSync(new URL('../ux-runtime.js',import.meta.url),'utf8');
+ assert.doesNotMatch(css,/ux-scrolled/);assert.doesNotMatch(ux,/addEventListener\('scroll'/);
+ // No cooked breakfast: only whey, curd, milk and nuts are adjustable; stored cooked fields stay untouched.
+ run("householdDiets={w:'balanced',h:'keto'};state.days[0].off=false;state.days[0].skip={b:false,l:false,d:false};state.days[0].wheyH=true;ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),protein:'eggs',quantity:3,eggWhites:3,avocado:50,mushroom:120,cucumber:100,oil:5,almonds:20,curd:100}");
+ const stored=run("JSON.stringify(ketoMeals[ketoMealKey(0,'h','b')])");
+ run("state.days[0].readyB={w:false,h:true}");const ready=run("ketoEditHTML(state.days[0],0,'h','b')");
+ const fields=[...ready.matchAll(/data-keto-field="(\w+)"/g)].map(m=>m[1]);
+ assert.deepEqual(fields,['whey','curd','milk','almonds','walnuts','cashews']);
+ assert.doesNotMatch(ready,/data-keto-choice="(protein|paneerType)"|eggWhites|avocado|mushroom|cucumber|data-keto-field="oil"|flax|butter/);
+ assert.match(ready,/data-keto-choice="curdType"/);assert.equal(run("JSON.stringify(ketoMeals[ketoMealKey(0,'h','b')])"),stored,'stored portions untouched');
+ run("delete state.days[0].readyB");const cooked=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(cooked,/data-keto-field="avocado"[\s\S]*data-keto-field="oil"/,'cooked choice shows the old portions again');
+ // Visible wording: food rows, cook list, Adjust, shopping, batch and carbs evidence never say "raw".
+ assert.equal(run("uxDisplayText('Chicken breast · raw boneless skinless')"),'Chicken breast · boneless skinless');
+ assert.equal(run("uxDisplayText('Arbi (raw)')"),'Arbi');assert.equal(run("uxDisplayText('Cabbage · raw')"),'Cabbage');assert.equal(run("uxDisplayText('100 g raw edible')"),'100 g edible');assert.equal(run("uxDisplayText('Kaju · plain raw cashews (estimate)')"),'Kaju · plain cashews (estimate)');
+ const strip=h=>h.replace(/<[^>]*>/g,' ');
+ for(const [w,h] of [['balanced','keto'],['keto','keto'],['balanced','balanced']]){
+  run(`householdDiets={w:'${w}',h:'${h}'}`);
+  for(let i=0;i<7;i++){assert.doesNotMatch(strip(run(`uxDayHTML(${i})`)),/\braw\b/i,`day ${i} ${w}/${h}`);assert.doesNotMatch(strip(run(`cookCard(${i})`)),/\braw\b/i,`cook ${i}`);for(const m of ['b','l','d'])assert.doesNotMatch(strip(run(`inspect(${i},'${m}')`)),/\braw\b/i,`details ${i}${m}`);}
+ }
+ run("renderShopping()");assert.doesNotMatch(strip(shopping.innerHTML),/\braw\b/i);assert.match(shopping.innerHTML,/data-raw-need=/,'data attribute kept');
+ assert.doesNotMatch(run("batchIngredientTable({ingredients:[{id:'chicken',q:250},{id:'gobi',q:300}]})"),/\braw\b/i);
+ assert.match(run("uxFoodRow(L('mushroom',250)).quantity"),/^250 g$/);assert.match(run("uxFoodRow(L('moong',25)).quantity"),/^25 g dry$/);
 });
