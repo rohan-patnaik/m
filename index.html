@@ -1001,7 +1001,10 @@ function editKetoOptions(i,p){try{const o=isKeto(p)&&typeof ketoBreakfastOptions
 function editKetoRecipe(i,p){const r=isKeto(p)&&ketoConfig(state.days[i],p,'b',i).breakfastRecipe;return r&&editKetoOptions(i,p).some(o=>o.id===r)?r:'';}
 const EDIT_NOCOOK='__nocook';
 function editReady(d,p){return !!(d.readyB&&d.readyB[p]);}
-function editValsFromState(i){const d=state.days[i];return{readyW:editReady(d,'w'),readyH:editReady(d,'h'),b:d.b,bw:isKeto('w')&&editReady(d,'w')?EDIT_NOCOOK:editKetoRecipe(i,'w'),bh:isKeto('h')&&editReady(d,'h')?EDIT_NOCOOK:editKetoRecipe(i,'h'),s:d.s,p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
+function editSabzi(d){return typeof sharedRecipe==='function'?sharedRecipe(d):d.s;}
+// K-series vegetable bases live in sharedRecipes, never in day.s (records accept S1–S12 only).
+function editSabziOptions(cur){const k={K5:KETO_SHARED.K5};if(/^K\d$/.test(cur)&&!KETO_RETIRED.includes(cur))k[cur]=KETO_SHARED[cur];return opts(SABZIS,cur)+opts(k,cur);}
+function editValsFromState(i){const d=state.days[i];return{readyW:editReady(d,'w'),readyH:editReady(d,'h'),b:d.b,bw:isKeto('w')&&editReady(d,'w')?EDIT_NOCOOK:editKetoRecipe(i,'w'),bh:isKeto('h')&&editReady(d,'h')?EDIT_NOCOOK:editKetoRecipe(i,'h'),s:editSabzi(d),p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
 function editFormHTML(v,i=editCtx?editCtx.i:0){
   // Protein sabzis already include protein: the Dinner protein field is hidden, and collectEdit keeps its last value.
   const noExtra=NO_EXTRA(v.s);
@@ -1010,7 +1013,7 @@ function editFormHTML(v,i=editCtx?editCtx.i:0){
   const kb=p=>{const o=editKetoOptions(i,p),cur=o.some(x=>x.id===v['b'+p])?v['b'+p]:'';const nc=v['b'+p]===EDIT_NOCOOK;return`<label>${PERSON_NAMES[p]} breakfast<select data-ek="b${p}"><option value=""${cur||nc?'':' selected'}>Current / Custom</option><option value="${EDIT_NOCOOK}"${nc?' selected':''}>No cooked breakfast</option>${o.map(x=>{const off=x.eligible===false&&x.reason;return`<option value="${esc(x.id)}"${x.id===cur?' selected':''}${x.eligible===false?' disabled':''}${off?` title="${esc(x.reason)}"`:''}>${esc(name(x.name))}${x.nutrition&&typeof x.nutrition.k==='number'?` · ${R(x.nutrition.k)} kcal`:''}${off?` (${esc(x.reason)})`:''}</option>`;}).join('')}</select></label>`;};
   return`<div class="editform">
     ${bal.length===1?`<label>${PERSON_NAMES[bal[0]]} breakfast<select data-ek="b"><option value="${EDIT_NOCOOK}"${v['ready'+bal[0].toUpperCase()]?' selected':''}>No cooked breakfast</option>${opts(BREAKFASTS,v['ready'+bal[0].toUpperCase()]?null:v.b)}</select></label>`:bal.length===2?`<label>Breakfast recipe (both)<select data-ek="b">${opts(BREAKFASTS,v.b)}</select></label>${['w','h'].map(p=>`<label>${PERSON_NAMES[p]} breakfast<select data-ek="r${p}"><option value="cook">Cooked recipe</option><option value="${EDIT_NOCOOK}"${v['ready'+p.toUpperCase()]?' selected':''}>No cooked breakfast</option></select></label>`).join('')}`:''}${['w','h'].filter(isKeto).map(kb).join('')}
-    <label>Lunch + dinner sabzi<select data-ek="s">${opts(SABZIS,v.s)}</select></label>
+    <label>Lunch + dinner sabzi<select data-ek="s">${editSabziOptions(v.s)}</select></label>
     ${noExtra?'':`<label>Dinner protein<select data-ek="p">${opts(PROTEINS,v.p)}</select></label>`}
     <label>Dal<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>
     <div><div class="lbl">For the day</div><div class="tglrow">${tgl('wheyW','W whey')}${tgl('wheyH','H whey')}${tgl('eggH','H eggs')}${tgl('cardioW','W cardio')}</div></div>
@@ -1037,15 +1040,20 @@ function openEdit(i,iso){
   $('#dlgBody').innerHTML=`<p class="ux-scope${!iso&&!state.weekKey?' ux-scope-template':''}">${esc(scope)}</p>`+editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();
 }
+// Shared-recipe intent from the sabzi select: a K id when one is picked, 'original' when an S id replaces an active
+// shared override, otherwise null. Root writes it into the existing sharedRecipes record (current or new week scope).
+function editSharedIntent(v){const snap=editSnap?JSON.parse(editSnap):{};if(!v.s||v.s===snap.s)return null;if(/^K\d$/.test(v.s))return v.s;const rec=typeof sharedRecipes==='object'&&sharedRecipes[sharedKey(editCtx.i)];return rec&&rec.recipe?'original':null;}
 function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
 async function saveEdit(){
   if(!editCtx)return;
   // Build the tentative day first; nothing is mutated until breakfast recipes validate.
   const v=collectEdit(),d=structuredClone(state.days[editCtx.i]);
-  if(v.s&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}
+  const sharedIntent=editSharedIntent(v);
+  if(sharedIntent&&typeof applyEditSharedRecipe!=='function')return editMessage('Spinach corn sabzi needs the latest update.');
+  if(v.s&&/^S\d+$/.test(v.s)&&v.s!==d.s){d.s=v.s;if(NO_EXTRA(d.s))d.p='P';}
   if(v.b)d.b=v.b;
   if(v.dal)d.dal=v.dal;
-  if(v.p&&!NO_EXTRA(d.s))d.p=v.p;
+  if(v.p&&!NO_EXTRA(v.s||d.s))d.p=v.p;
   d.wheyW=v.wheyW;d.wheyH=v.wheyH;d.eggH=v.eggH;d.cardioW=v.cardioW;d.cardioH=v.cardioH;d.off=v.off;
   d.skip={b:v.skipB,l:v.skipL,d:v.skipD};
   if(v.readyW||v.readyH)d.readyB={w:!!v.readyW,h:!!v.readyH};else delete d.readyB;
@@ -1060,6 +1068,7 @@ async function saveEdit(){
   const mon=editCtx.iso&&mondayOf(editCtx.iso),newWeek=mon&&!lockedWeeks[mon],sourceScope=state.weekKey||'template';
   if(newWeek){ensureUtDay();ensureOilUse();copyDietScope(sourceScope,mon);state.weekKey=mon;}
   Object.assign(state.days[editCtx.i],d);if(!d.readyB)delete state.days[editCtx.i].readyB;
+  if(sharedIntent)applyEditSharedRecipe(editCtx.i,sharedIntent);
   if(prepared)for(const [key,value]of Object.entries(prepared))ketoMeals[newWeek?key.replace('keto/'+sourceScope+'/','keto/'+mon+'/'):key]=value;
   state.custom=true;
   if(newWeek){lockedWeeks[mon]={days:structuredClone(state.days),mode:state.mode,personModes:{...state.personModes},utDay:structuredClone(state.utDay),soya:state.soya,oilUse:structuredClone(state.oilUse),savedAt:Date.now()};persistWeeks();}

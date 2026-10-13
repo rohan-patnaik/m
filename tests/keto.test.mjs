@@ -860,7 +860,7 @@ test('details popup, dinner-protein field, carb banner threshold, breakfast reci
  assert.match(card,/<p class="meal-menu">(<b>Wife<\/b> )?(Mushroom omelette|Eggs &amp; avocado)/);assert.doesNotMatch(card,/Ready portions/);assert.equal(run("uxFoodRow({id:'avocado',q:50}).label"),'Avocado');
  // Equal-height laptop cards with the totals table pinned; phone stacks at natural height.
  const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8');
- assert.match(css,/@media\(min-width:1001px\)\{\n \.meal-cards\{align-items:stretch\}\n \.meal-card:not\(\.meal-snacks\)\{display:flex;flex-direction:column\}\n \.meal-card:not\(\.meal-snacks\)>\.meal-table-foot\{margin-top:auto\}/);
+ assert.match(css,/@media\(min-width:1001px\)\{\n \.meal-cards\{align-items:stretch\}\n \.meal-card:not\(\.meal-snacks\)\{display:flex;flex-direction:column\}\n \.meal-body\{display:contents\}\n \.meal-card:not\(\.meal-snacks\)>\.meal-body>\.meal-table-foot\{margin-top:auto\}/);
  assert.match(css,/@media\(max-width:1000px\)\{\n \.meal-cards\{grid-template-columns:1fr;align-items:start\}\n \.meal-card\{display:block\}/);
  assert.match(run("uxMealTable(0,'l')"),/<\/tbody><\/table>(<p class="meal-foot">[^<]*<\/p>)?<table class="meal-table meal-table-foot"><caption class="sr-only">Lunch totals: Wife, Husband<\/caption><colgroup><col><col class="meal-col"><col class="meal-col"><\/colgroup><tfoot><tr class="meal-k-row">/);
 });
@@ -1014,4 +1014,39 @@ test('breakfast dropdowns carry No cooked breakfast; cook list shows only what t
  assert.match(readFileSync(new URL('../batch-runtime.js',import.meta.url),'utf8'),/data-batch-oil/,'measured-oil field still in the batch editor');
  run("householdDiets={w:'balanced',h:'balanced'};state.days[0].off=false;state.days[0].cardioW=false");assert.match(run('cookCard(0)'),/Rest day \(Wife skipped cardio\): no dinner roti — the atta below is already reduced\./);assert.doesNotMatch(run('cookCard(0)'),/nuts below/);
  run("state.days[0].off=true");assert.match(JSON.stringify(run('JSON.stringify(uxCookGroups(0))')),/Eating out/);
+});
+
+test('Edit meals offers Spinach corn (K5) via a shared-recipe intent; phone meal cards are a one-open accordion',async()=>{
+ const {run}=app(true);
+ run(`var els={},order=[],hook=[];document.querySelector=s=>els[s]||null;state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};delete d.readyB});save=()=>order.push('save');saveChanges=async()=>{order.push('saveChanges');return true};render=()=>{};var dlg={open:true,close(){this.open=false}};var box={dataset:{},textContent:''};document.createElement=()=>box`);
+ run("householdDiets={w:'balanced',h:'keto'};state.days[0].s='S1';delete sharedRecipes[sharedKey(0)]");
+ let f=run('editFormHTML(editValsFromState(0),0)');const sel=f.match(/data-ek="s">[\s\S]*?<\/select>/)[0];
+ assert.match(sel,/<option value="K5">K5 · Spinach corn sabzi<\/option>/);assert.match(sel,/<option value="S1" selected>/);assert.doesNotMatch(sel,/value="K3"/);
+ // The editor shows the sabzi actually planned when a shared override is active.
+ run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");assert.equal(run('editValsFromState(0).s'),'K5');f=run('editFormHTML(editValsFromState(0),0)');
+ assert.match(f,/<option value="K5" selected>K5 · Spinach corn sabzi<\/option>/);assert.match(f,/<label>Dinner protein<select data-ek="p">/,'K5 has no protein inside');
+ run("sharedRecipes[sharedKey(0)]={recipe:'S12'}");assert.doesNotMatch(run('editFormHTML(editValsFromState(0),0)'),/data-ek="p"/,'effective protein sabzi hides dinner protein');
+ run("sharedRecipes[sharedKey(0)]={recipe:'K4'}");assert.match(run('editFormHTML(editValsFromState(0),0)'),/<option value="K4" selected>K4 · Bhindi<\/option>/);
+ // Save: K never reaches day.s; without Root's hook the editor says so and changes nothing.
+ run("delete sharedRecipes[sharedKey(0)]");
+ const setup=s=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:${JSON.stringify(s)}},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:''},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}order=[];hook=[];dlg.open=true`);
+ const before=run('JSON.stringify([state.days,sharedRecipes,ketoMeals])');
+ run('globalThis.applyEditSharedRecipe=undefined');setup('K5');await run('saveEdit()');
+ assert.equal(run('box.textContent'),'Spinach corn sabzi needs the latest update.');assert.equal(run('JSON.stringify([state.days,sharedRecipes,ketoMeals])'),before);assert.equal(run('order.length'),0);
+ run("globalThis.applyEditSharedRecipe=(i,intent)=>hook.push({i,intent,week:state.weekKey})");setup('K5');await run('saveEdit()');
+ assert.equal(run('JSON.stringify(hook)'),JSON.stringify([{i:0,intent:'K5',week:run('state.weekKey')}]));assert.equal(run('state.days[0].s'),'S1','day.s stays S-series');assert.equal(run("order.join()"),'save,saveChanges');
+ // Leaving an active K override for an S recipe asks Root to restore the saved menu.
+ run("sharedRecipes[sharedKey(0)]={recipe:'K5'}");setup('S7');await run('saveEdit()');assert.equal(run('hook[0].intent'),'original');assert.equal(run('state.days[0].s'),'S7');
+ run("delete sharedRecipes[sharedKey(0)]");setup('S2');await run('saveEdit()');assert.equal(run('hook.length'),0,'plain S change needs no shared intent');assert.equal(run('state.days[0].s'),'S2');
+ // Phone accordion: collapsed headers, one open meal per day, tap again closes, wide screens unchanged.
+ run("globalThis.matchMedia=q=>({matches:q==='(max-width:600px)',addEventListener(){}});uxOpenMeal={}");
+ let day=run('uxDayHTML(0)');
+ for(const m of ['b','l','d','e'])assert.match(day,new RegExp(`data-ux-meal-toggle="0,${m}" aria-expanded="false" aria-controls="meal-body-0-${m}"`));
+ assert.equal((day.match(/class="meal-body" id="meal-body-0-[blde]" hidden>/g)||[]).length,4);
+ run(`uxOpenMeal[uxMealKey(0)]='l'`);day=run('uxDayHTML(0)');
+ assert.match(day,/data-ux-meal-toggle="0,l" aria-expanded="true"/);assert.match(day,/id="meal-body-0-l">/);assert.equal((day.match(/aria-expanded="true"/g)||[]).length,1);
+ assert.match(day.slice(day.indexOf('id="meal-body-0-l"')),/data-weigh="0" data-weigh-meal="l"[\s\S]*data-ing="0,l"/,'Weigh & serve and Details live inside the opened body');
+ assert.match(run('uxMealSummary(0,"b")'),/^W (\d+ kcal|—) · H (\d+ kcal|—)$/);
+ run("globalThis.matchMedia=q=>({matches:false,addEventListener(){}})");day=run('uxDayHTML(0)');assert.doesNotMatch(day,/data-ux-meal-toggle| hidden>/);
+ assert.equal(run("JSON.stringify(uxOpenMeal)"),JSON.stringify({[run('uxMealKey(0)')]:'l'}),'view-only state, no records');
 });
