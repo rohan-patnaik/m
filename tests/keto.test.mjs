@@ -1005,5 +1005,12 @@ test('breakfast dropdowns carry No cooked breakfast; cook list shows only what t
  for(const id of ['oil','spice','whey','curd','curdH','milk','almonds','cashews','walnuts','cucumber','avocado'])if(run(`DB['${id}']?1:0`))assert.ok(!text.includes(run(`DB['${id}'][0]`)+' —'),id);
  assert.doesNotMatch(text,/self-cooked|Husband protein|Chicken breast —/,'Keto husband protein is self-cooked');
  assert.match(run('cookCard(0)'),/<h4[^>]*>Sabzi · /);
+ // Batch cook list and Combined cook list hide oil/spices/whey by id; the batch record, dates and servings keep everything.
+ run("state.days[0].off=false;var bt={recipe:'S1',cookedOn:dateForDay(0),vessel:'kadhai',tare:0,netWeight:600,createdAt:1,ingredients:[{id:'bhindi',q:475,n:{k:150,p:9,fb:15}},{id:'onion',q:100,n:{k:40,p:1,fb:2}},{id:'oil',q:14,n:{k:114,p:0,fb:0}},{id:'spice',q:2,n:{k:6,p:0,fb:0}}],servings:[{date:dateForDay(0),meal:'l',person:'w',component:'sabzi',share:1,grams:600}]};savedBatches.cl=bt");
+ const bg=JSON.parse(run('JSON.stringify(batchCookGroups(0))')),cooked=bg.find(([t])=>t.startsWith('Cooked batch'))[1].join('\n'),tbl=run('batchIngredientTable(bt)');
+ for(const id of ['oil','spice'])assert.ok(!cooked.includes(run(`DB['${id}'][0]`))&&!tbl.includes(run(`DB['${id}'][0]`)),id);
+ assert.match(cooked,/Bhindi — 475 g/);assert.match(cooked,/Cooked food: 600 g · Covers: /);assert.ok(bg.some(([t])=>t.startsWith('Already prepared')));
+ assert.equal(run('savedBatches.cl.ingredients.length'),4,'record unchanged');assert.equal(run("savedBatches.cl.ingredients.find(x=>x.id==='oil').q"),14);
+ assert.match(readFileSync(new URL('../batch-runtime.js',import.meta.url),'utf8'),/data-batch-oil/,'measured-oil field still in the batch editor');
  run("state.days[0].off=true");assert.match(JSON.stringify(run('JSON.stringify(uxCookGroups(0))')),/Eating out/);
 });
