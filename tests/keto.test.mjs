@@ -1094,6 +1094,12 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  run("state.days[0].s='S12'");assert.doesNotMatch(run('editFormHTML(editValsFromState(0),0)'),/data-ek="p"/);run("state.days[0].s='S1'");
  run("householdDiets={w:'keto',h:'keto'}");f=run('editFormHTML(editValsFromState(0),0)');assert.doesNotMatch(f,/data-ek="(p|dal)"/);
  run("householdDiets={w:'balanced',h:'balanced'}");f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/data-et="eggH"/);assert.match(f,/<label>Dal<select/);
+ // Real helpers: options show dish-only kcal; a different non-avocado dish starts with no avocado, eggAvocado with 100 g.
+ run("householdDiets={w:'balanced',h:'keto'}");
+ assert.match(run('editFormHTML(editValsFromState(0),0)'),/<option value="boiledEggs"[^>]*>3 boiled eggs · dish \d+ kcal/);
+ run("editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0))");
+ assert.equal(run(`editSidesForPick({...editValsFromState(0),bh:'omelette'},0,'h').avocado`),0,'old avocado not carried into a non-avocado dish');assert.equal(run(`editSidesForPick({...editValsFromState(0),bh:'boiledEggs'},0,'h').avocado`),50,'boiled ↔ poach keeps the saved sides');
+ assert.equal(run(`editSidesForPick({...editValsFromState(0),bh:'eggAvocado'},0,'h').avocado`),100);
  // No cooked: avocado input hidden but its saved value is kept (not silently deleted); dahi hides intrinsic whey/curd.
  run("householdDiets={w:'balanced',h:'keto'}");v=JSON.parse(run('JSON.stringify(editValsFromState(0))'));
  f=run(`editFormHTML({...editValsFromState(0),bh:'__nocook'},0)`);assert.doesNotMatch(f,/data-es="h\.avocado"/);assert.match(f,/sides · whey \+ nuts 45 g/);
