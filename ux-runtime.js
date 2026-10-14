@@ -58,7 +58,17 @@ function uxDishRow(i,m,p,component,lines){
  const mine=uxPotParts(i,dish).find(x=>x.meal===m&&x.person===p);
  return {label,quantity:mine?uxPartsText(mine.parts,mine.total,mine.exact):'Weigh to get cooked grams',detail:'Split the whole pot (lunch + dinner) into equal parts',unweighed:true};
 }
+// Root's mealQuantityGroups lists every planned quantity (excluded ones too, so they stay visible struck through):
+// components (sabzi, dal, weighed or batch protein) and single foods, with eggs and nuts as one group each.
 function uxServingRows(i,m,p){
+ if(typeof mealQuantityGroups==='function'){
+  const rows=[];
+  for(const g of mealQuantityGroups(state.days[i],m,p)||[]){
+   const made=g.component?[uxDishRow(i,m,p,g.component,g.lines)]:uxLineRows(g.lines);
+   for(const r of made)if(r)rows.push({...r,key:g.key,excluded:!!g.excluded,i,m,p});
+  }
+  return rows;
+ }
  const day=state.days[i];let remaining=meal(day,m,p);const rows=[];
  if(!remaining.some(x=>x.q>0))return rows;
  if(['l','d'].includes(m)){
@@ -87,7 +97,13 @@ function uxRowsHTML(rows){return rows.length?`<ul class="meal-food-list">${rows.
 // One row per food with both people's amounts side by side; shared dishes appear once.
 function uxMealRows(i,m){const order=[],cells={};for(const p of ['w','h']){const seen={};for(const r of uxServingRows(i,m,p)){const n=seen[r.label]=(seen[r.label]||0)+1,key=n>1?`${r.label}#${n}`:r.label;if(!cells[key]){cells[key]={label:r.label};order.push(key);}cells[key][p]=r;}}return order.map(k=>cells[k]);}
 // "1 scoop" needs no second line; the powder weight stays on hover/long-press and in the carbs dialog.
-function uxCellHTML(r){if(!r)return '<td class="meal-empty">—</td>';const quiet=/ g powder$/.test(r.detail||'');return `<td${r.unweighed?' class="meal-unweighed"':''}${quiet?` title="${esc(r.detail)}"`:''}><b>${esc(r.quantity)}</b>${r.detail&&!r.unweighed&&!quiet?`<small>${esc(r.detail)}</small>`:''}</td>`;}
+// A quantity with a group key is a toggle: pressed = skipped for this person, meal and day (still shown, struck through).
+function uxCellHTML(r){if(!r)return '<td class="meal-empty">—</td>';const quiet=/ g powder$/.test(r.detail||''),inner=`<b>${esc(r.quantity)}</b>${r.detail&&!r.unweighed&&!quiet?`<small>${esc(r.detail)}</small>`:''}`,cls=[r.unweighed&&'meal-unweighed',r.key&&'meal-qty',r.excluded&&'meal-excluded'].filter(Boolean).join(' ');
+ if(!r.key)return `<td${cls?` class="${cls}"`:''}${quiet?` title="${esc(r.detail)}"`:''}>${inner}</td>`;
+ const who=PERSON_NAMES[r.p],tip=r.excluded?`Skipped for ${who}. Click to add it back.`:`Click to skip for ${who} at this meal.`+(quiet?` ${r.detail}`:'');
+ return `<td class="${cls}"><button type="button" class="meal-qty-btn" data-ux-qty="${esc([r.i,r.m,r.p,r.key].join('|'))}" aria-pressed="${r.excluded}" aria-label="Skip ${esc(r.label)}, ${esc(r.quantity)}, for ${esc(who)}" title="${esc(tip)}">${inner}</button></td>`;}
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-ux-qty]');if(!b||typeof toggleMealQuantity!=='function')return;if(!cloudReady||cloudSaving)return;const [i,m,p,...k]=b.dataset.uxQty.split('|'),key=k.join('|'),id=b.dataset.uxQty;
+ if(toggleMealQuantity(Number(i),m,p,key)){queueUXSave();const again=[...document.querySelectorAll('[data-ux-qty]')].find(x=>x.dataset.uxQty===id);if(again)again.focus();}});
 function uxMealHead(food='<span class="sr-only">Food</span>'){return `<thead><tr><th scope="col">${food}</th>${['w','h'].map(p=>`<th scope="col">${PERSON_NAMES[p]}<small>${uxDietName(p)}</small></th>`).join('')}</tr></thead>`;}
 function uxMealTable(i,m){
  const d=state.days[i],rows=uxMealRows(i,m),unweighed=rows.some(r=>['w','h'].some(p=>r[p]?.unweighed)),t=['w','h'].map(p=>comparisonSum(meal(d,m,p)));

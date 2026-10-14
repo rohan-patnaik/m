@@ -497,9 +497,64 @@ button.danger{color:var(--warn);border-color:var(--warn)}
 .meal-collapsed .meal-card-head{margin-bottom:0}
 .meal-collapsible .meal-card-head h3{width:100%}
 /* Edit meals breakfast sides and the quiet day status line. */
-.edit-sides{border:1px solid var(--line);border-radius:8px;padding:4px 10px;margin:-4px 0 4px}
-.edit-sides>summary{cursor:pointer;font-size:13px;font-weight:600;min-height:32px;display:flex;align-items:center;overflow-wrap:anywhere}
-.edit-sides-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:6px 0 8px}
-.edit-sides-grid label{display:grid;gap:4px;font-size:12px;font-weight:600}
+.edit-sides{border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0}
+.edit-sides+.edit-sides{margin-top:4px}
+.edit-sides-sum{margin:0;font-size:13px;font-weight:650;min-height:28px;display:flex;align-items:center;overflow-wrap:anywhere}
+.edit-sides-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:4px 0 6px}
+.edit-sides-grid label{display:grid;gap:4px;font-size:12px;font-weight:600;min-width:0}
 .edit-sides-grid input{width:100%;min-width:0}
+/* Edit meals: one view, no horizontal scroll. Long option text used to set each select's min-content width, which
+   pushed the dialog past the viewport; every field now shrinks to its column. Wide screens show the three sections
+   side by side; phones and short screens show one section at a time behind tabs. Save/Cancel stay pinned. */
+#dlg.ux-edit-dialog{width:min(1080px,calc(100vw - 32px));max-width:calc(100vw - 32px);overflow-x:hidden}
+#dlg.ux-edit-dialog[open]{display:flex;flex-direction:column;overflow:hidden}
+#dlg.ux-edit-dialog .dialog-head{flex:0 0 auto}
+#dlg.ux-edit-dialog #dlgBody{flex:1 1 auto;min-height:0;min-width:0;display:flex;flex-direction:column}
+#dlg.ux-edit-dialog #dlgBody>*{flex:0 0 auto;min-width:0}
+#dlg.ux-edit-dialog #dlgBody>.ux-scope{order:-2;margin:0 0 6px}
+#dlg.ux-edit-dialog #dlgBody>.hintline{order:-1;margin:0 0 8px}
+#dlg.ux-edit-dialog #dlgBody>.editform{flex:1 1 auto;min-height:0}
+.editform{min-width:0;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:12px}
+.editform label{min-width:0}
+.editform select,.editform input[type=number]{width:100%;min-width:0;max-width:100%}
+.editform .hintline,.editform small{overflow-wrap:anywhere}
+.edit-sec{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.edit-sec-title{margin:0;font-size:13px;font-weight:700;color:var(--muted)}
+.editform .tglrow label{min-height:32px}
+.editbtns{margin-top:0;padding-top:10px;border-top:1px solid var(--line);background:var(--paper);position:sticky;bottom:0}
+.editbtns button{min-width:96px}
+.edit-tabs{display:none;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;background:var(--paper2)}
+.edit-tabs button{flex:1 1 0;min-width:0;min-height:32px;border:0;border-radius:999px;background:none;padding:4px 8px;font-size:13px;font-weight:650;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.edit-tabs button[aria-selected=true]{background:var(--accent);color:var(--accent-ink)}
+.edit-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(min-width:701px) and (min-height:561px){
+ .editform{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"meals sides day" "btns btns btns";column-gap:22px}
+ .editform.edit-nosides{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"meals day" "btns btns"}
+ .editform>[data-edit-sec=meals]{grid-area:meals}
+ .editform>[data-edit-sec=sides]{grid-area:sides}
+ .editform>[data-edit-sec=day]{grid-area:day}
+ .editform>.editbtns{grid-area:btns}
+}
+@media(min-width:701px) and (max-width:960px) and (min-height:561px){
+ .editform:not(.edit-nosides){grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"meals sides" "meals day" "btns btns"}
+}
+@media(max-width:700px),(max-height:560px){
+ #dlg.ux-edit-dialog{width:calc(100vw - 20px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}
+ /* A steady sheet height, so Save/Cancel stay put when switching tabs. */
+ #dlg.ux-edit-dialog[open]{height:calc(100dvh - 20px)}
+ .edit-tabs{display:flex}
+ .edit-sec-title{display:none}
+ .editform[data-sec=meals]>.edit-sec:not([data-edit-sec=meals]),
+ .editform[data-sec=sides]>.edit-sec:not([data-edit-sec=sides]),
+ .editform[data-sec=day]>.edit-sec:not([data-edit-sec=day]){display:none}
+}
+@media(max-height:560px){#dlg.ux-edit-dialog{padding:12px 16px}#dlg.ux-edit-dialog .dialog-head{padding-bottom:6px;margin-bottom:4px}}
+@media(max-width:360px){.edit-tabs button{font-size:12px;padding:4px 6px}}
 .ux-day-status{font-size:12px;color:var(--muted);margin:0 0 10px;overflow-wrap:anywhere}
+/* Meal tables: each person's quantity is a toggle. Skipped amounts stay readable, struck through and muted. */
+.meal-table td.meal-qty{padding-top:1px;padding-bottom:1px}
+.meal-qty-btn{display:block;width:100%;min-height:32px;margin:0;padding:5px 0;border:0;border-radius:6px;background:none;font:inherit;color:inherit;text-align:inherit;line-height:inherit;cursor:pointer}
+.meal-qty-btn:hover b{text-decoration:underline dotted;text-underline-offset:3px}
+.meal-qty-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.meal-excluded .meal-qty-btn b,.meal-excluded .meal-qty-btn small{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--muted)}
+.meal-excluded .meal-qty-btn:hover b{text-decoration:line-through}
