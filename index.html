@@ -1131,7 +1131,7 @@ function openEdit(i,iso){
   $('#dlg').showModal();editFit();
 }
 function editRefreshPreviews(){if(!editCtx)return;const v=collectEdit();for(const p of ['w','h'].filter(isKeto)){const el=document.querySelector(`[data-bf-preview="${p}"]`);if(el)el.textContent=editBreakfastPreview(v,editCtx.i,p);const sum=document.querySelector(`[data-edit-sides="${p}"]>.edit-sides-sum`),P=p.toUpperCase(),nc=v['b'+p]===EDIT_NOCOOK;if(sum)sum.textContent=`${PERSON_NAMES[p]} breakfast sides · ${editSideSummary({...v['sides'+P],whey:v[p==='h'?'wheyH':'wheyW']?v['sides'+P]?.whey:0},nc?'':v['b'+p]||editKetoRecipe(editCtx.i,p),nc)||'none'}`;}if(isKeto('h'))for(const m of ['l','d']){const el=document.querySelector(`[data-main-preview="${m}"]`);if(el)el.outerHTML=editMainHTML(v,editCtx.i,m);}editFit();}
-function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
+function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;editFit();}
 async function saveEdit(){
   if(!editCtx)return;
   for(const el of document.querySelectorAll('#dlgBody [data-es],#dlgBody [data-en]'))if(!el.checkValidity()){

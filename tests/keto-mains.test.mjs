@@ -88,3 +88,8 @@ test('example action keeps chosen breakfast and past dates intact',()=>{
  assert.equal(run("JSON.stringify(Object.entries(ketoMeals).filter(([k])=>/2026-10-12\\/day\\/[01]\\//.test(k)))"),run('past'));
  assert.equal(run("ketoConfig(state.days[3],'h','b').breakfastRecipe"),'boiledEggs');assert.equal(run("ketoConfig(state.days[3],'h','b').quantity"),3);
 });
+test('old query receives a reload instruction once the household uses new portions',async()=>{
+ const {read}=await import('../convex/household.js');const rows=[{key:'setting/nutritionVersion',value:15,revision:1}],ctx={db:{query:()=>({collect:async()=>rows})}};
+ await assert.rejects(()=>read._handler(ctx,{}),/Reload the meal planner/);
+ assert.deepEqual(await read._handler(ctx,{formatVersion:15}),rows);
+});
