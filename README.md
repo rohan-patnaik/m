@@ -150,3 +150,27 @@ Settings. Shopping checkboxes use `shoppingChecked(row)` and save
 cover the row renders unchecked with a muted "quantity changed — re-check" hint.
 The milk carb evidence derives from the 100 g panel × the density in Settings.
 Nut portions remain explicit and editable; older walnut grams are never renamed silently.
+
+
+## Reversible quantities (wire format 14)
+
+Meal quantity buttons retain their planned amount and toggle a scoped exclusion in
+`exclude/<template-or-Monday>/day/<0-6>/<w-or-h>/<b-l-d-e>`. Each group records a
+signature of its diet, recipe and ingredient quantities; a changed recipe or
+quantity does not inherit an obsolete exclusion. Day mode materializes an unsaved
+calendar week before toggling, preserving the recurring template. `copyDietScope`
+clones exclusions with its meals. Exclusions follow the normal cloud draft,
+conflict, save and reload flow; version 14 prevents older clients dropping them.
+
+`plannedMeal` is the immutable calculation input; `mealQuantityGroups` supplies
+both clickable rows and their removable ingredient groups. `meal` removes active
+excluded groups before all nutrition totals and carb breakdowns. `freshMeal` feeds
+shopping quantities, while already cooked batches retain their original ingredient
+purchases and frozen nutrition snapshots. Shared dish exclusions remove only the
+selected serving, including its allocated oil, and never enlarge another person's
+portion. Individual ingredient exclusions leave separately planned cooking oil
+counted. The original measured pot and its allocations remain available for undo.
+
+Verify with `node --test tests/*.test.mjs`. The quantity-exclusions tests cover
+nutrition deltas, shopping, undo/reload, all four diets, dated scope, stale signatures,
+frozen batches, previews and record validation.

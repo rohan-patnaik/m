@@ -34,8 +34,10 @@ function originalComponent(day,m,p,component,date=mealDate(day)){
 }
 function freshBalancedMeal(day,m,p){let lines=baseMeal(day,m,p);for(const component of ['sabzi','protein'])if(coveredComponent(day,m,p,component))lines=subtractIngredients(lines,balancedOriginalComponent(day,m,p,component));return lines;}
 function balancedMeal(day,m,p){let lines=freshBalancedMeal(day,m,p);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of ['sabzi','protein']){const link=batchLink(date,m,p,c);if(link)lines.push(...BatchMath.portionLines(link.batch,link.serving));}return lines;}
-function freshMeal(day,m,p){let lines=typeof assignedBaseMeal==='function'?assignedBaseMeal(day,m,p):baseMeal(day,m,p);for(const component of ['sabzi','protein'])if(coveredComponent(day,m,p,component))lines=subtractIngredients(lines,originalComponent(day,m,p,component));return lines;}
-function meal(day,m,p){let lines=freshMeal(day,m,p);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of['sabzi','protein']){const link=batchLink(date,m,p,c);if(link)lines.push(...BatchMath.portionLines(link.batch,link.serving));}return lines;}
+function unfilteredFreshMeal(day,m,p){let lines=typeof assignedBaseMeal==='function'?assignedBaseMeal(day,m,p):baseMeal(day,m,p);for(const component of ['sabzi','protein'])if(coveredComponent(day,m,p,component))lines=subtractIngredients(lines,originalComponent(day,m,p,component));return lines;}
+function plannedMeal(day,m,p){let lines=unfilteredFreshMeal(day,m,p);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of['sabzi','protein']){const link=batchLink(date,m,p,c);if(link)lines.push(...BatchMath.portionLines(link.batch,link.serving));}return lines;}
+function meal(day,m,p){const planned=plannedMeal(day,m,p),removed=mealQuantityGroups(day,m,p).filter(g=>g.excluded).flatMap(g=>g.lines);return removed.length?subtractIngredients(planned,removed):planned;}
+function freshMeal(day,m,p){return meal(day,m,p).filter(x=>!x.n);}
 function batchesCookedOn(date){return Object.entries(savedBatches).filter(([,b])=>b.cookedOn===date);}
 function batchMealTitle(day,m){
  if(m==='b'||typeof personRecipe!=='function')return mealTitle(day,m);
@@ -50,7 +52,7 @@ const BATCH_COOK_HIDE=new Set(['oil','spice','whey']);
 function batchCookGroups(i){if(!state.weekKey)return[];const date=dateForDay(i),groups=[];
  for(const [id,b]of batchesCookedOn(date))groups.push(['Cooked batch · '+batchName(b),[...b.ingredients.filter(x=>!BATCH_COOK_HIDE.has(x.id)).map(x=>`${typeof uxDisplayText==='function'?uxDisplayText(DB[x.id][0]):DB[x.id][0]} — ${F(x.q)} ${DB[x.id][3]}`),`Cooked food: ${b.netWeight} g · Covers: ${b.servings.map(s=>`${fmtMon(s.date)} ${MEAL_NAMES[s.meal]} ${PERSON_NAMES[s.person]}`).join('; ')}`]]);
  for(const [id,b]of Object.entries(savedBatches)){const rows=b.servings.filter(s=>s.date===date).map(s=>`${MEAL_NAMES[s.meal]} · ${PERSON_NAMES[s.person]}: ${s.grams} g ${s.component==='protein'?'as dinner protein':'sabzi'}${kept(batchDay(s.date),s.meal)?'':' (meal currently skipped)'}`);if(rows.length)groups.push(['Already prepared · '+batchName(b)+' · '+fmtMon(b.cookedOn),rows]);}return groups;}
-function freshSabziLines(day){const result=[];for(const m of['l','d'])for(const p of['w','h'])if(!coveredComponent(day,m,p,'sabzi'))result.push(...originalComponent(day,m,p,'sabzi'));return aggregateBatchLines(result);}
+function freshSabziLines(day){const result=[];for(const m of['l','d'])for(const p of['w','h'])if(!coveredComponent(day,m,p,'sabzi'))result.push(...includedComponent(day,m,p,'sabzi'));return aggregateBatchLines(result);}
 function aggregateBatchLines(lines){const q={};for(const x of lines)q[x.id]=(q[x.id]||0)+x.q;return Object.entries(q).filter(([,v])=>v>1e-8).map(([id,q])=>({id,q}));}
 function freshSabziShare(day,p,m){return kept(day,m)&&!coveredComponent(day,m,p,'sabzi')?sabShare(day,p,m):0;}
 function freshSabziTotal(day){return ['l','d'].reduce((a,m)=>a+freshSabziShare(day,'w',m)+freshSabziShare(day,'h',m),0);}
@@ -138,3 +140,42 @@ document.addEventListener('click',async e=>{
  const weigh=e.target.closest('[data-batch-reweigh]');if(weigh)await reweighBatch(weigh.dataset.batchReweigh);
  const remove=e.target.closest('[data-batch-remove]');if(remove&&confirm('Remove this batch and return its servings to the original meal plan?')){delete savedBatches[remove.dataset.batchRemove];save();render();if(await saveChanges())document.querySelector('#dlg').close();else document.querySelector('[data-batch-error]').textContent=syncStatusText;}
 });
+
+// Reversible meal exclusions preserve the planned quantities and all frozen batch snapshots.
+// Groups are shared by the serving UI and nutrition ledger, so a struck quantity cannot still count.
+let mealExclusions={};
+const QUANTITY_NUTS=['almonds','walnuts','cashews','nuts'];
+function exclusionKey(day,m,p){return `exclude/${state.weekKey||'template'}/day/${state.days.indexOf(day)}/${p}/${m}`;}
+function quantitySignature(day,m,p,key,lines){
+ const recipe=m==='b'?(isKeto(p)?(day.readyB?.[p]?'ready':ketoConfig(day,p,m).breakfastRecipe||ketoConfig(day,p,m).protein):day.b):key==='component:sabzi'?personRecipe(day,p):key==='component:dal'?day.dal:'';
+ return JSON.stringify({diet:isKeto(p)?'keto':'balanced',recipe,lines:lines.map(x=>({id:x.id,q:+x.q.toFixed(8),...(x.n?{n:x.n}:{})}))});
+}
+function mealQuantityGroups(day,m,p){
+ let remaining=plannedMeal(day,m,p).filter(x=>x.q>1e-8);const groups=[],i=state.days.indexOf(day),date=mealDate(day);
+ const add=(key,lines,component)=>{lines=lines.filter(x=>x.q>1e-8);if(!lines.length)return;const signature=quantitySignature(day,m,p,key,lines);groups.push({key,lines,component,signature,excluded:mealExclusions[exclusionKey(day,m,p)]?.items?.[key]===signature});};
+ if(['l','d'].includes(m)&&kept(day,m))for(const c of ['sabzi','dal','protein']){
+  const link=c!=='dal'&&date&&batchLink(date,m,p,c);
+  // Unweighed separate protein stays individual foods, matching the displayed rows.
+  if(c==='protein'&&!link&&!currentWeigh(i,'prot')?.portions.some(x=>x.meal===m&&x.person===p))continue;
+  if(c!=='dal'&&coveredComponent(day,m,p,c)&&!link)continue;
+  const lines=link?BatchMath.portionLines(link.batch,link.serving):c==='dal'?(isKeto(p)?[]:[L(day.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]):originalComponent(day,m,p,c);
+  if(!lines.some(x=>x.q>1e-8))continue;
+  add('component:'+c,lines,c);remaining=subtractIngredients(remaining,lines);
+ }
+ const bins=new Map();
+ for(const x of remaining){const key=['egg','eggWhite'].includes(x.id)?'eggs':QUANTITY_NUTS.includes(x.id)?'nuts':'food:'+x.id;if(!bins.has(key))bins.set(key,[]);bins.get(key).push(x);}
+ for(const [key,lines]of bins)add(key,lines);
+ return groups;
+}
+function toggleMealQuantity(i,m,p,key){
+ if(!cloudReady||cloudSaving||!Number.isInteger(i)||i<0||i>6||!['b','l','d','e'].includes(m)||!['w','h'].includes(p))return false;
+ const group=mealQuantityGroups(state.days[i],m,p).find(x=>x.key===key);if(!group||['food:oil','food:spice'].includes(key))return false;
+ // Day mode edits belong to that dated week, never silently change the recurring template.
+ if(state.view==='day'&&!state.weekKey){const week=mondayOf(dayViewISO());copyDietScope('template',week);lockedWeeks[week]={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:Date.now()};state.weekKey=week;}
+ const recordKey=exclusionKey(state.days[i],m,p),items={...mealExclusions[recordKey]?.items};
+ if(group.excluded)delete items[key];else items[key]=group.signature;
+ if(Object.keys(items).length){const record={items};MealCloud.validateRecord(recordKey,record);mealExclusions[recordKey]=record;}else delete mealExclusions[recordKey];
+ save();render();return true;
+}
+// Fresh ingredient purchases follow active quantities. Already cooked batches retain their original purchase totals.
+function includedComponent(day,m,p,c){const group=mealQuantityGroups(day,m,p).find(x=>x.component===c);if(group)return group.excluded?[]:group.lines;const original=originalComponent(day,m,p,c),active=mealQuantityGroups(day,m,p).filter(g=>!g.excluded&&!g.component).flatMap(g=>g.lines);return original.map(x=>L(x.id,Math.min(x.q,active.filter(y=>y.id===x.id).reduce((n,y)=>n+y.q,0)))).filter(x=>x.q>1e-8);}

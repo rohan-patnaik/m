@@ -955,8 +955,8 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.equal(run('uxEnsureWeek()'),false,'already a saved week: nothing to do');
  // Header save status, toolbar without household diets, and the new wire format.
  assert.deepEqual(JSON.parse(run("JSON.stringify(['All changes saved','Saving…','Unsaved changes','Connection lost — drafts are only in this open tab.'].map(t=>uxSaveLabel(t)[0]))")),['Saved','Saving…','Unsaved','Offline']);
- assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:13\}/);
- assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&formatVersion!==13/);
+ assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:14\}/);
+ assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&!\[13,14\]\.includes\(formatVersion\)/);
  assert.match(run('uxDayHTML(0)'),/<div class="day-actions"><button data-cook="0">1 · Cook list<\/button><button class="primary" data-weigh="0">2 · Serve<\/button><button data-edit="0">Edit meals<\/button><\/div>/);
  assert.match(run('uxWeekOverview()'),/data-ux-jump="0"[\s\S]*data-ux-jump="6"/);
  // Phone: a closed adjust control is a flex row (no float), so the action group wraps instead of overlapping it.

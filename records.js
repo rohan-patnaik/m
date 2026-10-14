@@ -21,7 +21,14 @@ export function validateKetoWheyTotals(rows){
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
- if(key==='setting/nutritionVersion'){if(![9,10,11,12,13].includes(value))throw Error('Invalid nutrition version');return;}
+ if(key==='setting/nutritionVersion'){if(![9,10,11,12,13,14].includes(value))throw Error('Invalid nutrition version');return;}
+ if(key.startsWith('exclude/')){
+ const match=/^exclude\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]\/(w|h)\/(b|l|d|e)$/.exec(key);
+ if(!match||match[1]!=='template'&&!validMonday(match[1]))throw Error('Invalid meal exclusion key');
+ if(value===null)return;
+ if(!value||Array.isArray(value)||Object.keys(value).join(',')!=='items'||!value.items||Array.isArray(value.items)||!Object.keys(value.items).length||Object.keys(value.items).length>60||JSON.stringify(value).length>32000||Object.entries(value.items).some(([k,v])=>!/^(component:(sabzi|dal|protein)|food:[a-zA-Z][a-zA-Z0-9]*|eggs|nuts)$/.test(k)||typeof v!=='string'||!v.length||v.length>16000))throw Error('Invalid meal exclusions');
+ return;
+ }
  if(key==='setting/foodChoices'){if(!value||Object.keys(value).sort().join(',')!=='butter,nuts,paneer'||!['paneerMM','paneer','paneerHP'].includes(value.paneer)||!['butter','butterH'].includes(value.butter)||value.nuts!=='cashews')throw Error('Invalid food choices');return;}
  if(key==='setting/produceOptions'){
   const ids=['gobi','arbi','bhindi','palak','carrot','potato','onion','tomato','mushroom','cucumber','cabbage','beans','corn'];

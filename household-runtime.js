@@ -13,7 +13,7 @@ const isKeto=p=>householdDiets[p]==='keto';
 const sharedKey=i=>`keto/shared/${state.weekKey||'template'}/day/${i}`;
 function copyDietScope(source,target){
  if(source===target)return;
- for(const [records,prefix]of [[ketoMeals,'keto/'],[sharedRecipes,'keto/shared/']]){
+ for(const [records,prefix]of [[ketoMeals,'keto/'],[sharedRecipes,'keto/shared/'],[mealExclusions,'exclude/']]){
   const from=prefix+source+'/',to=prefix+target+'/';
   const copied=Object.entries(records).filter(([k])=>k.startsWith(from)).map(([k,v])=>[to+k.slice(from.length),structuredClone(v)]);
   for(const key of Object.keys(records))if(key.startsWith(to))delete records[key];
@@ -80,8 +80,14 @@ function breakfastSideOverride(cfg,overrides){
  }
  return cfg;
 }
+// Candidate previews use the same exclusions as meal cards, without changing the stored recipe.
+function ketoMealWithConfig(day,p,m,cfg){
+ const i=state.days.indexOf(day);if(i<0||!isKeto(p))return householdKetoBase(day,p,m,cfg);
+ const key=ketoMealKey(i,p,m),before=ketoMeals[key];ketoMeals[key]=cfg;
+ try{return meal(day,m,p);}finally{if(before===undefined)delete ketoMeals[key];else ketoMeals[key]=before;}
+}
 function ketoBreakfastBreakdown(day,p,cfg){
- const lines=householdKetoBase(day,p,'b',cfg).filter(x=>x.q>0);
+ const lines=ketoMealWithConfig(day,p,'b',cfg).filter(x=>x.q>0);
  const intrinsic=new Set(cfg.breakfastRecipe==='dahiBowl'?['whey',cfg.curdType]:cfg.breakfastRecipe==='eggAvocado'?['avocado']:[]);
  const sideIds=new Set(['whey','curd','curdH','milk','avocado','almonds','walnuts','cashews']);
  const sideLines=lines.filter(x=>sideIds.has(x.id)&&!intrinsic.has(x.id));
@@ -102,7 +108,7 @@ function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null,re
    const config=old.breakfastRecipe===id?{...old}:eggMethod?{...old,oil:x.portion.oil,breakfastRecipe:id}:{...old,spinach:0,eggWhites:0,soya:0,cucumber:0,butter:0,flax:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,...x.portion,...sides,...(id==='dahiBowl'?{curd:x.portion.curd,whey:x.portion.whey}:{}),breakfastRecipe:id};
    breakfastSideOverride(config,sideOverride);
    MealCloud.validateRecord(ketoMealKey(i,p,'b'),config);
-   const nutrition=comparisonSum(householdKetoBase(day,p,'b',config)),dayNutrition=comparisonAdd(comparisonAdd(comparisonEmpty(),rest),nutrition);
+   const nutrition=comparisonSum(ketoMealWithConfig(day,p,'b',config)),dayNutrition=comparisonAdd(comparisonAdd(comparisonEmpty(),rest),nutrition);
    const whey=(day[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(day,m)?ketoConfig(day,p,m,i).whey||0:0),0);
    const otherChicken=state.days.reduce((n,d,j)=>n+['b','l','d'].filter(m=>!(j===i&&m==='b')&&meal(d,m,p).some(x=>x.id==='chicken'&&x.q>0)).length,0);
    const reason=!isKeto(p)?'Choose Keto for this person first.':!kept(day,'b')?'Breakfast is skipped.':id==='chickenBowl'&&otherChicken>=2?'Swap an existing chicken meal first to keep chicken to 1–2 meals this week.':id==='dahiBowl'&&(!day[p==='h'?'wheyH':'wheyW']||!config.whey||!config.curd)?'Dahi protein bowl needs curd and breakfast whey.':whey>3?'This would exceed 3 whey scoops today.':dayNutrition.aHi>ketoOptions.carbBudget?`This day would reach ${F(dayNutrition.aHi)} g counted carbs (budget ${ketoOptions.carbBudget} g).`:'';
@@ -113,7 +119,7 @@ function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null,re
 }
 function ketoBreakfastPreview(i,p,dayOverride=state.days[i],sides=null,recipeOverride){
  const original=state.days[i],rk=sharedKey(i),originalRecipe=sharedRecipes[rk];state.days[i]=dayOverride;if(recipeOverride!==undefined)sharedRecipes[rk]=recipeOverride;
- try{const cfg=breakfastSideOverride(ketoConfig(dayOverride,p,'b',i),sides),nutrition=comparisonSum(householdKetoBase(dayOverride,p,'b',cfg)),dayNutrition=comparisonAdd(comparisonEmpty(),nutrition);for(const m of ['l','d','e'])comparisonAdd(dayNutrition,comparisonSum(meal(dayOverride,m,p)));return {nutrition,dayNutrition,...ketoBreakfastBreakdown(dayOverride,p,cfg)};}finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[rk];else sharedRecipes[rk]=originalRecipe;}}
+ try{const cfg=breakfastSideOverride(ketoConfig(dayOverride,p,'b',i),sides),nutrition=comparisonSum(ketoMealWithConfig(dayOverride,p,'b',cfg)),dayNutrition=comparisonAdd(comparisonEmpty(),nutrition);for(const m of ['l','d','e'])comparisonAdd(dayNutrition,comparisonSum(meal(dayOverride,m,p)));return {nutrition,dayNutrition,...ketoBreakfastBreakdown(dayOverride,p,cfg)};}finally{state.days[i]=original;if(recipeOverride!==undefined){if(originalRecipe===undefined)delete sharedRecipes[rk];else sharedRecipes[rk]=originalRecipe;}}
 }
 // Explicit breakfast examples. Review daily totals; never fill energy or fibre gaps with unchosen food.
 const KETO_WEEK_BREAKFASTS=[['boiledEggs',{}],['omelette',{whey:.5,eggWhites:3,mushroom:250}],['dahiBowl',{curd:75,almonds:15}],['eggAvocado',{avocado:150}],['eggPoach',{}],['dahiBowl',{curd:75,almonds:15}],['eggAvocado',{avocado:150}]];
@@ -190,7 +196,7 @@ function assignedBaseMeal(day,m,p){
  if(kept(day,m)&&['l','d'].includes(m)&&personRecipe(day,p)!==effective.s){a=subtractIngredients(a,balancedOriginalComponent(effective,m,p,'sabzi'));a.push(...personSabzi(day,p).map(x=>L(x.id,x.q*balancedSabShare(effective,p,m))));}
  return a;
 }
-function ketoActualMeal(day,p,m){let a=householdKetoBase(day,p,m);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of ['sabzi','protein'])if(coveredComponent(day,m,p,c)){a=subtractIngredients(a,originalComponent(day,m,p,c,date));const link=batchLink(date,m,p,c);if(link)a.push(...BatchMath.portionLines(link.batch,link.serving));}return a;}
+function ketoActualMeal(day,p,m){if(isKeto(p))return meal(day,m,p);let a=householdKetoBase(day,p,m);const date=mealDate(day);if(date&&kept(day,m)&&['l','d'].includes(m))for(const c of ['sabzi','protein'])if(coveredComponent(day,m,p,c)){a=subtractIngredients(a,originalComponent(day,m,p,c,date));const link=batchLink(date,m,p,c);if(link)a.push(...BatchMath.portionLines(link.batch,link.serving));}return a;}
 function assignedDayNutrition(i,p){const t=comparisonEmpty();for(const m of ['b','l','d','e'])comparisonAdd(t,comparisonSum(meal(state.days[i],m,p)));return t;}
 function ketoDayNutrition(i,p){const t=comparisonEmpty();for(const m of ['b','l','d','e'])comparisonAdd(t,comparisonSum(ketoActualMeal(state.days[i],p,m)));return t;}
 function dailyPlanChecks(t,p){
@@ -204,9 +210,9 @@ function householdPrep(i){
  const d=state.days[i];if(d.off)return [['Note',['Eating out — no home meals planned']]];
  const format=a=>aggregateBatchLines(a).map(x=>`${DB[x.id]?.[0]||x.id} — ${F(x.q)} ${DB[x.id]?.[3]||'g'}`);
  const groups=[];
- if(differentSabzis(d)){for(const p of ['w','h']){const lines=['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:originalComponent(d,m,p,'sabzi'));if(lines.length)groups.push(['Cook · '+PERSON_NAMES[p]+' '+recipeName(personRecipe(d,p))+' (once for lunch + dinner)',format(lines)]);}}
+ if(differentSabzis(d)){for(const p of ['w','h']){const lines=['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:includedComponent(d,m,p,'sabzi'));if(lines.length)groups.push(['Cook · '+PERSON_NAMES[p]+' '+recipeName(personRecipe(d,p))+' (once for lunch + dinner)',format(lines)]);}}
  else{const sab=freshSabziLines(d);if(sab.length)groups.push(['Cook · one shared '+recipeName(sharedRecipe(d))+' batch',format(sab)]);}
- const dal=[];for(const p of ['w','h'])if(!isKeto(p))for(const m of ['l','d'])if(kept(d,m))dal.push(L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p)));if(dal.length)groups.push(['Cook · one dal batch for Balanced portions',format(dal)]);
+ const dal=[];for(const p of ['w','h'])if(!isKeto(p))for(const m of ['l','d'])if(kept(d,m))dal.push(...includedComponent(d,m,p,'dal'));if(dal.length)groups.push(['Cook · one dal batch for Balanced portions',format(dal)]);
  for(const p of ['w','h']){
   if(!isKeto(p)){const bf=kept(d,'b')?freshMeal(d,'b',p):[];if(bf.length)groups.push(['Cook · '+PERSON_NAMES[p]+' Balanced breakfast',format(bf)]);const extras=[];for(const m of ['l','d','e']){let rest=freshMeal(d,m,p);if(['l','d'].includes(m)){if(!coveredComponent(d,m,p,'sabzi'))rest=subtractIngredients(rest,originalComponent(d,m,p,'sabzi'));rest=subtractIngredients(rest,[L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]);}extras.push(...rest);}if(extras.length)groups.push([PERSON_NAMES[p]+' · Balanced starch / protein / dairy / extras',format(extras)]);continue;}
   const ready=[],cook=[];for(const m of ['b','l','d']){if(!kept(d,m))continue;const cfg=ketoConfig(d,p,m);const extra=subtractIngredients(freshMeal(d,m,p),coveredComponent(d,m,p,'sabzi')?[]:ketoComponent(d,p,m,'sabzi'));for(const x of extra)(['egg','eggWhite','palak','mushroom','tomato','onion','chicken','soyN','soyS'].includes(x.id)||x.id==='oil'?cook:ready).push(x);}
