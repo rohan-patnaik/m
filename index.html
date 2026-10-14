@@ -1106,7 +1106,10 @@ function editRefreshPreviews(){if(!editCtx)return;const v=collectEdit();for(cons
 function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
 async function saveEdit(){
   if(!editCtx)return;
-  for(const el of document.querySelectorAll('#dlgBody [data-es]'))if(!el.checkValidity()){el.reportValidity();return;}
+  for(const el of document.querySelectorAll('#dlgBody [data-es]'))if(!el.checkValidity()){
+    const sec=el.closest?.('[data-edit-sec]');if(sec){editShowSection(sec.dataset.editSec,false);const count=sec.querySelectorAll('[data-edit-page]').length;for(let n=0;!el.getClientRects().length&&n<count;n++){editPages[sec.dataset.editSec]=n;editFit();}}
+    el.reportValidity();return;
+  }
   // Build the tentative day first; nothing is mutated until breakfast recipes validate.
   const v=collectEdit();
   let recipeEdit=null;
