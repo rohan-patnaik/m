@@ -48,8 +48,8 @@ test('pantry draft reports nutrition gaps without inserting filler foods or chan
  assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),wife);
  const days=JSON.parse(run("JSON.stringify(state.days.map((d,i)=>({n:assignedDayNutrition(i,'h'),whey:ketoWheyDailyTotal(d,'h'),checks:dailyPlanChecks(assignedDayNutrition(i,'h'),'h')})))"));
  for(const {n,whey,checks}of days){assert.ok(n.k>0);assert.ok(whey<=3);if(n.k<1900||n.k>2100)assert.ok(checks.some(x=>/kcal vs/.test(x)));if(n.p<120||n.p>165)assert.ok(checks.some(x=>/g protein vs/.test(x)));if(n.fb<25)assert.ok(checks.some(x=>/fibre/.test(x)));if(n.aHi>50)assert.ok(checks.some(x=>/exceed/.test(x)));if(n.sat*9/n.k>.1)assert.ok(checks.some(x=>/Saturated fat/.test(x)));assert.equal(n.carbUnknown,true,'Spices remain uncertain');}
- assert.equal(run("state.days.reduce((n,d)=>n+['b','l','d'].filter(m=>ketoConfig(d,'h',m).protein==='chicken'&&ketoConfig(d,'h',m).quantity>0).length,0)"),2);
- assert.equal(run("ledger().flax||0"),0);assert.equal(run("ledger().chicken"),500);
+ assert.equal(run("state.days.reduce((n,d)=>n+['b','l','d'].filter(m=>ketoConfig(d,'h',m).protein==='chicken'&&ketoConfig(d,'h',m).quantity>0).length,0)"),4);
+ assert.equal(run("ledger().flax||0"),0);assert.equal(run("ledger().chicken"),1000);
  const weights=run('JSON.stringify(dailyWeights)');run('snapshotDraft();ketoMeals={};hydrateDraft()');assert.equal(run('JSON.stringify(dailyWeights)'),weights);assert.equal(run('ketoOptions.carbBudget'),50);
  run("state.weekKey='2026-10-05'");assert.equal(run('ketoInventoryPlanAvailable()'),false);
 });
@@ -682,7 +682,7 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  assert.equal((indexSrc.match(/'Keto trial':'Balanced'/g)||[]).length,2);
  assert.match(info,/Husband · Keto trial/);
  // Fullness: nuts are a substantial counted part of the plan; no fixed 10 g cashew default.
- assert.match(run('trialHTML()'),/Measured nuts are a substantial counted part of the plan \(about 120 g\/day in the current draft\), counted foods, not free snacks\./);
+ assert.match(run('trialHTML()'),/at most 20 g total nuts for the evening/);
  assert.doesNotMatch(info,/10 g once a day|10 g cashew/);
 });
 
@@ -879,7 +879,7 @@ test('Edit meals breakfast recipes: per-assignment selects, form-only until Save
  f=run('editFormHTML(editValsFromState(0),0)');assert.doesNotMatch(f,/data-ek="b"/);
  assert.equal(optCount(f.match(/data-ek="bh">[\s\S]*?<\/select>/)[0]),n+2);assert.equal(optCount(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0]),run("ketoBreakfastOptions(0,'w').length")+2);
  assert.match(f,/<label>Wife breakfast dish<select data-ek="bw">/);assert.doesNotMatch(f.match(/data-ek="bw">[\s\S]*?<\/select>/)[0],/chicken|omelette|eggAvocado/i);
- assert.match(f,/<option value="chickenBowl" disabled title="Swap an existing chicken meal first[^"]*">Chicken &amp; mushroom bowl · [^<]*?\d+ kcal \(Swap an existing chicken meal first[^)]*\)<\/option>/);
+ assert.doesNotMatch(f,/Swap an existing chicken meal first/);
  // Existing recipe preselects; selection is dirty, survives the sabzi re-render and touches nothing until Save.
  run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'paneerBhurji'}");
  assert.equal(run('editValsFromState(0).bh'),'paneerBhurji');assert.equal(run('editValsFromState(0).bw'),'');
@@ -955,8 +955,8 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.equal(run('uxEnsureWeek()'),false,'already a saved week: nothing to do');
  // Header save status, toolbar without household diets, and the new wire format.
  assert.deepEqual(JSON.parse(run("JSON.stringify(['All changes saved','Saving…','Unsaved changes','Connection lost — drafts are only in this open tab.'].map(t=>uxSaveLabel(t)[0]))")),['Saved','Saving…','Unsaved','Offline']);
- assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:14\}/);
- assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&!\[13,14\]\.includes\(formatVersion\)/);
+ assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:15\}/);
+ assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&!\[13,14,15\]\.includes\(formatVersion\)/);
  assert.match(run('uxDayHTML(0)'),/<div class="day-actions"><button data-cook="0">1 · Cook list<\/button><button class="primary" data-weigh="0">2 · Serve<\/button><button data-edit="0">Edit meals<\/button><\/div>/);
  assert.match(run('uxWeekOverview()'),/data-ux-jump="0"[\s\S]*data-ux-jump="6"/);
  // Phone: a closed adjust control is a flex row (no float), so the action group wraps instead of overlapping it.

@@ -11,7 +11,7 @@ function snapshotDraft(){
  if(state.weekKey){const old=lockedWeeks[state.weekKey];lockedWeeks[state.weekKey]={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:old?.savedAt||Date.now()};}
  else{templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);}
  const next={};
- next['setting/nutritionVersion']=14;
+ next['setting/nutritionVersion']=15;
  if(typeof foodChoices==='object')next['setting/foodChoices']=structuredClone(foodChoices);
  if(typeof produceOptions==='object')next['setting/produceOptions']=structuredClone(produceOptions);
  for(const k of SHARED_SETTINGS)next['setting/'+k]=structuredClone(state[k]);
@@ -90,7 +90,7 @@ async function saveChanges(){
  const changes=cloudChanges();if(!changes.length)return true;
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:14});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:15});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;

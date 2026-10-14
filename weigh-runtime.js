@@ -11,7 +11,7 @@ function weighSpecs(i,dish,scope='all'){
   let factor=0;
   if(dish.startsWith('sabzi')&&!coveredComponent(day,meal,person,'sabzi'))factor=sabShare(day,person,meal);
   if(dish==='dal')factor=typeof assignedDalShare==='function'?assignedDalShare(person):dalShare(person);
-  if(dish==='prot'&&meal==='d'&&!coveredComponent(day,meal,person,'protein')){if(typeof isKeto==='function'&&isKeto(person)){const cfg=ketoConfig(day,person,meal);if(cfg.protein==='paneer'&&personRecipe(day,person)!=='S12')factor=cfg.quantity;}else if(!NO_EXTRA(typeof personRecipe==='function'?personRecipe(day,person):day.s))factor=protein(day.p,person,day)[0].q;}
+  if(dish==='prot'&&meal==='d'&&!coveredComponent(day,meal,person,'protein')){if(typeof isKeto==='function'&&isKeto(person)){const cfg=ketoConfig(day,person,meal);if(cfg.protein==='paneer'&&(personRecipe(day,person)!=='S12'||cfg.mealRecipe))factor=cfg.quantity;}else if(!NO_EXTRA(typeof personRecipe==='function'?personRecipe(day,person):day.s))factor=protein(day.p,person,day)[0].q;}
   if(factor>0)servings.push({meal,person,factor});
  }
  return servings;

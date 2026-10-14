@@ -21,7 +21,7 @@ export function validateKetoWheyTotals(rows){
 function canonical(x){if(x===undefined)return null;if(!x||typeof x!=='object')return x;if(Array.isArray(x))return x.map(canonical);return Object.fromEntries(Object.keys(x).sort().map(k=>[k,canonical(x[k])]));}
 function validMonday(iso){const d=new Date(iso+'T00:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso&&d.getUTCDay()===1;}
 export function validateRecord(key,value){
- if(key==='setting/nutritionVersion'){if(![9,10,11,12,13,14].includes(value))throw Error('Invalid nutrition version');return;}
+ if(key==='setting/nutritionVersion'){if(![9,10,11,12,13,14,15].includes(value))throw Error('Invalid nutrition version');return;}
  if(key.startsWith('exclude/')){
  const match=/^exclude\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]\/(w|h)\/(b|l|d|e)$/.exec(key);
  if(!match||match[1]!=='template'&&!validMonday(match[1]))throw Error('Invalid meal exclusion key');
@@ -45,14 +45,16 @@ export function validateRecord(key,value){
  if(key.startsWith('keto/shared/')){const m=/^keto\/shared\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]$/.exec(key);if(!m||m[1]!=='template'&&(!validMonday(m[1])))throw Error('Invalid shared recipe key');if(value!==null&&(!value||!Object.keys(value).length||Object.entries(value).some(([k,v])=>!['recipe','w','h'].includes(k)||!/^(K[1-5]|S(?:[1-9]|10|11|12))$/.test(v))))throw Error('Invalid shared vegetable recipe');return;}
  if(key.startsWith('keto/trial/')){if(!/^keto\/trial\/\d{4}-\d{2}-\d{2}$/.test(key)||!validMonday(key.slice(11)))throw Error('Invalid trial week');if(value===null)return;const ranges={weight:[30,250],waist:[30,200],hunger:[1,5]};if(!value||Array.isArray(value)||Object.entries(value).some(([k,v])=>ranges[k]?typeof v!=='number'||!Number.isFinite(v)||v<ranges[k][0]||v>ranges[k][1]||k==='hunger'&&!Number.isInteger(v):!['strength','energy','bowel'].includes(k)||!['good','stable','worse'].includes(v)))throw Error('Invalid trial check');return;}
  if(key.startsWith('keto/')){
- const match=/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/([0-6])\/(w|h)\/(b|l|d)$/.exec(key);
+ const match=/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/([0-6])\/(w|h)\/(b|l|d|e)$/.exec(key);
  if(!match)throw Error('Invalid keto meal key');
  if(match[1]!=='template'){const date=new Date(match[1]+'T00:00:00Z');if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==match[1]||date.getUTCDay()!==1)throw Error('Invalid keto week');}
  if(value===null)return;
  const number=(x,min,max)=>typeof x==='number'&&Number.isFinite(x)&&x>=min&&x<=max;
- if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction','whey','eggWhites','almonds','spinach','avocado','mushroom','tomato','onion','breakfastRecipe'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
+ if(match[4]==='e'){if(match[3]!=='h'||!value||Array.isArray(value)||Object.keys(value).sort().join(',')!=='almonds,cashews,walnuts'||Object.values(value).some(x=>!number(x,0,20))||Object.values(value).reduce((a,b)=>a+b,0)>20+1e-8)throw Error('Evening nuts: maximum 20 g total per day.');return;}
+ if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction','whey','eggWhites','almonds','spinach','avocado','mushroom','tomato','onion','breakfastRecipe','mealRecipe'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
  if(value.paneerType!==undefined&&!['paneer','paneerHP','paneerMM'].includes(value.paneerType)||value.curdType!==undefined&&!['curd','curdH'].includes(value.curdType))throw Error('Invalid dairy product');
  for(const [field,max]of Object.entries({whey:3,eggWhites:12,spinach:1000,almonds:150,curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,cashews:150,flax:50,sabziFraction:2,avocado:500,mushroom:500,tomato:500,onion:200}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
+ if(value.mealRecipe!==undefined&&(match[3]!=='h'||!['l','d'].includes(match[4])||!['chickenAvocado','eggAvocadoPlate','eggSpinach','eggMushroom','eggCurry','boiledEggMeal','chickenPan','chickenDahi','paneerPan','highProteinPaneer','eggSoya'].includes(value.mealRecipe)))throw Error('Invalid keto main dish');
  if(value.breakfastRecipe!==undefined&&(match[4]!=='b'||!['omelette','eggAvocado','paneerBhurji','chickenBowl','dahiBowl','boiledEggs','eggPoach'].includes(value.breakfastRecipe)||match[3]==='w'&&!['paneerBhurji','dahiBowl'].includes(value.breakfastRecipe)))throw Error('Invalid keto breakfast');
  if(value.eggWhites!==undefined&&(!Number.isInteger(value.eggWhites)||match[3]==='w'&&value.eggWhites>0))throw Error('Invalid extra egg whites');
  if(value.whey!==undefined&&!Number.isInteger(value.whey*2))throw Error('Use whole or half whey scoops');
@@ -85,3 +87,11 @@ export function mergeRecords(base,draft,incoming){const merged={},conflicts=[];f
  const b=base[k]?.value??null,d=draft[k]??null,r=incoming[k]?.value??null;
  if(equal(d,b)||equal(d,r))merged[k]=r;else{merged[k]=d;if(!equal(b,r))conflicts.push(k);}
  }return {draft:merged,conflicts};}
+
+export function validateKetoNuts(rows){
+ const map=Object.fromEntries(rows.map(r=>[r.key,r.value]));
+ for(const [key,value]of Object.entries(map))if(/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]\/h\/e$/.test(key)&&value){
+  validateRecord(key,value);
+  for(const m of ['b','l','d'])if(['almonds','walnuts','cashews'].some(id=>(map[key.slice(0,-1)+m]?.[id]||0)>0))throw Error('Husband nuts belong in the evening only, maximum 20 g total.');
+ }
+}
