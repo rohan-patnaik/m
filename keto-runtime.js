@@ -36,7 +36,7 @@ function ketoSuggestion(day,p,m){
  if(m==='e')return {name:p==='h'?'Evening nuts':'Water / unsweetened tea',note:p==='h'?'Up to 20 g total nuts, counted here once.':'No additional snack planned.'};
  const cfg=ketoConfig(day,p,m),date=mealDate(day),prepared=date&&['l','d'].includes(m)?batchLink(date,m,p,'sabzi'):null;
  const veg=prepared?batchName(prepared.batch):recipeName(personRecipe(day,p));
- const savedProtein=date&&batchLink(date,m,p,'protein'),inside=coveredComponent(day,m,p,'protein')&&!savedProtein;const proteinName=savedProtein?batchName(savedProtein.batch):inside?'protein already in prepared sabzi':{paneer:{paneerHP:'high-protein paneer',paneerMM:'Milky Mist paneer',paneer:'Heritage paneer'}[cfg.paneerType]||'paneer',eggs:'eggs',chicken:'chicken breast'}[cfg.protein];const name=m==='b'?ketoBreakfastName(cfg):cfg.mealRecipe?veg+' + '+KETO_MAINS[cfg.mealRecipe].name:personRecipe(day,p)==='S12'?veg:veg+' + '+proteinName;
+ const savedProtein=date&&batchLink(date,m,p,'protein'),inside=coveredComponent(day,m,p,'protein')&&!savedProtein;const proteinName=savedProtein?batchName(savedProtein.batch):inside?'protein already in prepared sabzi':{paneer:{paneerHP:'high-protein paneer',paneerMM:'Milky Mist paneer',paneer:'Heritage paneer'}[cfg.paneerType]||'paneer',eggs:'eggs',chicken:'chicken breast'}[cfg.protein];const name=m==='b'?ketoBreakfastName(cfg):cfg.mealRecipe?veg+' + '+(KETO_MAINS[cfg.mealRecipe]?.name||'Custom protein plate'):personRecipe(day,p)==='S12'?veg:veg+' + '+proteinName;
  const scoops=ketoWheyScoops(day,p,m,cfg),whey=scoops>0?F(scoops)+' scoop'+(scoops===1?'':'s')+' whey with water':'';
  return {name,note:m==='b'?'No separate vegetable recipe. Ready protein and cucumber'+(whey?', plus '+whey+'.':'.'):'Share the cook’s actual sabzi. Rice/roti and default dal are omitted for this keto person. Protein choice replaces the separate paneer portion; paneer already inside a shared/prepared recipe still counts.'+(whey?' Plus '+whey+'.':'')};
 }
@@ -122,7 +122,7 @@ const KETO_SIDE_FIELDS=['whey','curd','milk','avocado','almonds','walnuts','cash
 function updateKetoPortion(key,field,value){
  if(!cloudReady||cloudSaving)return false;const match=/\/day\/([0-6])\/(w|h)\/(b|l|d)$/.exec(key);if(!match)return false;
  const [,index,p,m]=match,i=Number(index);if(key!==ketoMealKey(i,p,m))return false;const cfg=ketoConfig(state.days[i],p,m,i);
- if(field==='protein'){cfg.protein=value;cfg.quantity=value==='eggs'?4:value==='chicken'?250:75;cfg.soya=0;cfg.oil=value==='paneer'?0:3;}
+ if(field==='protein'){if(cfg.mealRecipe)cfg.mealRecipe='custom';cfg.protein=value;cfg.quantity=value==='eggs'?4:value==='chicken'?250:75;cfg.soya=0;cfg.oil=value==='paneer'?0:3;}
  else if(['paneerType','curdType'].includes(field))cfg[field]=value;
  else cfg[field]=field==='sabziFraction'?Number(value)/ketoVegetableBase(personRecipe(state.days[i],p)).reduce((n,x)=>n+x.q,0):Number(value);
  if(m==='b'&&!KETO_SIDE_FIELDS.includes(field))delete cfg.breakfastRecipe;

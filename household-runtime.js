@@ -95,7 +95,7 @@ function withKetoEditPreview(i,day,recipe,prepared,fn){
 }
 function ketoMainOptions(i,m,day=state.days[i],recipe,prepared={}){
  return withKetoEditPreview(i,day,recipe,prepared,()=>Object.entries(KETO_MAINS).map(([id,x])=>{
-  const cfg=ketoMainConfig(i,'h',m,id,day),nutrition=comparisonSum(ketoMealWithConfig(day,'h',m,cfg));
+  const old=ketoConfig(day,'h',m,i),cfg=old.mealRecipe===id?old:ketoMainConfig(i,'h',m,id,day),nutrition=comparisonSum(ketoMealWithConfig(day,'h',m,cfg));
   const reason=coveredComponent(day,m,'h','protein')||coveredComponent(day,m,'h','sabzi')?'Prepared batch: remove it before changing this dish.':'';
   return {id,name:x.name,config:cfg,nutrition,reason};
  }));
@@ -181,6 +181,7 @@ function prepareKetoBreakfasts(i,selections,dayOverride=state.days[i],recipeOver
    let config;
    if(id){const option=ketoBreakfastOptions(i,p,dayOverride,sides).find(x=>x.id===id);if(!option)throw Error('Breakfast is unavailable for this person.');if(!option.eligible)throw Error(option.reason);config=option.config;}
    else config=breakfastSideOverride(ketoConfig(dayOverride,p,'b',i),sides);
+   if(ketoEveningOnly(i,p))for(const nut of KETO_NUT_IDS)config[nut]=0;
    const key=ketoMealKey(i,p,'b');MealCloud.validateRecord(key,config);
    const whey=(kept(dayOverride,'b')&&dayOverride[p==='h'?'wheyH':'wheyW']?config.whey:0)+['l','d'].reduce((q,m)=>q+(kept(dayOverride,m)?ketoConfig(dayOverride,p,m,i).whey||0:0),0);
    if(whey>3)throw Error('This would exceed 3 whey scoops today.');
@@ -208,32 +209,17 @@ function ketoInventoryPlanAvailable(){
 }
 function applyKetoInventoryPlan(){
  if(!cloudReady||cloudSaving||!ketoInventoryPlanAvailable())return false;
- const recipes=['S1','K2','S3','K5','S12','K1','K1'];
+ const picks=[['paneerPan','eggAvocadoPlate'],['paneerPan','chickenAvocado'],['chickenAvocado','eggAvocadoPlate'],['paneerPan','eggAvocadoPlate'],['boiledEggMeal','eggAvocadoPlate'],['paneerPan','chickenAvocado'],['chickenAvocado','paneerPan']];
  for(let i=0;i<7;i++){
-  const day=state.days[i],recipe=recipes[i],inside=['S3','S12'].includes(recipe),chicken=[1,5].includes(i);
-  if(personRecipe(day,'h')!==recipe)sharedRecipes[sharedKey(i)]={...sharedRecipes[sharedKey(i)],w:personRecipe(day,'w'),h:recipe};
-  for(const m of ['b','l','d']){
-   const cfg={...ketoConfig(day,'h',m,i),whey:m==='b'?1:m==='l'?(chicken?.5:1):0,
-    flax:0,spinach:0,
-    cashews:0,almonds:0,walnuts:0,
-    curd:m==='l'?(i===0?0:[2,3,4,6].includes(i)?50:75):0,curdType:'curd',
-    cucumber:m==='d'?150:0,milk:0,butter:0,soya:0,paneerType:'paneerMM',
-    quantity:m==='b'?(recipe==='S12'?4:1):m==='l'?(inside?0:100):(recipe==='S12'?0:chicken?250:2),
-    protein:m==='b'?'eggs':m==='d'&&chicken?'chicken':m==='d'?'eggs':'paneer',
-    eggWhites:m==='b'?(chicken?0:4):0,oil:m==='b'?5:m==='d'&&recipe!=='S12'?5:0,
-    sabziFraction:m==='b'?0:inside?.3:i===0?.30:i===3?.26:.35};
-   if(m==='b')delete cfg.breakfastRecipe;
-   MealCloud.validateRecord(ketoMealKey(i,'h',m),cfg);ketoMeals[ketoMealKey(i,'h',m)]=cfg;
-  }
- }
- ketoOptions={...ketoOptions,targetK:2000,pMin:120,pMax:165,carbBudget:50};
- for(let i=0;i<7;i++){
+  if(state.weekKey&&dateForDay(i)<'2026-10-14')continue;
+  const day=state.days[i];
+  ketoMeals[ketoMealKey(i,'h','b')]={...ketoConfig(day,'h','b',i),almonds:0,walnuts:0,cashews:0};
   ketoMeals[ketoMealKey(i,'h','e')]={almonds:10,walnuts:10,cashews:0};
-  ketoMeals[ketoMealKey(i,'h','b')]=recommendedKetoBreakfast(i);
-  for(const [m,id]of [['l',['paneerPan','eggSpinach','chickenDahi','eggMushroom','eggSpinach','paneerPan','chickenPan'][i]],['d',[ 'eggMushroom','chickenPan','eggCurry','paneerPan','eggMushroom','chickenDahi','eggSpinach'][i]]])ketoMeals[ketoMealKey(i,'h',m)]=ketoMainConfig(i,'h',m,id);
+  for(const [j,m]of ['l','d'].entries())ketoMeals[ketoMealKey(i,'h',m)]=ketoMainConfig(i,'h',m,picks[i][j]);
  }
  save();render();return true;
 }
+
 function assignedBaseMeal(day,m,p){
  if(isKeto(p))return householdKetoBase(day,p,m);
  const effective=assignedBalancedDay(day,p);let a=baseMeal(effective,m,p);

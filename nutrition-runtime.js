@@ -116,7 +116,7 @@ function ketoDefaultConfig(day,p,m,i,scope=state.weekKey||'template'){
  if(m==='e')return {almonds:0,walnuts:0,cashews:0};
  const h=p==='h',protein=h&&m==='d'?([1,4].includes(i)?'chicken':'eggs'):'paneer';
  const record=sharedRecipes[`keto/shared/${scope}/day/${i}`]||{},recipe=plannedRecipe(record[p]||record.recipe||day.s,scope);
- return {whey:m==='b'&&(h?day.wheyH:day.wheyW)?1:0,eggWhites:0,spinach:0,almonds:0,protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'&&!(p==='h'&&(scope==='template'||scope>='2026-10-12'))?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare({...day,s:recipe},p,m)};
+ return {whey:m==='b'&&(h?day.wheyH:day.wheyW)?1:0,eggWhites:0,spinach:0,almonds:0,protein,quantity:protein==='eggs'?4:protein==='chicken'?250:m==='l'?(h?75:100):75,soya:0,oil:protein==='eggs'||protein==='chicken'?3:0,paneerType:paneerId(),curdType:'curdH',curd:m==='l'?100:0,milk:0,butter:0,cucumber:h?(m==='l'?100:150):100,walnuts:0,cashews:m==='b'&&!(p==='h'&&ketoMeals[ketoMealKey(i,p,'e',scope)])?10:0,flax:h?10:5,sabziFraction:m==='b'?0:h?.35:balancedSabShare({...day,s:recipe},p,m)};
 }
 function ketoConfig(day,p,m,i=state.days.indexOf(day),scope=state.weekKey||'template'){i=Math.max(0,i);const saved=structuredClone(ketoMeals[ketoMealKey(i,p,m,scope)]||{}),defaults=ketoDefaultConfig(day,p,m,i,scope);if(Object.hasOwn(saved,'walnuts')&&!Object.hasOwn(saved,'cashews'))defaults.cashews=0;return {...defaults,...saved};}
 function ketoDraftMeal(day,p,m){return typeof householdKetoBase==='function'?householdKetoBase(day,p,m):[];}

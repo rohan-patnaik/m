@@ -54,7 +54,7 @@ export function validateRecord(key,value){
  if(!value||Array.isArray(value)||['oil','protein','quantity','soya'].some(k=>!(k in value))||Object.keys(value).some(k=>!['oil','protein','quantity','soya','paneerType','curdType','curd','milk','butter','cucumber','walnuts','cashews','flax','sabziFraction','whey','eggWhites','almonds','spinach','avocado','mushroom','tomato','onion','breakfastRecipe','mealRecipe'].includes(k))||!['paneer','eggs','chicken'].includes(value.protein)||match[3]==='w'&&value.protein!=='paneer')throw Error('Invalid keto protein');
  if(value.paneerType!==undefined&&!['paneer','paneerHP','paneerMM'].includes(value.paneerType)||value.curdType!==undefined&&!['curd','curdH'].includes(value.curdType))throw Error('Invalid dairy product');
  for(const [field,max]of Object.entries({whey:3,eggWhites:12,spinach:1000,almonds:150,curd:500,milk:500,butter:50,cucumber:1000,walnuts:150,cashews:150,flax:50,sabziFraction:2,avocado:500,mushroom:500,tomato:500,onion:200}))if(value[field]!==undefined&&!number(value[field],0,max))throw Error('Invalid keto '+field);
- if(value.mealRecipe!==undefined&&(match[3]!=='h'||!['l','d'].includes(match[4])||!['chickenAvocado','eggAvocadoPlate','eggSpinach','eggMushroom','eggCurry','boiledEggMeal','chickenPan','chickenDahi','paneerPan','highProteinPaneer','eggSoya'].includes(value.mealRecipe)))throw Error('Invalid keto main dish');
+ if(value.mealRecipe!==undefined&&(match[3]!=='h'||!['l','d'].includes(match[4])||!['custom','chickenAvocado','eggAvocadoPlate','eggSpinach','eggMushroom','eggCurry','boiledEggMeal','chickenPan','chickenDahi','paneerPan','highProteinPaneer','eggSoya'].includes(value.mealRecipe)))throw Error('Invalid keto main dish');
  if(value.breakfastRecipe!==undefined&&(match[4]!=='b'||!['omelette','eggAvocado','paneerBhurji','chickenBowl','dahiBowl','boiledEggs','eggPoach'].includes(value.breakfastRecipe)||match[3]==='w'&&!['paneerBhurji','dahiBowl'].includes(value.breakfastRecipe)))throw Error('Invalid keto breakfast');
  if(value.eggWhites!==undefined&&(!Number.isInteger(value.eggWhites)||match[3]==='w'&&value.eggWhites>0))throw Error('Invalid extra egg whites');
  if(value.whey!==undefined&&!Number.isInteger(value.whey*2))throw Error('Use whole or half whey scoops');
@@ -92,6 +92,6 @@ export function validateKetoNuts(rows){
  const map=Object.fromEntries(rows.map(r=>[r.key,r.value]));
  for(const [key,value]of Object.entries(map))if(/^keto\/(template|\d{4}-\d{2}-\d{2})\/day\/[0-6]\/h\/e$/.test(key)&&value){
   validateRecord(key,value);
-  for(const m of ['b','l','d'])if(['almonds','walnuts','cashews'].some(id=>(map[key.slice(0,-1)+m]?.[id]||0)>0))throw Error('Husband nuts belong in the evening only, maximum 20 g total.');
+  for(const m of ['b','l','d'])if(['almonds','walnuts','cashews'].some(id=>(map[key.slice(0,-1)+m]?.[id]||0)>0))throw Error('Husband nuts belong in the evening only, maximum 20 g total: '+key.slice(0,-1)+m);
  }
 }

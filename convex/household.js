@@ -3,7 +3,11 @@ import {v,ConvexError} from 'convex/values';
 import {validateRecord,validateKetoWheyTotals,validateKetoNuts} from '../records.js';
 import {validateBatchAssignments} from '../batch-math.js';
 import {activityBasis} from '../activity-math.js';
-export const read=query({args:{},handler:async ctx=>(await ctx.db.query('records').collect()).map(({key,value,revision})=>({key,value,revision}))});
+export const read=query({args:{formatVersion:v.optional(v.number())},handler:async(ctx,{formatVersion})=>{
+ const rows=await ctx.db.query('records').collect();
+ if(rows.find(r=>r.key==='setting/nutritionVersion')?.value>=15&&formatVersion!==15)throw new ConvexError('Reload the meal planner: this saved plan uses newer lunch, dinner and evening portions.');
+ return rows.map(({key,value,revision})=>({key,value,revision}));
+}});
 export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),value:v.any(),expectedRevision:v.number()})),formatVersion:v.optional(v.number())},handler:async(ctx,{changes,formatVersion})=>{
  const nutritionVersion=await ctx.db.query('records').withIndex('by_key',q=>q.eq('key','setting/nutritionVersion')).unique();
  if((nutritionVersion?.value>=15||changes.some(c=>c.key==='setting/nutritionVersion'&&c.value===15||c.value?.mealRecipe||/^keto\/.*\/h\/e$/.test(c.key)))&&formatVersion!==15)throw new ConvexError('Reload the app before editing lunch, dinner and evening nuts.');

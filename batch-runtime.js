@@ -87,6 +87,7 @@ function buildBatchPreview(requireWeight=false){const b=batchDraft,servings=[];f
  }servings.sort((a,b)=>a.date.localeCompare(b.date)||(['l','d'].indexOf(a.meal)-['l','d'].indexOf(b.meal))||a.person.localeCompare(b.person));
  if(!servings.length)throw Error('Select at least one meal and person.');
  const mains=servings.filter(s=>s.component==='protein'&&isKeto(s.person)).map(s=>({s,cfg:ketoConfig(batchDay(s.date),s.person,s.meal,(new Date(s.date+'T12:00:00Z').getUTCDay()+6)%7,mondayOf(s.date))}));
+ if(mains.some(x=>x.cfg.mealRecipe)&&servings.length>mains.length)throw Error('Cook these main dishes separately from the Balanced protein batch.');
  if(mains.some(x=>x.cfg.mealRecipe)&&mains.length>1){const shape=({s,cfg})=>JSON.stringify(['eggWhites','spinach','mushroom','tomato','onion','soya','oil'].map(k=>Math.round((cfg[k]||0)/s.factor*1e6)));if(new Set(mains.map(shape)).size>1)throw Error('These main dishes have different ingredient ratios. Cook them as separate batches.');}
  const total=servings.reduce((n,s)=>n+s.factor,0),lines=sourceRecipe(b.recipe).map(x=>L(x.id,x.q*total));
  for(const s of servings){if(s.component==='protein'&&typeof isKeto==='function'&&isKeto(s.person)){const cfg=ketoConfig(batchDay(s.date),s.person,s.meal,(new Date(s.date+'T12:00:00Z').getUTCDay()+6)%7,mondayOf(s.date));if(cfg.eggWhites)lines.push(L('eggWhite',cfg.eggWhites));if(cfg.spinach)lines.push(L('palak',cfg.spinach));if(cfg.mealRecipe){for(const id of ['mushroom','tomato','onion'])if(cfg[id])lines.push(L(id,cfg[id]));if(cfg.soya)lines.push(L(soyaId(),cfg.soya));}}}
@@ -149,7 +150,7 @@ let mealExclusions={};
 const QUANTITY_NUTS=['almonds','walnuts','cashews','nuts'];
 function exclusionKey(day,m,p){return `exclude/${state.weekKey||'template'}/day/${state.days.indexOf(day)}/${p}/${m}`;}
 function quantitySignature(day,m,p,key,lines){
- const recipe=m==='b'?(isKeto(p)?(day.readyB?.[p]?'ready':ketoConfig(day,p,m).breakfastRecipe||ketoConfig(day,p,m).protein):day.b):key==='component:sabzi'?personRecipe(day,p):key==='component:dal'?day.dal:'';
+ const recipe=m==='b'?(isKeto(p)?(day.readyB?.[p]?'ready':ketoConfig(day,p,m).breakfastRecipe||ketoConfig(day,p,m).protein):day.b):key==='component:sabzi'?personRecipe(day,p):key==='component:dal'?day.dal:isKeto(p)&&['l','d'].includes(m)?ketoConfig(day,p,m).mealRecipe||'':'';
  return JSON.stringify({diet:isKeto(p)?'keto':'balanced',recipe,lines:lines.map(x=>({id:x.id,q:+x.q.toFixed(8),...(x.n?{n:x.n}:{})}))});
 }
 function mealQuantityGroups(day,m,p){

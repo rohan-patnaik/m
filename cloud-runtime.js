@@ -93,14 +93,14 @@ async function saveChanges(){
  await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:15});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
- const fresh=await cloudClient.query(MealCloud.api.household.read,{});deferredCloud=null;
+ const fresh=await cloudClient.query(MealCloud.api.household.read,{formatVersion:15});deferredCloud=null;
  cloudSaving=false;acceptCloud(fresh,true);return true;
  }catch(e){cloudSaving=false;cloudError=String(e.data||e.message||e);if(deferredCloud){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}renderSyncBar();return false;}
 }
 function openSync(){document.querySelector('#dlgTitle').textContent='Connection';document.querySelector('#dlgBody').innerHTML='<p data-syncstatus></p><p class="hintline">Save edits before closing the app. Unsaved changes are lost on reload.</p><button data-syncdone>Done</button>';syncStatus(syncStatusText);document.querySelector('#dlg').showModal();}
 function startCloud(){
  templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);
- try{if(!window.MEAL_CONVEX_URL)throw Error('Convex deployment is not configured.');cloudClient=new MealCloud.ConvexClient(window.MEAL_CONVEX_URL,{unsavedChangesWarning:true});cloudClient.onUpdate(MealCloud.api.household.read,{},rows=>{cloudError='';acceptCloud(rows);},e=>{cloudError='Could not load the shared plan: '+e.message;renderSyncBar();});}
+ try{if(!window.MEAL_CONVEX_URL)throw Error('Convex deployment is not configured.');cloudClient=new MealCloud.ConvexClient(window.MEAL_CONVEX_URL,{unsavedChangesWarning:true});cloudClient.onUpdate(MealCloud.api.household.read,{formatVersion:15},rows=>{cloudError='';acceptCloud(rows);},e=>{cloudError='Could not load the shared plan: '+e.message;renderSyncBar();});}
  catch(e){cloudError=e.message;}
  renderSyncBar();setInterval(renderSyncBar,1000);
 }
