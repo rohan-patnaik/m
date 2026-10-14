@@ -29,7 +29,7 @@ test('UX progress round trips without changing ingredients and lists every sabzi
 function app(withUX=false){
  const root={innerHTML:'',querySelector(){return null;},querySelectorAll(){return[];}};
  const shopping={innerHTML:'',hidden:true},regular={hidden:false};
- const document={addEventListener(){},querySelector(sel){return sel==='#keto'?root:sel==='#shopping'?shopping:sel==='#regularPlan'?regular:null;},querySelectorAll(){return[];}};
+ const listeners={},document={addEventListener(type,fn){(listeners[type]||=[]).push(fn);},querySelector(sel){return sel==='#keto'?root:sel==='#shopping'?shopping:sel==='#regularPlan'?regular:null;},querySelectorAll(){return[];}};
  const ctx=vm.createContext({document,window:{addEventListener(){}},BatchMath:math,WeighMath:weighMath,MealCloud:records,crypto:webcrypto,structuredClone,console,TextEncoder,setInterval(){},navigator:{onLine:true}});
   vm.runInContext(browserBundle,ctx);
  ctx.MealCloud=ctx.window.MealCloud;ctx.ActivityMath=ctx.window.ActivityMath;
@@ -39,7 +39,7 @@ function app(withUX=false){
  const script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
  vm.runInContext(script.slice(0,script.indexOf("document.addEventListener('input'")),ctx);
  vm.runInContext("state.weekKey='2026-10-05';templateDays=structuredClone(state.days);templateUtensils=structuredClone(state.utDay);cloudReady=true;householdDiets={w:'balanced',h:'balanced'};balancedCurdType='curd';render=renderKeto;",ctx);
- return {root,shopping,regular,run:expression=>vm.runInContext(expression,ctx)};
+ return {root,shopping,regular,listeners,run:expression=>vm.runInContext(expression,ctx)};
 }
 test('pantry draft reports nutrition gaps without inserting filler foods or changing Wife',()=>{
  const {run}=app();run("state.weekKey=null;householdDiets={w:'balanced',h:'keto'};state.days.forEach(d=>{d.off=false;d.skip={b:false,l:false,d:false};d.wheyH=true});render=()=>{}");
@@ -1085,7 +1085,7 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  // Edit form: dish select plus a separate sides disclosure showing the saved sides; opening changes nothing.
  let v=JSON.parse(run('JSON.stringify(editValsFromState(0))'));assert.deepEqual(v.sidesH,{whey:1,avocado:50,almonds:20,walnuts:25,cashews:0,curd:0,milk:0});assert.equal(v.sidesW,undefined);
  let f=run('editFormHTML(editValsFromState(0),0)');
- assert.match(f,/<label>Husband breakfast dish<select data-ek="bh">/);assert.match(f,/<summary>Husband breakfast sides · avocado 50 g \+ whey \+ nuts 45 g<\/summary>/);
+ assert.match(f,/<label>Husband breakfast dish<select data-ek="bh">/);assert.match(f,/<h4 class="edit-sides-sum">Husband breakfast sides · avocado 50 g \+ whey \+ nuts 45 g<\/h4>/);
  for(const k of ['whey','avocado','almonds','walnuts','cashews','curd','milk'])assert.match(f,new RegExp(`data-es="h\\.${k}"`));
  assert.match(f,/data-bf-preview="h">[^<]*kcal/);assert.equal(run("JSON.stringify(ketoMeals[ketoMealKey(0,'h','b')])"),stored);
  // Labels: breakfast whey, no H eggs for a Keto husband, Wife-only dal and dinner protein; hidden when not needed.
@@ -1131,4 +1131,50 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  const st=run('uxDayStatus(0)');assert.match(st,/^<p class="ux-day-status">Husband: 1531 kcal below 1900–2100 · 104 g protein below 120 g working target\./);assert.match(st,/Husband nuts today: \d+ g \(\d+ kcal\)\./);assert.doesNotMatch(st,/ux-warning/);
  run("globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:2000,p:140}:realDay(i,p)");assert.doesNotMatch(run('uxDayStatus(0)'),/below/);
  run("globalThis.assignedDayNutrition=realDay");assert.match(run('uxDayHTML(0)'),/<p class="ux-day-status">/);
+});
+
+test('meal quantities toggle per person via Root groups; Edit meals splits into sections without horizontal overflow',()=>{
+ const {run,listeners}=app(true);
+ // Fallback: without Root's helper the table keeps its plain cells.
+ assert.doesNotMatch(run("uxMealTable(0,'l')"),/data-ux-qty/);
+ run(`globalThis.toggles=[];globalThis.skipped={};globalThis.mealQuantityGroups=(day,m,p)=>m!=='l'?[]:[
+  {key:'sabzi',component:'sabzi',lines:originalComponent(day,m,p,'sabzi'),excluded:!!skipped[p+'sabzi']},
+  {key:'eggs',lines:[L('egg',1),L('eggWhite',2)],excluded:!!skipped[p+'eggs']},
+  {key:'nuts',lines:[L('almonds',20),L('walnuts',25)],excluded:!!skipped[p+'nuts']},
+  ...(p==='w'?[{key:'food:curd',lines:[L('curd',100)],excluded:false}]:[])];
+ globalThis.toggleMealQuantity=(i,m,p,key)=>{toggles.push([i,m,p,key].join(','));skipped[p+key]=!skipped[p+key];return true;};
+ globalThis.queued=0;globalThis.queueUXSave=()=>{queued++;};skipped.weggs=true;`);
+ const t=run("uxMealTable(0,'l')");
+ // Eggs + whites and the nuts are one toggle each; excluded amounts stay visible, pressed and struck through.
+ assert.match(t,/<td class="meal-qty meal-excluded"><button type="button" class="meal-qty-btn" data-ux-qty="0\|l\|w\|eggs" aria-pressed="true" aria-label="Skip Eggs, 3 eggs, for Wife"[^>]*><b>3 eggs<\/b><small>keep 1 yolk<\/small><\/button><\/td>/);
+ assert.match(t,/data-ux-qty="0\|l\|h\|eggs" aria-pressed="false"/);
+ assert.match(t,/data-ux-qty="0\|l\|w\|nuts" aria-pressed="false"[^>]*><b>45 g<\/b><small>20 g almonds · 25 g walnuts<\/small>/);
+ assert.match(t,/data-ux-qty="0\|l\|w\|sabzi"/);assert.match(t,/data-ux-qty="0\|l\|w\|food:curd"/);
+ // No toggle on a person's missing food (the dash) or on the totals.
+ assert.match(t,/<td class="meal-empty">—<\/td>/);assert.equal((t.match(/data-ux-qty=/g)||[]).length,7);
+ assert.doesNotMatch(t.slice(t.indexOf('meal-table-foot')),/data-ux-qty/);
+ // Clicking calls Root's toggle once with the full key and queues a cloud save.
+ const btn={dataset:{uxQty:'0|l|w|food:curd'}},target={closest:s=>s==='[data-ux-qty]'?btn:null,matches:()=>false};
+ for(const fn of listeners.click||[])try{fn({target,preventDefault(){}});}catch{}
+ assert.equal(run('toggles.join(";")'),'0,l,w,food:curd');assert.equal(run('queued'),1);
+ run('cloudSaving=true');for(const fn of listeners.click||[])try{fn({target,preventDefault(){}});}catch{}
+ assert.equal(run('toggles.length'),1,'no toggle while a save is in flight');run('cloudSaving=false');
+ // Edit meals: three labelled sections in the DOM at once (so unsaved picks survive), tabs for phones.
+ run("householdDiets={w:'balanced',h:'keto'}");
+ let f=run('editFormHTML(editValsFromState(0),0)');
+ assert.deepEqual([...f.matchAll(/data-edit-tab="(\w+)"/g)].map(m=>m[1]),['meals','sides','day']);
+ assert.match(f,/class="editform" data-sec="meals"/);assert.match(f,/data-edit-tab="meals" aria-controls="edit-sec-meals" aria-selected="true" tabindex="0"/);
+ const sec=k=>f.slice(f.indexOf(`data-edit-sec="${k}"`),f.indexOf('</section>',f.indexOf(`data-edit-sec="${k}"`)));
+ assert.match(sec('meals'),/data-ek="bh"/);assert.match(sec('meals'),/data-ek="s"/);assert.match(sec('meals'),/data-bf-preview="h"/);
+ assert.match(sec('sides'),/data-es="h\.whey"/);assert.doesNotMatch(sec('meals'),/data-es=/);
+ assert.match(sec('day'),/data-et="skipB"/);assert.match(f,/<\/section>\s*<div class="editbtns">/);
+ // The chosen section survives a re-render; nobody Keto means no sides tab.
+ run("editSection='day'");assert.match(run('editFormHTML(editValsFromState(0),0)'),/data-sec="day"/);
+ run("householdDiets={w:'balanced',h:'balanced'};editSection='sides'");f=run('editFormHTML(editValsFromState(0),0)');
+ assert.match(f,/class="editform edit-nosides" data-sec="meals"/);assert.doesNotMatch(f,/data-edit-tab="sides"/);
+ const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8');
+ assert.match(css,/\.editform select,\.editform input\[type=number\]\{width:100%;min-width:0;max-width:100%\}/);
+ assert.match(css,/#dlg\.ux-edit-dialog\{width:min\(1080px,calc\(100vw - 32px\)\);max-width:calc\(100vw - 32px\);overflow-x:hidden\}/);
+ assert.match(css,/@media\(max-width:700px\),\(max-height:560px\)\{[^@]*\.edit-tabs\{display:flex\}[^@]*#dlg\.ux-edit-dialog\[open\]\{height:calc\(100dvh - 20px\)\}|@media\(max-width:700px\),\(max-height:560px\)\{[^@]*#dlg\.ux-edit-dialog\[open\]\{height:calc\(100dvh - 20px\)\}[^@]*\.edit-tabs\{display:flex\}/);
+ assert.match(css,/\.editbtns\{[^}]*position:sticky;bottom:0\}/);
 });
