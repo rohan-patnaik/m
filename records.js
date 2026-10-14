@@ -13,7 +13,11 @@ export function validateKetoWheyTotals(rows){
   let total=0;
   for(const m of ['b','l','d']){
    if(meal&&(meal.off||meal.skip?.[m]||m==='b'&&!meal[p==='h'?'wheyH':'wheyW']))continue;
-   const cfg=map[group+'/'+m];total+=cfg?.whey??(m==='b'?1:0);
+   const cfg=map[group+'/'+m],q=cfg?.whey??(m==='b'?1:0);
+   const recipe=m==='b'?(meal?.readyB?.[p]?'ready':cfg?.breakfastRecipe||cfg?.protein):cfg?.mealRecipe||'';
+   const signature=JSON.stringify({diet:'keto',recipe,lines:[{id:'whey',q:+q.toFixed(8)}]});
+   if(map[`exclude/${scope}/day/${index}/${p}/${m}`]?.items?.['food:whey']===signature)continue;
+   total+=q;
   }
   if(total>3+1e-8)throw Error('Maximum 3 whey scoops per person per day. Reduce another meal first.');
  }

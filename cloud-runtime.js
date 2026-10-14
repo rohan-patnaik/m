@@ -1,6 +1,6 @@
 // Meal data lives only in Convex; drafts and UI preferences live only in memory.
 let cloudClient,cloudReady=false,cloudSaving=false,cloudBase={},cloudDraft={},cloudLatest={},cloudConflicts=[],deferredCloud=null;
-let legacyCleanupStarted=false,ketoMeals={};
+let legacyCleanupStarted=false,ketoMeals={},pendingNutritionRevision;
 let templateDays,templateUtensils,syncStatusText='Loading your household from Convex…',cloudError='';
 const SHARED_SETTINGS=['labels','density','soya','oilUse','personModes','utSel'];
 function connected(){return !!cloudClient?.connectionState().isWebSocketConnected&&navigator.onLine;}
@@ -81,20 +81,23 @@ function renderSyncBar(){
  const gate=document.querySelector('#cloudLoadingText');if(gate)gate.textContent=cloudReady?'':message;
 }
 function save(){if(loadingCloud)return;snapshotDraft();renderSyncBar();}
-async function saveChanges(){
+function householdRevision(rows){return rows.reduce((n,r)=>n+r.revision,0);}
+async function saveChanges(expectedHouseholdRevision){
  if(!cloudReady||cloudSaving)return false;
+ if(expectedHouseholdRevision!==undefined)pendingNutritionRevision=expectedHouseholdRevision;
+ expectedHouseholdRevision=pendingNutritionRevision;
  snapshotDraft();
  if(deferredCloud){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}
  if(!connected()){cloudError='Not connected. Keep this tab open and retry when online.';renderSyncBar();return false;}
  if(cloudConflicts.length){renderSyncBar();return false;}
- const changes=cloudChanges();if(!changes.length)return true;
+ const changes=cloudChanges();if(!changes.length){pendingNutritionRevision=undefined;return true;}
  cloudSaving=true;cloudError='';renderSyncBar();
  try{
- await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:15});
+ await cloudClient.mutation(MealCloud.api.household.commit,{changes,formatVersion:15,...(expectedHouseholdRevision===undefined?{}:{expectedHouseholdRevision})});
  for(const c of changes)cloudBase[c.key]={key:c.key,value:c.value,revision:c.expectedRevision+1};
  // Read after the transaction so older subscription callbacks cannot roll it back.
  const fresh=await cloudClient.query(MealCloud.api.household.read,{formatVersion:15});deferredCloud=null;
- cloudSaving=false;acceptCloud(fresh,true);return true;
+ cloudSaving=false;pendingNutritionRevision=undefined;acceptCloud(fresh,true);return true;
  }catch(e){cloudSaving=false;cloudError=String(e.data||e.message||e);if(deferredCloud){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}renderSyncBar();return false;}
 }
 function openSync(){document.querySelector('#dlgTitle').textContent='Connection';document.querySelector('#dlgBody').innerHTML='<p data-syncstatus></p><p class="hintline">Save edits before closing the app. Unsaved changes are lost on reload.</p><button data-syncdone>Done</button>';syncStatus(syncStatusText);document.querySelector('#dlg').showModal();}
@@ -106,7 +109,7 @@ function startCloud(){
 }
 document.addEventListener('click',async e=>{
  if(e.target.closest('[data-cloudsave]'))await saveChanges();
- if(e.target.closest('[data-clouddiscard]')&&!cloudSaving){cloudBase=cloudLatest;cloudDraft=Object.fromEntries(Object.entries(cloudLatest).map(([k,r])=>[k,r.value]));cloudConflicts=[];cloudError='';hydrateDraft();render();}
+ if(e.target.closest('[data-clouddiscard]')&&!cloudSaving){pendingNutritionRevision=undefined;cloudBase=cloudLatest;cloudDraft=Object.fromEntries(Object.entries(cloudLatest).map(([k,r])=>[k,r.value]));cloudConflicts=[];cloudError='';hydrateDraft();render();}
  if(e.target.closest('[data-cloudresolve]')){for(const k of cloudConflicts){cloudBase[k]=cloudLatest[k]||{key:k,value:null,revision:0};cloudDraft[k]=cloudLatest[k]?.value??null;}cloudConflicts=[];cloudError='';hydrateDraft();render();}
 });
 window.addEventListener('beforeunload',e=>{if(cloudReady&&(cloudSaving||cloudChanges().length)){e.preventDefault();e.returnValue='';}});

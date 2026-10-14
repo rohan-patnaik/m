@@ -634,3 +634,11 @@ button.danger{color:var(--warn);border-color:var(--warn)}
  #dlg.ux-edit-dialog .editform[data-sec=sides]>.edit-sec:not([data-edit-sec=sides]),
  #dlg.ux-edit-dialog .editform[data-sec=day]>.edit-sec:not([data-edit-sec=day]){display:none}
 }
+
+/* Food-first whey suggestions stay beside totals, within the existing fixed-height editor. */
+.meal-whey-balance{margin-top:4px;font-size:11px;line-height:1.35}
+.meal-whey-balance button{border:0;background:none;color:var(--accent);padding:2px 0;min-height:24px;font-size:11px;text-decoration:underline;text-underline-offset:2px}
+.meal-whey-balance small{display:block;color:var(--muted);font-size:10px}
+.simple-meal-footer [data-meal-suggest]{margin-right:auto;min-width:0;padding-inline:8px}
+@media(max-width:360px){.simple-meal-footer{gap:6px}.simple-meal-footer button{min-width:68px}.meal-whey-balance{font-size:10px}}
+@media(max-height:440px) and (min-width:520px){.meal-whey-balance small{font-size:9px}.meal-whey-balance{margin-top:2px}}

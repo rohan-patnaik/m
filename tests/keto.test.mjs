@@ -655,7 +655,7 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
  run("globalThis.applyKetoInventoryPlan=()=>true;globalThis.ketoInventoryPlanAvailable=()=>false");assert.doesNotMatch(run('ketoReviewHTML()'),/data-keto-apply-plan/);
  run("globalThis.ketoInventoryPlanAvailable=()=>true");assert.match(run('ketoReviewHTML()'),/data-keto-apply-plan>Load example husband plan<\/button><small>Draft only; adjust daily calorie and protein gaps before saving\./);
- const trial=run('trialHTML()');assert.match(trial,/4–5 strength sessions\/week/);assert.doesNotMatch(trial,/45 min|no seeds|flax[^.]*fullness/);assert.match(trial,/Ground flaxseed is an optional historical field\./);assert.match(trial,/maintenance is unconfirmed/);assert.match(trial,/not measured needs/);
+ const trial=run('trialHTML()');assert.match(trial,/Strength-training adherence unconfirmed/);assert.doesNotMatch(trial,/45 min|no seeds|flax[^.]*fullness/);assert.match(trial,/Ground flaxseed is an optional historical field\./);assert.match(trial,/maintenance around 2200 kcal is unconfirmed/);assert.match(trial,/not measured needs/);
  // Egg display: whites are separate eggs; whole eggs keep their own label; guarded while DB.eggWhite is absent.
  assert.deepEqual(JSON.parse(run("JSON.stringify(uxFoodRow(L('eggWhite',3)))")),{label:'Extra whites',quantity:'3 whites',detail:'extra eggs needed'});
  assert.equal(run("uxFoodRow(L('eggWhite',1)).quantity"),'1 white');
@@ -1125,8 +1125,8 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  run("globalThis.prepareKetoBreakfasts=undefined");const before=run('JSON.stringify([state.days,ketoMeals])');setup('eggPoach',{avocado:10});await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);
  // Quiet day status: Husband's shortfall vs the working range, and nuts today with kcal; no orange warning class.
  run("globalThis.realDay=assignedDayNutrition;globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:1531,p:104}:realDay(i,p)");
- const st=run('uxDayStatus(0)');assert.match(st,/^<p class="ux-day-status">Husband: 1531 kcal below 1900–2100 · 104 g protein below 120 g working target\./);assert.match(st,/Husband nuts today: \d+ g \(\d+ kcal\)\./);assert.doesNotMatch(st,/ux-warning/);
- run("globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:2000,p:140}:realDay(i,p)");assert.doesNotMatch(run('uxDayStatus(0)'),/below/);
+ const st=run('uxDayStatus(0)');assert.match(st,/^<p class="ux-day-status">Husband: 1531 kcal below 1600–1800 · 104 g protein below 150 g working target\./);assert.match(st,/Husband nuts today: \d+ g \(\d+ kcal\)\./);assert.doesNotMatch(st,/ux-warning/);
+ run("globalThis.assignedDayNutrition=(i,p)=>p==='h'?{...realDay(i,p),k:1800,p:155}:realDay(i,p)");assert.doesNotMatch(run('uxDayStatus(0)'),/below/);
  run("globalThis.assignedDayNutrition=realDay");assert.match(run('uxDayHTML(0)'),/<p class="ux-day-status">/);
 });
 

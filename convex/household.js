@@ -8,7 +8,8 @@ export const read=query({args:{formatVersion:v.optional(v.number())},handler:asy
  if(rows.find(r=>r.key==='setting/nutritionVersion')?.value>=15&&formatVersion!==15)throw new ConvexError('Reload the meal planner: this saved plan uses newer lunch, dinner and evening portions.');
  return rows.map(({key,value,revision})=>({key,value,revision}));
 }});
-export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),value:v.any(),expectedRevision:v.number()})),formatVersion:v.optional(v.number())},handler:async(ctx,{changes,formatVersion})=>{
+export const commit=mutation({args:{changes:v.array(v.object({key:v.string(),value:v.any(),expectedRevision:v.number()})),formatVersion:v.optional(v.number()),expectedHouseholdRevision:v.optional(v.number())},handler:async(ctx,{changes,formatVersion,expectedHouseholdRevision})=>{
+ if(expectedHouseholdRevision!==undefined){const snapshot=await ctx.db.query('records').collect();if(snapshot.reduce((n,r)=>n+r.revision,0)!==expectedHouseholdRevision)throw new ConvexError('The household changed after this suggestion. Reload and recalculate before saving.');}
  const nutritionVersion=await ctx.db.query('records').withIndex('by_key',q=>q.eq('key','setting/nutritionVersion')).unique();
  if((nutritionVersion?.value>=15||changes.some(c=>c.key==='setting/nutritionVersion'&&c.value===15||c.value?.mealRecipe||/^keto\/.*\/h\/e$/.test(c.key)))&&formatVersion!==15)throw new ConvexError('Reload the app before editing lunch, dinner and evening nuts.');
  if((nutritionVersion?.value>=14||changes.some(c=>c.key.startsWith('exclude/')||c.key==='setting/nutritionVersion'&&c.value===14))&&![14,15].includes(formatVersion))throw new ConvexError('Reload the app before editing excluded meal quantities.');
