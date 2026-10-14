@@ -1176,5 +1176,12 @@ test('meal quantities toggle per person via Root groups; Edit meals splits into 
  assert.match(css,/\.editform select,\.editform input\[type=number\]\{width:100%;min-width:0;max-width:100%\}/);
  assert.match(css,/#dlg\.ux-edit-dialog\{width:min\(1080px,calc\(100vw - 32px\)\);max-width:calc\(100vw - 32px\);overflow-x:hidden\}/);
  assert.match(css,/@media\(max-width:700px\),\(max-height:560px\)\{[^@]*\.edit-tabs\{display:flex\}[^@]*#dlg\.ux-edit-dialog\[open\]\{height:calc\(100dvh - 20px\)\}|@media\(max-width:700px\),\(max-height:560px\)\{[^@]*#dlg\.ux-edit-dialog\[open\]\{height:calc\(100dvh - 20px\)\}[^@]*\.edit-tabs\{display:flex\}/);
- assert.match(css,/\.editbtns\{[^}]*position:sticky;bottom:0\}/);
+ assert.match(css,/\.editform \.editbtns\{[^}]*position:sticky;bottom:0\}/);
+ // Fit: a Keto dish and its preview page together; the measured pager needs a real layout, so the vm only checks it
+ // is a safe no-op here, plus the short-screen compaction and landscape rules exist.
+ run("householdDiets={w:'keto',h:'keto'}");f=run('editFormHTML(editValsFromState(0),0)');
+ assert.match(f,/<div class="edit-item"><label>Wife breakfast dish<select data-ek="bw">[\s\S]*?data-bf-preview="w">[^<]*<\/small><\/div>/);
+ assert.equal((f.match(/class="edit-sides"/g)||[]).length,2);assert.equal(run('editFit()'),undefined);
+ assert.match(css,/@media\(max-width:700px\) and \(max-height:740px\),\(max-height:560px\)\{/);
+ assert.match(css,/@media\(max-height:560px\) and \(min-width:520px\)\{[^@]*grid-template-areas:"tabs btns" "sec sec"/);
 });

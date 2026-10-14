@@ -1037,7 +1037,7 @@ function editFormHTML(v,i=editCtx?editCtx.i:0){
    const opt=x=>{const off=x.eligible===false&&x.reason,dk=x.dishNutrition&&typeof x.dishNutrition.k==='number'?`dish ${R(x.dishNutrition.k)} kcal`:x.nutrition&&typeof x.nutrition.k==='number'?`breakfast total ${R(x.nutrition.k)} kcal`:'',oil=x.config&&x.config.oil>0?`${F(x.config.oil)} ml oil`:'';return`<option value="${esc(x.id)}"${x.id===cur?' selected':''}${x.eligible===false?' disabled':''}${off?` title="${esc(x.reason)}"`:''}>${esc([name(x.name),oil,dk].filter(Boolean).join(' · '))}${off?` (${esc(x.reason)})`:''}</option>`;};
    const fields=EDIT_SIDES.filter(([f])=>!(nc&&f==='avocado')&&!(dish==='dahiBowl'&&(f==='whey'||f==='curd'))).map(([f,l,u,max,step])=>`<label>${l} (${u})<input type="number" min="0" max="${max}" step="${step}" inputmode="decimal" value="${sides[f]??0}" data-es="${p}.${f}"></label>`).join('');
    const sum=editSideSummary({...sides,whey:v[p==='h'?'wheyH':'wheyW']?sides.whey:0},dish,nc),dahiNote=dish==='dahiBowl'?`Bowl uses curd ${F(sides.curd||0)} g + whey ${F(sides.whey||0)} scoops.`:'';
-   return{dish:`<label>${PERSON_NAMES[p]} breakfast dish<select data-ek="b${p}"><option value=""${cur||nc?'':' selected'}>Current / Custom</option><option value="${EDIT_NOCOOK}"${nc?' selected':''}>No cooked breakfast</option>${o.map(opt).join('')}</select></label><small class="hintline" data-bf-preview="${p}">${esc(editBreakfastPreview(v,i,p))}</small>`,sides:`<div class="edit-sides" data-edit-sides="${p}"><h4 class="edit-sides-sum">${PERSON_NAMES[p]} breakfast sides${sum?` · ${esc(sum)}`:' · none'}</h4><div class="edit-sides-grid">${fields}</div>${nc?'<small class="hintline">No cooked breakfast counts whey, curd, milk and nuts only.</small>':dish==='dahiBowl'?`<small class="hintline">${esc(dahiNote)}</small>`:''}</div>`};};
+   return{dish:`<div class="edit-item"><label>${PERSON_NAMES[p]} breakfast dish<select data-ek="b${p}"><option value=""${cur||nc?'':' selected'}>Current / Custom</option><option value="${EDIT_NOCOOK}"${nc?' selected':''}>No cooked breakfast</option>${o.map(opt).join('')}</select></label><small class="hintline" data-bf-preview="${p}">${esc(editBreakfastPreview(v,i,p))}</small></div>`,sides:`<div class="edit-sides" data-edit-sides="${p}"><h4 class="edit-sides-sum">${PERSON_NAMES[p]} breakfast sides${sum?` · ${esc(sum)}`:' · none'}</h4><div class="edit-sides-grid">${fields}</div>${nc?'<small class="hintline">No cooked breakfast counts whey, curd, milk and nuts only.</small>':dish==='dahiBowl'?`<small class="hintline">${esc(dahiNote)}</small>`:''}</div>`};};
   // Three sections: Meals | Breakfast sides | Day options. Side by side on wide screens; one at a time (tabs) on
   // phones and short screens. Hidden sections stay in the DOM, so unsaved picks survive switching.
   const keto=['w','h'].filter(isKeto).map(kb),secs=[['meals','Meals'],...(keto.length?[['sides','Breakfast sides','Sides']]:[]),['day','Day options']],sec=secs.some(([k])=>k===editSection)?editSection:'meals';
@@ -1065,18 +1065,44 @@ function collectEdit(){
   const dal=g('dal');
   return{readyW:ready('w'),readyH:ready('h'),b:bv&&bv!==EDIT_NOCOOK?bv:snap.b??null,bw:g('bw')??'',bh:g('bh')??'',sidesW:sides('w'),sidesH:sides('h'),s:g('s'),p:editP,dal:dal??snap.dal??null,wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:document.querySelector('[data-et="eggH"]')?t('eggH'):!!snap.eggH,cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
 }
-function editShowSection(k,focus=true){editSection=k;const form=document.querySelector('#dlgBody .editform');if(!form)return;form.dataset.sec=k;form.querySelectorAll('[data-edit-tab]').forEach(b=>{const on=b.dataset.editTab===k;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;if(on&&focus)b.focus();});}
+// Fit: a section taller than its space splits into pages (greedy, measured in the real layout) with a small chooser
+// on top. Keto sides always page by person when both are Keto. Hidden pages stay in the DOM for collectEdit. If one
+// item alone is still too tall, the section falls back to its own vertical scroll rather than clipping.
+let editPages={};
+function editFitName(x){if(x.dataset.editSides)return PERSON_NAMES[x.dataset.editSides];const l=x.matches('label')?x:x.querySelector('label,.lbl');return (l&&(l.matches('.lbl')?l.textContent:l.firstChild?.textContent)||'').trim();}
+function editFit(){const form=document.querySelector('#dlgBody .editform');if(!form)return;
+ for(const sec of form.querySelectorAll('.edit-sec')){
+  sec.querySelector('.edit-pager')?.remove();
+  const items=[...sec.children].filter(x=>!x.matches('.edit-sec-title')),fields=[...sec.querySelectorAll('.edit-sides-grid>label')],all=[...items,...fields];all.forEach(x=>{x.hidden=false;});
+  if(!sec.getClientRects().length)continue;
+  // Units: ordinary items, or each side field (inside its person's box) so one person's sides can split too.
+  const units=items.flatMap(x=>x.matches('.edit-sides')?[...x.querySelectorAll('.edit-sides-grid>label')].map(el=>({el,box:x})):[{el:x,box:null}]);
+  const over=()=>sec.scrollHeight>sec.clientHeight+1,people=items.filter(x=>x.dataset.editSides).length>1;
+  if(!people&&!over())continue;
+  const pager=document.createElement('div');pager.className='edit-pager';pager.setAttribute('role','group');pager.innerHTML='<button type="button">·</button>';sec.insertBefore(pager,items[0]);
+  const show=u=>{u.el.hidden=false;if(u.box)u.box.hidden=false;},hide=pg=>pg.forEach(u=>{u.el.hidden=true;if(u.box)u.box.hidden=true;});
+  const pages=[];let cur=[];all.forEach(x=>{x.hidden=true;});
+  for(const u of units){show(u);const last=cur[cur.length-1];if(last&&((people&&u.box&&u.box!==last.box)||over())){hide(cur);pages.push(cur);cur=[];show(u);}cur.push(u);}
+  pages.push(cur);const k=sec.dataset.editSec;
+  if(pages.length<2){pager.remove();all.forEach(x=>{x.hidden=false;});continue;}
+  const n=Math.min(editPages[k]||0,pages.length-1),title=sec.querySelector('.edit-sec-title')?.textContent||k;
+  const nameOf=(pg,j)=>{const box=pg[0].box;if(box){const mine=pages.filter(q=>q[0].box===box),at=mine.indexOf(pg);return PERSON_NAMES[box.dataset.editSides]+(mine.length>1?` ${at+1}/${mine.length}`:'');}return editFitName(pg[0].el)||`Part ${j+1}`;};
+  pager.setAttribute('aria-label',`${title}: choose ${people?'person':'part'}`);
+  pager.innerHTML=pages.map((pg,j)=>`<button type="button" data-edit-page="${k}|${j}" aria-pressed="${j===n}" title="${esc(pg.map(u=>editFitName(u.el)).filter(Boolean).join(', '))}">${esc(nameOf(pg,j))}</button>`).join('');
+  all.forEach(x=>{x.hidden=true;});pages[n].forEach(show);
+ }}
+function editShowSection(k,focus=true){editSection=k;const form=document.querySelector('#dlgBody .editform');if(!form)return;form.dataset.sec=k;editFit();form.querySelectorAll('[data-edit-tab]').forEach(b=>{const on=b.dataset.editTab===k;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;if(on&&focus)b.focus();});}
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
 function openEdit(i,iso){
   if(iso){selectWeek(mondayOf(iso));render();}
   editCtx={i,iso:iso||null};
-  const v=editValsFromState(i);editSnap=JSON.stringify(v);editP=v.p;editSideBase={w:v.sidesW,h:v.sidesH};editSection='meals';$('#dlg').classList.add('ux-edit-dialog');
+  const v=editValsFromState(i);editSnap=JSON.stringify(v);editP=v.p;editSideBase={w:v.sidesW,h:v.sidesH};editSection='meals';editPages={};$('#dlg').classList.add('ux-edit-dialog');
   $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
   const mon=iso?mondayOf(iso):null,scope=iso?(lockedWeeks[mon]?`Changes apply to the week of ${weekRangeText(mon)} only.`:`Saving creates the week of ${weekRangeText(mon)} from your template; the template itself stays unchanged.`):state.weekKey?`Changes apply to the week of ${weekRangeText(state.weekKey)} only.`:'You are editing the weekly template: every week without its own saved plan changes too.';
   $('#dlgBody').innerHTML=`<p class="ux-scope${!iso&&!state.weekKey?' ux-scope-template':''}">${esc(scope)}</p>`+editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
-  $('#dlg').showModal();
+  $('#dlg').showModal();editFit();
 }
-function editRefreshPreviews(){if(!editCtx)return;const v=collectEdit();for(const p of ['w','h'].filter(isKeto)){const el=document.querySelector(`[data-bf-preview="${p}"]`);if(el)el.textContent=editBreakfastPreview(v,editCtx.i,p);const sum=document.querySelector(`[data-edit-sides="${p}"]>.edit-sides-sum`),P=p.toUpperCase(),nc=v['b'+p]===EDIT_NOCOOK;if(sum)sum.textContent=`${PERSON_NAMES[p]} breakfast sides · ${editSideSummary({...v['sides'+P],whey:v[p==='h'?'wheyH':'wheyW']?v['sides'+P]?.whey:0},nc?'':v['b'+p]||editKetoRecipe(editCtx.i,p),nc)||'none'}`;}}
+function editRefreshPreviews(){if(!editCtx)return;const v=collectEdit();for(const p of ['w','h'].filter(isKeto)){const el=document.querySelector(`[data-bf-preview="${p}"]`);if(el)el.textContent=editBreakfastPreview(v,editCtx.i,p);const sum=document.querySelector(`[data-edit-sides="${p}"]>.edit-sides-sum`),P=p.toUpperCase(),nc=v['b'+p]===EDIT_NOCOOK;if(sum)sum.textContent=`${PERSON_NAMES[p]} breakfast sides · ${editSideSummary({...v['sides'+P],whey:v[p==='h'?'wheyH':'wheyW']?v['sides'+P]?.whey:0},nc?'':v['b'+p]||editKetoRecipe(editCtx.i,p),nc)||'none'}`;}editFit();}
 function editMessage(text){let msg=$('#dlgBody [data-editmessage]');if(!msg){msg=document.createElement('p');msg.dataset.editmessage='';const btns=$('#dlgBody .editbtns');if(btns)btns.after(msg);else $('#dlgBody').append(msg);}msg.textContent=text;}
 async function saveEdit(){
   if(!editCtx)return;
@@ -1244,11 +1270,11 @@ document.addEventListener('change',e=>{
     return;
   }
   if(t.dataset&&t.dataset.ek){
-    if(['s','bw','bh'].includes(t.dataset.ek)){const cur=collectEdit(),form=$('#dlgBody .editform');if(t.dataset.ek!=='s'){const p=t.dataset.ek.slice(1),P=p.toUpperCase();cur['sides'+P]=editSidesForPick(cur,editCtx.i,p);editSideBase[p]=cur['sides'+P];}if(form){form.outerHTML=editFormHTML(cur);}}
+    if(['s','bw','bh'].includes(t.dataset.ek)){const cur=collectEdit(),form=$('#dlgBody .editform');if(t.dataset.ek!=='s'){const p=t.dataset.ek.slice(1),P=p.toUpperCase();cur['sides'+P]=editSidesForPick(cur,editCtx.i,p);editSideBase[p]=cur['sides'+P];}if(form){form.outerHTML=editFormHTML(cur);editFit();}}
     else editRefreshPreviews();
     refreshEditDirty();return;
   }
-  if(t.dataset&&(t.dataset.et||t.dataset.es)){if(t.dataset.et){const cur=collectEdit(),form=$('#dlgBody .editform');if(form){form.outerHTML=editFormHTML(cur);}}else editRefreshPreviews();refreshEditDirty();return;}
+  if(t.dataset&&(t.dataset.et||t.dataset.es)){if(t.dataset.et){const cur=collectEdit(),form=$('#dlgBody .editform');if(form){form.outerHTML=editFormHTML(cur);editFit();}}else editRefreshPreviews();refreshEditDirty();return;}
   if(t.dataset&&t.dataset.ut){
     const v=parseFloat(t.value);
     state.utensils[t.dataset.ut]=(!Number.isFinite(v)||v<0)?0:Math.round(v);
@@ -1290,6 +1316,8 @@ document.addEventListener('click',e=>{
   if(ed){const i=+ed.dataset.edit;openEdit(i,state.view==='day'?dayViewISO():null);return;}
   const etab=e.target.closest('[data-edit-tab]');
   if(etab){editShowSection(etab.dataset.editTab);return;}
+  const epg=e.target.closest('[data-edit-page]');
+  if(epg){const [k,n]=epg.dataset.editPage.split('|');editPages[k]=+n;editFit();document.querySelector(`[data-edit-page="${k}|${n}"]`)?.focus();return;}
   if(e.target.closest('[data-editcancel]')){$('#dlg').close();return;}
   if(e.target.closest('[data-editsave]')){saveEdit();return;}
   const s=e.target.closest('[data-skip]');
@@ -1327,12 +1355,13 @@ document.addEventListener('click',e=>{
   if(del){const k=del.dataset.caldel;if(del.dataset.calconfirm!==k){calConfirm={kind:'del',mon:k};$('#dlgBody').innerHTML=calCard();$('#dlgBody').querySelector('.calrow [data-calcancel]')?.focus();return;}calConfirm=null;delete lockedWeeks[k];if(state.weekKey===k){state.weekKey=null;state.days=structuredClone(templateDays);state.utDay=structuredClone(templateUtensils);}save();render();saveChanges();$('#dlgBody').innerHTML=calCard();return;}
 });
 document.addEventListener('click',e=>{const menu=document.querySelector('.more-menu');if(menu.open&&(!menu.contains(e.target)||e.target.closest('.more-items button')))menu.open=false;});
+window.addEventListener('resize',()=>{if(document.querySelector('#dlg.ux-edit-dialog[open]'))editFit();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelector('.more-menu').open=false;
   const tab=e.target.closest&&e.target.closest('[data-edit-tab]');
   if(tab&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){const all=[...tab.parentNode.querySelectorAll('[data-edit-tab]')],n=all.indexOf(tab),to=e.key==='Home'?0:e.key==='End'?all.length-1:(n+(e.key==='ArrowRight'?1:-1)+all.length)%all.length;e.preventDefault();editShowSection(all[to].dataset.editTab);}});
 $('#calBtn').onclick=()=>openCal();
 $('#syncBtn').onclick=openSync;
-$('#dlg').addEventListener('close',()=>{$('#dlg').classList.remove('ux-cal-dialog','ux-edit-dialog');calConfirm=null;if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
+$('#dlg').addEventListener('close',()=>{if(!$('#dlg').open)$('#dlg').classList.remove('ux-cal-dialog','ux-edit-dialog');calConfirm=null;if(deferredCloud&&!cloudSaving){const rows=deferredCloud;deferredCloud=null;acceptCloud(rows,true);}});
 $('#themeBtn').onclick=()=>{state.theme=state.theme==='light'?'dark':'light';render();};
 $('#resetBtn').onclick=()=>{state.days=structuredClone(DEFAULT_DAYS);state.labels={};state.utDay=DEFAULT_UTDAY();state.mode='medium';state.personModes={w:'easy',h:'medium'};state.custom=false;state.weekKey=null;save();render();};
 for(const [p,id]of [['w','presetW'],['h','presetH']])$( '#'+id).onchange=()=>{state.personModes[p]=$('#'+id).value;state.custom=true;save();render();};
