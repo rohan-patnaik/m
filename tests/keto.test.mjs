@@ -317,7 +317,7 @@ test('meal cards show generic food names while product surfaces keep brands',()=
  assert.doesNotMatch(days,/data-keto-value|Milky Mist|Heritage/);
  assert.match(cards,/<p class="meal-menu">Paneer breakfast/);assert.match(cards,/<th scope="row">Paneer<\/th>/);
  assert.doesNotMatch(cards,/Heritage|Milky Mist|Nutrela|Saffola|Amul|ATOM|Pillsbury|Tata|Borges|DMart/);
- assert.deepEqual(['curd','curdH','paneer','paneerMM','paneerHP','soyN','soyS','butter','butterH','milk','whey','atta','oats','arhar','oil','pasta','egg','eggWhite','almonds'].map(id=>run(`uxFoodRow(L('${id}',1)).label`)),['Curd','Curd','Paneer','Paneer','High-protein paneer','Soya chunks','Soya chunks','Butter','Butter','Milk','Whey','Roti atta','Oats','Toor dal','Oil','Pasta','Whole eggs','Extra whites','Almonds']);
+ assert.deepEqual(['curd','curdH','paneer','paneerMM','paneerHP','soyN','soyS','butter','butterH','milk','whey','atta','oats','arhar','oil','pasta','egg','eggWhite','almonds'].map(id=>run(`uxFoodRow(L('${id}',1)).label`)),['Curd','Curd','Paneer','Paneer','High-protein paneer','Soya chunks','Soya chunks','Butter','Butter','Milk','Whey','Roti atta','Oats','Toor dal','Cooking oil','Pasta','Whole eggs','Extra whites','Almonds']);
  assert.equal(run("uxMealText('Ready portions + high-protein paneer')"),'Ready portions + High-protein paneer');assert.equal(run("uxMealText('Soya sabzi · Nutrela')"),'Soya sabzi');
  assert.equal(run("ketoSuggestion(state.days[0],'w','b').name"),'Paneer breakfast');
  assert.match(run('uxProductChoicesHTML()'),/Milky Mist paneer[\s\S]*Amul salted butter/);assert.equal(run('UX_FOOD_NAMES.curdH'),'Heritage curd');
