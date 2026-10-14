@@ -1,10 +1,10 @@
 import {ConvexClient} from 'convex/browser';
 import {anyApi} from 'convex/server';
-import {equal,changesBetween,mergeRecords,validateRecord} from './records.js';
+import {equal,changesBetween,mergeRecords,validateRecord,validateKetoWheyTotals,validateKetoNuts} from './records.js';
 import * as weighMath from './weigh-math.js';
 window.WeighMath=weighMath;
 import * as activityMath from './activity-math.js';
 window.ActivityMath=activityMath;
 import * as batchMath from './batch-math.js';
 window.BatchMath=batchMath;
-window.MealCloud={ConvexClient,api:anyApi,equal,changesBetween,mergeRecords,validateRecord};
+window.MealCloud={ConvexClient,api:anyApi,equal,changesBetween,mergeRecords,validateRecord,validateKetoWheyTotals,validateKetoNuts};

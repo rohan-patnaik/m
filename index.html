@@ -467,7 +467,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 
 </div>
 
-<dialog id="settingsDlg" aria-labelledby="settingsTitle"><div class="dialog-head"><h2 id="settingsTitle">Settings &amp; diet review</h2><button type="button" class="dialog-close" aria-label="Close settings" data-settings-close>×</button></div><section id="settingsPage" aria-label="Settings"></section><details id="uxDietReview" class="ux-disclosure"><summary>Diet targets &amp; review</summary><section id="keto" class="section" aria-labelledby="ketoTitle"></section></details></dialog>
+<dialog id="settingsDlg" aria-labelledby="settingsTitle"><div class="dialog-head"><h2 id="settingsTitle">Settings</h2><button type="button" class="dialog-close" aria-label="Close settings" data-settings-close>×</button></div><section id="settingsPage" aria-label="Settings"></section><details id="uxDietReview" class="ux-disclosure"><summary>Nutrition information</summary><section id="keto" class="section" aria-labelledby="ketoTitle"></section></details></dialog>
 
 <dialog id="dlg" aria-labelledby="dlgTitle"><div class="dialog-head"><h2 id="dlgTitle"></h2><button type="button" class="dialog-close" aria-label="Close dialog" onclick="this.closest('dialog').close()">×</button></div><div id="dlgBody"></div></dialog>
 
@@ -481,6 +481,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="shopping-runtime.js"></script>
 <script src="keto-runtime.js"></script>
 <script src="ux-runtime.js"></script>
+<script src="meal-editor-runtime.js"></script>
 <script>
 const DB={
  avocado:['Avocado flesh · raw generic estimate',160,2,'g'],
@@ -555,7 +556,7 @@ const SRC=[
  {id:'curd',name:'Curd · Milky Mist 1 kg pouch',per:'100 g',k:61,p:3.5,f:null,st:'Panel ✓ (tub 61.8 unused)',url:'https://www.bigbasket.com/pd/40262046/milky-mist-curd-fresh-no-preservatives-creamy-1-kg/'},
  {id:'paneer',name:'Paneer · Heritage 500 g',per:'100 g',k:274,p:16,f:null,st:'Panel ✓',url:'https://www.bigbasket.com/pd/214024/heritage-paneer-500-g-pouch/'},
  {id:'milk',name:'Milk · Heritage green toned',per:'100 g panel → /100 ml',k:58,p:3.1,f:null,st:'Panel ✓ + density est.',url:'https://www.bigbasket.com/pd/40147597/heritage-daily-health-toned-milk-500-ml-pouch/'},
- {id:'oil',name:'Oil · Tata Simply Better mustard',per:'100 g panel → /100 ml',k:897,p:0,f:null,st:'Panel ✓ + conv.',url:'https://www.tatasimplybetter.com/products/tata-simply-better-coldpressed-mustard-oil-1l?variant=50349740097856'},
+ {id:'oil',name:'Cooking oil',per:'100 g panel → /100 ml',k:897,p:0,f:null,st:'Panel ✓ + conv.',url:'https://www.tatasimplybetter.com/products/tata-simply-better-coldpressed-mustard-oil-1l?variant=50349740097856'},
  {id:'butter',name:'Butter · Amul salted',per:'100 g',k:724,p:1,f:0,st:'Panel ✓ (alt 722/0.5)',url:'https://www.dmart.in/product/amul-butter?selectedProd=113502'},
  {id:'oats',name:'Oats · Saffola plain',per:'100 g dry',k:369,p:12.6,f:10.4,st:'Panel ✓ (user)',url:'https://www.dmart.in/product/saffola-oats-poats0saff9xx90520?selectedProd=713312'},
  {id:'moong',name:'Moong dal (IFCT generic)',per:'100 g dry',k:326,p:23.88,f:9.37,st:'Generic — NOT Tata',url:'https://www.nin.res.in/ebooks/IFCT2017.pdf'},
@@ -995,7 +996,7 @@ function calRefresh(focus){const box=$('#calPicked');if(!box)return;const mon=ca
 function calPickDate(iso){const mon=mondayOf(iso);if(!mon)return;calPickMon=mon;calConfirm=null;calRefresh();}
 function openCal(pick){calPickMon=typeof pick==='string'&&mondayOf(pick)||null;calConfirm=null;$('#dlgTitle').textContent='Calendar weeks';$('#dlg').classList.add('ux-cal-dialog');$('#dlgBody').innerHTML=calCard();$('#dlg').showModal();}
 function dayViewISO(){const vd=new Date();vd.setDate(vd.getDate()+dayOff);return vd.getFullYear()+'-'+String(vd.getMonth()+1).padStart(2,'0')+'-'+String(vd.getDate()).padStart(2,'0');}
-let editCtx=null,editSnap='',editP=null;
+let editCtx=null,editSnap='',editP=null,editDayOptionsOnly=false;
 // Keto breakfast recipes in Edit meals are form state only; saveEdit hands changed picks to Root's prepareKetoBreakfasts.
 function editKetoOptions(i,p,day,sides,recipe){try{const o=isKeto(p)&&typeof ketoBreakfastOptions==='function'?(day?ketoBreakfastOptions(i,p,day,sides||null,recipe):ketoBreakfastOptions(i,p)):null;return Array.isArray(o)?o:[];}catch{return[];}}
 // Breakfast sides are edited separately from the dish. Values come from the saved breakfast as stored (Root's
@@ -1067,13 +1068,13 @@ function editFormHTML(v,i=editCtx?editCtx.i:0){
    return{dish:`<div class="edit-item"><label>${PERSON_NAMES[p]} breakfast dish<select data-ek="b${p}"><option value=""${cur||nc?'':' selected'}>Current / Custom</option><option value="${EDIT_NOCOOK}"${nc?' selected':''}>No cooked breakfast</option>${o.map(opt).join('')}</select></label><small class="hintline" data-bf-preview="${p}">${esc(editBreakfastPreview(v,i,p))}</small></div>`,sides:`<div class="edit-sides" data-edit-sides="${p}"><h4 class="edit-sides-sum">${PERSON_NAMES[p]} breakfast sides${sum?` · ${esc(sum)}`:' · none'}</h4><div class="edit-sides-grid">${fields}</div>${nc?'<small class="hintline">No cooked breakfast counts whey, curd, milk and nuts only.</small>':dish==='dahiBowl'?`<small class="hintline">${esc(dahiNote)}</small>`:''}</div>`};};
   // Three sections: Meals | Breakfast sides | Day options. Side by side on wide screens; one at a time (tabs) on
   // phones and short screens. Hidden sections stay in the DOM, so unsaved picks survive switching.
-  const keto=['w','h'].filter(isKeto).map(kb),secs=[['meals','Meals'],...(keto.length?[['sides','Breakfast sides','Sides']]:[]),['day','Day options']],sec=secs.some(([k])=>k===editSection)?editSection:'meals';
+  const keto=editDayOptionsOnly?[]:['w','h'].filter(isKeto).map(kb),secs=[['meals','Meals'],...(keto.length?[['sides','Breakfast sides','Sides']]:[]),['day','Day options']],sec=secs.some(([k])=>k===editSection)?editSection:'meals';
   const tab=([k,n,short])=>`<button type="button" role="tab" id="edit-tab-${k}" data-edit-tab="${k}" aria-controls="edit-sec-${k}" aria-selected="${k===sec}" tabindex="${k===sec?0:-1}">${short||n}</button>`;
   const panel=(k,body)=>`<section class="edit-sec" id="edit-sec-${k}" data-edit-sec="${k}" role="tabpanel" aria-labelledby="edit-tab-${k}"><h3 class="edit-sec-title">${secs.find(x=>x[0]===k)[1]}</h3>${body}</section>`;
   return`<div class="editform${keto.length?'':' edit-nosides'}" data-sec="${sec}">
     <div class="edit-tabs" role="tablist" aria-label="Edit sections">${secs.map(tab).join('')}</div>
     ${panel('meals',`${bal.length===1?`<label>${PERSON_NAMES[bal[0]]} breakfast<select data-ek="b"><option value="${EDIT_NOCOOK}"${v['ready'+bal[0].toUpperCase()]?' selected':''}>No cooked breakfast</option>${opts(BREAKFASTS,v['ready'+bal[0].toUpperCase()]?null:v.b)}</select></label>`:bal.length===2?`<label>Breakfast recipe (both)<select data-ek="b">${opts(BREAKFASTS,v.b)}</select></label>${['w','h'].map(p=>`<label>${PERSON_NAMES[p]} breakfast<select data-ek="r${p}"><option value="cook">Cooked recipe</option><option value="${EDIT_NOCOOK}"${v['ready'+p.toUpperCase()]?' selected':''}>No cooked breakfast</option></select></label>`).join('')}`:''}${keto.map(x=>x.dish).join('')}
-    ${isKeto('h')?['l','d'].map(m=>editMainHTML(v,i,m)).join(''):''}
+    ${isKeto('h')&&!editDayOptionsOnly?['l','d'].map(m=>editMainHTML(v,i,m)).join(''):''}
     <label>Lunch + dinner sabzi<select data-ek="s">${editSabziOptions(v.s)}</select></label>
     ${eaters.length?`<label>${eaters.length===2?'Dinner protein':PERSON_NAMES[eaters[0]]+' dinner protein'}<select data-ek="p">${opts(PROTEINS,v.p)}</select></label>`:''}
     ${bal.length?`<label>${bal.length===2?'Dal':PERSON_NAMES[bal[0]]+' dal'}<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>`:''}`)}
@@ -1091,7 +1092,7 @@ function collectEdit(){
   const bv=g('b'),ready=p=>{const k=g('b'+p);if(k!==null)return k===EDIT_NOCOOK;const r=g('r'+p);if(r!==null)return r===EDIT_NOCOOK;if(!isKeto(p)&&bv!==null&&['w','h'].filter(q=>!isKeto(q)).length===1)return bv===EDIT_NOCOOK;return !!snap['ready'+p.toUpperCase()];};
   const sides=p=>{const base=editSideBase[p]||snap['sides'+p.toUpperCase()];if(!base)return undefined;return Object.fromEntries(EDIT_SIDES.map(([f])=>{const el=document.querySelector(`[data-es="${p}.${f}"]`),n=el?Number(el.value):base[f];return [f,Number.isFinite(n)&&n>=0?n:base[f]];}));};
   const dal=g('dal');
-  return{mainl:g('mainl')??snap.mainl??'',maind:g('maind')??snap.maind??'',evening:isKeto('h')?Object.fromEntries(KETO_NUT_IDS.map(id=>[id,Number(document.querySelector(`[data-en="${id}"]`)?.value??snap.evening?.[id]??0)])):undefined,readyW:ready('w'),readyH:ready('h'),b:bv&&bv!==EDIT_NOCOOK?bv:snap.b??null,bw:g('bw')??'',bh:g('bh')??'',sidesW:sides('w'),sidesH:sides('h'),s:g('s'),p:editP,dal:dal??snap.dal??null,wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:document.querySelector('[data-et="eggH"]')?t('eggH'):!!snap.eggH,cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
+  return{mainl:g('mainl')??snap.mainl??'',maind:g('maind')??snap.maind??'',evening:isKeto('h')?Object.fromEntries(KETO_NUT_IDS.map(id=>[id,Number(document.querySelector(`[data-en="${id}"]`)?.value??snap.evening?.[id]??0)])):undefined,readyW:ready('w'),readyH:ready('h'),b:bv&&bv!==EDIT_NOCOOK?bv:snap.b??null,bw:g('bw')??snap.bw??'',bh:g('bh')??snap.bh??'',sidesW:sides('w'),sidesH:sides('h'),s:g('s'),p:editP,dal:dal??snap.dal??null,wheyW:t('wheyW'),wheyH:t('wheyH'),eggH:document.querySelector('[data-et="eggH"]')?t('eggH'):!!snap.eggH,cardioW:t('cardioW'),cardioH:editSnap?JSON.parse(editSnap).cardioH:true,off:t('off'),skipB:t('skipB'),skipL:t('skipL'),skipD:t('skipD')};
 }
 // Fit: a section taller than its space splits into pages (greedy, measured in the real layout) with a small chooser
 // on top. Keto sides always page by person when both are Keto. Hidden pages stay in the DOM for collectEdit. If one
@@ -1121,11 +1122,12 @@ function editFit(){const form=document.querySelector('#dlgBody .editform');if(!f
  }}
 function editShowSection(k,focus=true){editSection=k;const form=document.querySelector('#dlgBody .editform');if(!form)return;form.dataset.sec=k;editFit();form.querySelectorAll('[data-edit-tab]').forEach(b=>{const on=b.dataset.editTab===k;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;if(on&&focus)b.focus();});}
 function refreshEditDirty(){const sv=document.querySelector('[data-editsave]');if(sv)sv.disabled=JSON.stringify(collectEdit())===editSnap;}
-function openEdit(i,iso){
+function openEdit(i,iso,dayOptionsOnly=false){
+  editDayOptionsOnly=dayOptionsOnly;
   if(iso){selectWeek(mondayOf(iso));render();}
   editCtx={i,iso:iso||null};
   const v=editValsFromState(i);editSnap=JSON.stringify(v);editP=v.p;editSideBase={w:v.sidesW,h:v.sidesH};editSection='meals';editPages={};$('#dlg').classList.add('ux-edit-dialog');
-  $('#dlgTitle').textContent=DAYS[i]+' · edit meals';
+  $('#dlgTitle').textContent=DAYS[i]+(editDayOptionsOnly?' · day options':' · edit meals');
   const mon=iso?mondayOf(iso):null,scope=iso?(lockedWeeks[mon]?`Changes apply to the week of ${weekRangeText(mon)} only.`:`Saving creates the week of ${weekRangeText(mon)} from your template; the template itself stays unchanged.`):state.weekKey?`Changes apply to the week of ${weekRangeText(state.weekKey)} only.`:'You are editing the weekly template: every week without its own saved plan changes too.';
   $('#dlgBody').innerHTML=`<p class="ux-scope${!iso&&!state.weekKey?' ux-scope-template':''}">${esc(scope)}</p>`+editFormHTML(v)+(state.weekKey&&['l','d'].some(m=>['w','h'].some(p=>['sabzi','protein'].some(c=>batchLink(dateForDay(i),m,p,c))))?'<p class="hintline">This day includes packed batch portions. Remove the batch to change those portions; other meal edits still apply.</p>':'');
   $('#dlg').showModal();editFit();

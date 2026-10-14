@@ -37,7 +37,7 @@ test('applying a breakfast replaces the old meal only, preserves Wife and other 
  assert.equal(run("applyKetoBreakfast(0,'h','eggAvocado')"),true);assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),'eggAvocado');assert.equal(run("meal(state.days[0],'b','h').some(x=>x.q>0&&['palak','flax','soyN'].includes(x.id))"),false);
  assert.equal(run("JSON.stringify(state.days.map((_,i)=>assignedDayNutrition(i,'w')))"),wife);assert.equal(run("JSON.stringify(['l','d','e'].map(m=>meal(state.days[0],m,'h')))"),later);assert.equal(run('JSON.stringify(state.days)'),days);
  const before=run("JSON.stringify(meal(state.days[0],'b','h'))");run('snapshotDraft();ketoMeals={};hydrateDraft()');assert.equal(run("JSON.stringify(meal(state.days[0],'b','h'))"),before);
- run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',2)");assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),undefined);
+ run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',2)");assert.equal(run("ketoConfig(state.days[0],'h','b').breakfastRecipe"),'eggAvocado');
 });
 test('breakfast choices enforce vegetarian assignment, whole-day carb budget, weekly chicken and whey caps',()=>{
  const run=ready();assert.deepEqual(JSON.parse(run("JSON.stringify(ketoBreakfastOptions(0,'w').map(x=>x.id))")),['paneerBhurji','dahiBowl']);assert.throws(()=>run("applyKetoBreakfast(0,'w','eggAvocado')"),/unavailable/);

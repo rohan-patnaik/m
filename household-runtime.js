@@ -77,7 +77,7 @@ const KETO_MAINS={
 };
 function ketoMainConfig(i,p,m,id,day=state.days[i]){
  if(p!=='h'||!['l','d'].includes(m)||!KETO_MAINS[id])throw Error('Invalid lunch or dinner choice.');
- return {...ketoConfig(day,p,m,i),eggWhites:0,spinach:0,mushroom:0,tomato:0,onion:0,soya:0,curd:0,milk:0,butter:0,flax:0,cucumber:100,avocado:0,almonds:0,walnuts:0,cashews:0,paneerType:paneerId(),...KETO_MAINS[id].portion,mealRecipe:id};
+ return {...ketoConfig(day,p,m,i),eggPreparation:'planned',eggWhites:0,spinach:0,mushroom:0,tomato:0,onion:0,soya:0,curd:0,milk:0,butter:0,flax:0,cucumber:100,avocado:0,almonds:0,walnuts:0,cashews:0,paneerType:paneerId(),...KETO_MAINS[id].portion,mealRecipe:id};
 }
 function ketoMainPortion(cfg){return [cfg.protein==='eggs'?`${cfg.quantity} whole eggs`:`${cfg.quantity} g ${cfg.protein==='chicken'?'raw chicken':'paneer'}`,cfg.eggWhites?`${cfg.eggWhites} extra whites`:null,cfg.soya?`${cfg.soya} g dry soya`:null,...[['spinach','spinach'],['mushroom','mushrooms'],['tomato','tomato']].filter(([k])=>cfg[k]>0).map(([k,l])=>`${cfg[k]} g raw ${l}`),cfg.avocado?`${cfg.avocado} g avocado flesh`:null,cfg.curd?`${cfg.curd} g curd`:null,cfg.cucumber?`${cfg.cucumber} g cucumber`:null,`${cfg.oil} ml cooking oil`].filter(Boolean).join(' · ');}
 // Stage all picks together so previews and Save use the same combined day, exclusions and batch ledger.
@@ -109,7 +109,24 @@ const KETO_BREAKFASTS={
  eggPoach:{name:'3 Egg Poach',prep:'Sunny-side-up eggs (your requested label): cook three whole eggs in 5 ml measured oil. Sides are selected separately. Water-poached eggs need no oil; edit oil to zero for that method.',portion:{protein:'eggs',quantity:3,oil:5,whey:1,almonds:0,walnuts:0}},
  dahiBowl:{name:'Dahi protein bowl',prep:'Mix plain dahi with whey. Other sides are selected separately. No added oil.',portion:{protein:'paneer',quantity:0,curd:100,whey:1.5,almonds:0,walnuts:0}}
 };
-function ketoBreakfastName(cfg){return KETO_BREAKFASTS[cfg.breakfastRecipe]?.name||(cfg.protein==='eggs'?(cfg.spinach?'Egg & spinach scramble':'Egg breakfast'):cfg.protein==='chicken'?'Chicken breakfast':cfg.quantity?'Paneer breakfast':'Protein breakfast');}
+const EGG_PREPARATIONS={planned:'As planned',boiled:'Boiled',poached:'Poached',fried:'Fried',omelette:'Omelette',scrambled:'Scrambled',curry:'Egg curry'};
+function eggPreparationName(cfg){return cfg.eggPreparation&&cfg.eggPreparation!=='planned'?EGG_PREPARATIONS[cfg.eggPreparation]:null;}
+function ketoBreakfastName(cfg){const prep=cfg.protein==='eggs'&&eggPreparationName(cfg);if(prep)return `${cfg.quantity} ${prep==='Omelette'?'eggs · omelette':prep==='Egg curry'?'eggs · curry':prep.toLowerCase()+' eggs'}`;if(cfg.breakfastRecipe==='boiledEggs')return `${cfg.quantity} boiled eggs`;if(cfg.breakfastRecipe==='eggPoach')return `${cfg.quantity} Egg Poach`;return KETO_BREAKFASTS[cfg.breakfastRecipe]?.name||(cfg.protein==='eggs'?(cfg.spinach?'Egg & spinach scramble':'Egg breakfast'):cfg.protein==='chicken'?'Chicken breakfast':cfg.quantity?'Paneer breakfast':'Protein breakfast');}
+// Quantity edits reuse the existing food ledger; preparation is descriptive and never invents oil.
+function editableMealEggs(i,m,p){
+ if(!Number.isInteger(i)||i<0||i>6||p!=='h'||!isKeto(p)||!['b','l','d'].includes(m))return null;
+ const day=state.days[i],cfg=ketoConfig(day,p,m,i);
+ if(!kept(day,m)||m==='b'&&day.readyB?.[p]||cfg.protein!=='eggs'||coveredComponent(day,m,p,'protein')||m!=='b'&&!ketoComponent(day,p,m,'protein', {...cfg,quantity:1}).some(x=>x.id==='egg'))return null;
+ return cfg;
+}
+function changeMealEggs(i,m,p,field,value){
+ if(!cloudReady||cloudSaving||!['quantity','eggPreparation'].includes(field))return false;
+ const cfg=editableMealEggs(i,m,p);if(!cfg)return false;
+ const groups=mealQuantityGroups(state.days[i],m,p);if(groups.some(g=>g.key==='eggs'&&g.excluded||g.component==='protein'))return false;
+ const next={...cfg,[field]:value};MealCloud.validateRecord(ketoMealKey(i,p,m),next);
+ if(state.view==='day'&&!state.weekKey){const week=mondayOf(dayViewISO());copyDietScope('template',week);lockedWeeks[week]={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:Date.now()};state.weekKey=week;}
+ ketoMeals[ketoMealKey(i,p,m)]=next;save();render();return true;
+}
 // A dish selection and its explicit sides share one ingredient ledger. Saved portions are never migrated on read.
 const KETO_BREAKFAST_SIDE_KEYS=['whey','curd','milk','avocado','almonds','walnuts','cashews'];
 function ketoBreakfastSides(cfg){return Object.fromEntries(KETO_BREAKFAST_SIDE_KEYS.map(k=>[k,cfg[k]||0]));}
@@ -147,6 +164,7 @@ function ketoBreakfastOptions(i,p,dayOverride=state.days[i],sideOverride=null,re
    // Named avocado dish includes avocado. Other newly selected dishes start without it; saved/current sides stay explicit.
    const sides={...ketoBreakfastSides(old),avocado:id==='eggAvocado'?x.portion.avocado:0};
    const config=old.breakfastRecipe===id?{...old}:eggMethod?{...old,oil:x.portion.oil,breakfastRecipe:id}:{...old,spinach:0,eggWhites:0,soya:0,cucumber:0,butter:0,flax:0,mushroom:0,tomato:0,onion:0,sabziFraction:0,oil:0,...x.portion,...sides,...(id==='dahiBowl'?{curd:x.portion.curd,whey:x.portion.whey}:{}),breakfastRecipe:id};
+   if(old.breakfastRecipe!==id)config.eggPreparation='planned';
    breakfastSideOverride(config,sideOverride);
    if(ketoEveningOnly(i,p))for(const id of KETO_NUT_IDS)config[id]=0;
    MealCloud.validateRecord(ketoMealKey(i,p,'b'),config);

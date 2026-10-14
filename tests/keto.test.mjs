@@ -260,10 +260,10 @@ test('breakfast, lunch and dinner share one action band with the same slot order
   const keto=[w,h].filter(x=>x==='keto').length;
   const bands=['b','l','d'].map(m=>{const html=run(`uxMealHTML(0,'${m}')`),band=html.slice(html.indexOf('<div class="meal-actions">'),html.indexOf('>Details</button></div></div>')+29);
    assert.ok(html.indexOf('<div class="meal-actions">')>html.indexOf('</h3>'));
-   assert.equal((band.match(/data-keto-edit=/g)||[]).length,keto);
+   assert.equal((band.match(/data-meal-edit=/g)||[]).length,keto);
    assert.match(band,/data-ing="0,[bld]"[^>]*>Details<\/button><\/div><\/div>/);
    if(m==='b')assert.match(band,/<span class="meal-action-slot" aria-hidden="true"><\/span><button class="ing meal-details-link"/);else assert.match(band,new RegExp(`data-weigh="0" data-weigh-meal="${m}">Weigh &amp; serve</button><button class="ing meal-details-link"`));
-   return band.replace(/<details[\s\S]*?<\/details>/g,'D').replace(/<button class="ing" data-weigh[^<]*<\/button>|<span class="meal-action-slot"[^<]*<\/span>/,'S').replace(/data-ing="[^"]*"/,'');});
+   return band.replace(/data-meal-edit="[^"]*"/g,'').replace(/<details[\s\S]*?<\/details>/g,'D').replace(/<button class="ing" data-weigh[^<]*<\/button>|<span class="meal-action-slot"[^<]*<\/span>/,'S').replace(/data-ing="[^"]*"/,'');});
   assert.equal(bands[1],bands[0]);assert.equal(bands[2],bands[0]);
   assert.doesNotMatch(run("uxMealHTML(0,'e')"),/meal-actions/);
  }
@@ -314,7 +314,7 @@ test('compact quantity tables retain every person’s food and distinguish share
 test('meal cards show generic food names while product surfaces keep brands',()=>{
  const {run,shopping}=app(true);run("householdDiets={w:'keto',h:'keto'}");
  const days=Array.from({length:7},(_,i)=>run(`uxDayHTML(${i})`)).join(''),cards=days.match(/<p class="meal-menu">[\s\S]*?<\/p>|<table class="meal-table">[\s\S]*?<\/table>/g).join('');
- assert.match(days,/data-keto-value="paneerMM" aria-pressed="true">Milky Mist<\/button>/);
+ assert.doesNotMatch(days,/data-keto-value|Milky Mist|Heritage/);
  assert.match(cards,/<p class="meal-menu">Paneer breakfast/);assert.match(cards,/<th scope="row">Paneer<\/th>/);
  assert.doesNotMatch(cards,/Heritage|Milky Mist|Nutrela|Saffola|Amul|ATOM|Pillsbury|Tata|Borges|DMart/);
  assert.deepEqual(['curd','curdH','paneer','paneerMM','paneerHP','soyN','soyS','butter','butterH','milk','whey','atta','oats','arhar','oil','pasta','egg','eggWhite','almonds'].map(id=>run(`uxFoodRow(L('${id}',1)).label`)),['Curd','Curd','Paneer','Paneer','High-protein paneer','Soya chunks','Soya chunks','Butter','Butter','Milk','Whey','Roti atta','Oats','Toor dal','Oil','Pasta','Whole eggs','Extra whites','Almonds']);
@@ -347,17 +347,14 @@ test('comparison uses prepared recipes and cannot change plan, calories, shoppin
  const snapshot=()=>run("JSON.stringify({state,lockedWeeks,savedBatches,dailyWeights,cloudDraft,ledger:ledger(),w:daily(0,'w'),h:daily(0,'h')})");
  const before=snapshot();run('renderKeto()');
  assert.equal(snapshot(),before);
- assert.match(root.innerHTML,/Soya chunks sabzi/);
- assert.match(root.innerHTML,/prepared portions stay frozen/i);
- assert.match(root.innerHTML,/Soya chunks sabzi/);
- assert.match(root.innerHTML,/Undeclared sugars/);
- assert.match(root.innerHTML,/not a verified global/);
- assert.equal((root.innerHTML.match(/data-keto-day="/g)||[]).length,7);
+ assert.match(root.innerHTML,/Nutrition information/);
+ assert.match(root.innerHTML,/Prepared portions stay frozen/);
+ assert.doesNotMatch(root.innerHTML,/data-keto-day|data-keto-edit|data-diet-pick|<table/);
  assert.equal(run('KETO_VIDEOS.length'),5);
  assert.equal(run('KETO_PACKETS[0].carbs'),2.8);
  assert.equal(run("KETO_PACKETS.find(x=>x.name==='Nutrela chunks').fibre"),null);
- assert.match(root.innerHTML,/100 g, NOT per 100 ml/);
- assert.match(root.innerHTML,/ND = not declared, not zero/);
+ assert.match(root.innerHTML,/Unknown nutrition is marked/);
+ assert.match(root.innerHTML,/https:\/\/fdc.nal.usda.gov/);
  run("ketoPerson='w';renderKeto()");assert.equal(snapshot(),before);
  assert.doesNotMatch(root.innerHTML,/class="keto-person">Husband/);
 });
@@ -500,7 +497,7 @@ test('mixed prep lists account for every fresh ingredient and oil once',()=>{
 });
 
 test('high hunger prompts review and Heritage curd is a distinct shared default',()=>{
- const {run,root}=app();run("trialChecks['2026-10-05']={hunger:4};renderKeto()");assert.match(root.innerHTML,/High hunger recorded/);assert.match(root.innerHTML,/before cutting food further/);
+ const {run,root}=app();run("trialChecks['2026-10-05']={hunger:4};renderKeto()");assert.match(run('trialHTML()'),/High hunger recorded/);assert.match(run('trialHTML()'),/before cutting food further/);
  run("balancedCurdType='curdH'");assert.equal(run("meal(state.days[0],'l','w').find(x=>x.id==='curdH').q"),200);assert.equal(run("comparisonSum([L('curdH',200)]).k"),116);
  run('snapshotDraft();balancedCurdType="curd";hydrateDraft()');assert.equal(run('balancedCurdType'),'curdH');
 });
@@ -555,7 +552,7 @@ test('wife bhurji replaces cabbage and dinner soya without changing husband or s
  assert.ok(Math.abs(after.cabbage-before.cabbage+225)<1e-8);assert.ok(Math.abs(after.paneerMM-before.paneerMM-101.25)<1e-8);assert.ok(Math.abs(after.soyN-before.soyN+48)<1e-8);
  assert.equal(run("householdShopping().market.find(x=>x.id==='cabbage').buy"),500);
  assert.match(run("assignedBalancedTitle(state.days[5],'w','d')"),/Paneer bhurji/);assert.doesNotMatch(run("assignedBalancedTitle(state.days[5],'w','d')"),/dinner protein/);
- run('renderKeto()');assert.match(root.innerHTML,/Wife: Paneer bhurji · Husband: Cabbage/);
+ assert.match(run('ketoDayHTML(state.days[5],5)'),/Wife: Paneer bhurji · Husband: Cabbage/);
  for(const group of JSON.parse(run('JSON.stringify(householdPrep(5))')).slice(0,2))assert.ok(group[0].includes('once for lunch + dinner'));
  const groups=JSON.parse(run('JSON.stringify(householdPrep(5))')),expected=JSON.parse(run("JSON.stringify(aggregateBatchLines(['w','h'].flatMap(p=>['b','l','d','e'].flatMap(m=>freshMeal(state.days[5],m,p)))))"));
  for(const x of expected){const name=run(`DB['${x.id}'][0]`),q=groups.flatMap(g=>g[1]).filter(s=>s.startsWith(name+' — ')).reduce((n,s)=>n+Number(s.slice(name.length+3).split(' ')[0]),0);assert.ok(Math.abs(q-x.q)<.31,x.id);}
@@ -612,8 +609,8 @@ test('round 2 UI: sticky header theme switch, product selectors, buying assumpti
  assert.doesNotMatch(root.innerHTML,/<td>0 g<\/td><td>0 g<\/td>/);assert.doesNotMatch(run('trialHTML()+ketoReviewHTML()'),/walnut/i);
  const evidence=root.innerHTML.slice(root.innerHTML.indexOf('Packaged products and evidence'));assert.doesNotMatch(evidence.slice(0,evidence.indexOf('Five doctor')),/walnut/i);
  run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:10}");assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Cashews \(g\)<input[^>]*value="10"/);assert.match(run("ketoEditHTML(state.days[0],0,'h','b')"),/Walnuts \(g\)<input[^>]*data-keto-field="walnuts"/);
- assert.match(root.innerHTML,/my\.clevelandclinic\.org\/health\/treatments\/24003-ketosis/);assert.ok(root.innerHTML.includes(`${run('F(COMPARE_NUTRIENTS.milk.c*milkDensity())')} g carbs per 100 ml (the 4.6 g per 100 g panel × the 1.03 g/ml density set in Settings)`));
- assert.match(root.innerHTML,/Milky Mist paneer \(500 g pouch\) 283 kcal/);assert.match(root.innerHTML,/Keto draft/);
+ assert.match(root.innerHTML,/my\.clevelandclinic\.org\/health\/treatments\/24003-ketosis/);assert.match(root.innerHTML,/Food values &amp; sources/);
+ assert.doesNotMatch(root.innerHTML,/Milky Mist paneer|Keto draft/);assert.match(root.innerHTML,/Nutrition values · advanced/);
 });
 
 test('round 3 UI: retired K3 pickers, resolved selections, purchase records, milk density and editable walnuts',()=>{
@@ -635,7 +632,7 @@ test('round 3 UI: retired K3 pickers, resolved selections, purchase records, mil
  run("globalThis.shoppingChecked=row=>false;renderShopping();delete globalThis.shoppingChecked");
  assert.doesNotMatch(shopping.innerHTML,/data-ux-buy="gobi"[^>]*checked/);assert.match(shopping.innerHTML,/quantity changed — re-check/);
  // Milk evidence follows the editable density.
- run("state.density=1.1;renderKeto()");assert.match(run('document.querySelector("#keto").innerHTML'),/5\.1 g carbs per 100 ml \(the 4\.6 g per 100 g panel × the 1\.1 g\/ml/);
+ run("state.density=1.1;renderKeto()");assert.equal(run('F(COMPARE_NUTRIENTS.milk.c*milkDensity())'),5.1);
  // An explicit old walnut record stays visible as an editable field; no separate legacy note.
  run("ketoMeals[ketoMealKey(0,'h','b')]={...ketoConfig(state.days[0],'h','b'),cashews:0,walnuts:20}");
  const edit=run("ketoEditHTML(state.days[0],0,'h','b')");assert.match(edit,/Walnuts \(g\)<input[^>]*value="20" data-keto-key="keto\/2026-10-05\/day\/0\/h\/b" data-keto-field="walnuts"/);assert.doesNotMatch(edit,/Older record|data-keto-use-cashews/);
@@ -673,14 +670,14 @@ test('husband keto controls: whey scoops, extra egg whites, almonds and guarded 
  run("ketoMeals[ketoMealKey(0,'w','b')]={...ketoConfig(state.days[0],'w','b'),spinach:150}");assert.match(run("ketoEditHTML(state.days[0],0,'w','b')"),/value="150"[^>]*data-keto-field="spinach"/);
  // Carb-budget info cites ISSN and interpolates Root's budget.
  run('ketoOptions.carbBudget=47');run('renderKeto()');const info=root.innerHTML;
- assert.match(info,/20–50 g carbs\/day is a common keto guideline, but 47 g of counted carbs does not guarantee ketosis[^<]*no blanket net-carb subtraction\. <a href="https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/38934469\/"/);
- assert.match(info,/g estimated total carbs/);assert.match(info,/counted available carbs/);
+ assert.match(info,/A carb budget is not a promise of ketosis/);assert.match(info,/https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/38934469\//);assert.equal(run('ketoOptions.carbBudget'),47);
+ assert.match(info,/counted available carbohydrate/);
  // "Keto trial" labels replace "Strict keto" in keto, assignment and index markup.
  const assign=run('householdAssignmentHTML()');assert.match(assign,/>Keto trial<\/button>/);
  const indexSrc=readFileSync(new URL('../index.html',import.meta.url),'utf8');
  for(const html of [info,assign,indexSrc])assert.doesNotMatch(html,/Strict keto/i);
  assert.equal((indexSrc.match(/'Keto trial':'Balanced'/g)||[]).length,2);
- assert.match(info,/Husband · Keto trial/);
+ assert.doesNotMatch(info,/data-keto-edit|data-keto-day/);
  // Fullness: nuts are a substantial counted part of the plan; no fixed 10 g cashew default.
  assert.match(run('trialHTML()'),/at most 20 g total nuts for the evening/);
  assert.doesNotMatch(info,/10 g once a day|10 g cashew/);
@@ -706,11 +703,11 @@ test('day carbs: totals strip, warning actions and the read-only breakdown dialo
  const {run}=app(true);
  run("householdDiets={w:'balanced',h:'keto'};uxMacros.w.c=uxMacros.h.c=true");
  const day=run('uxDayHTML(0)'),link=p=>day.match(new RegExp(`<button type="button" class="ux-carbs-link" data-ux-carbs="0,${p}"[^>]*>([\\s\\S]*?)</button>`));
- for(const p of ['w','h']){const t=JSON.parse(run(`JSON.stringify(assignedDayNutrition(0,'${p}'))`));assert.ok(link(p),p);assert.match(link(p)[1],new RegExp('^'+run(`comparisonRange(${t.a},${t.aHi})`)+' g carbs'));}
+ for(const p of ['w','h']){const t=JSON.parse(run(`JSON.stringify(assignedDayNutrition(0,'${p}'))`));assert.ok(link(p),p);assert.match(link(p)[1],new RegExp('^'+'~'+Math.round(t.aHi)+' g carbs'));}
  assert.match(link('h')[1],/<small> \/ 50 g<\/small>$/);assert.doesNotMatch(link('w')[1],/\/ 50 g|budget/);
  assert.equal((day.match(/data-ux-carbs="0,[wh]"/g)||[]).length>=4,true,'strip + nutrition disclosure');
  const warn=run('uxWarning(0)');assert.match(warn,/carb check unverified|carb budget needs review/);
- assert.match(warn,/<button type="button" class="text-btn" data-ux-carbs="0,h">View carbs<\/button> <a class="ux-diet-review" href="#keto">Diet review<\/a>/);assert.doesNotMatch(warn,/>Review</);
+ assert.match(warn,/<button type="button" class="text-btn" data-ux-carbs="0,h">View carbs<\/button> <a class="ux-diet-review" href="#keto">Nutrition information<\/a>/);assert.doesNotMatch(warn,/>Review</);
  // Without Root's function: totals still show, with an honest unavailable note.
  run('dayCarbBreakdown=undefined');
  let html=run("uxCarbsHTML(0,'h')");
@@ -770,15 +767,15 @@ test('Show macros: one toolbar menu, view-only, applied to the totals strip and 
  // Defaults: kcal + protein, no carbs figure in the strip; carbs stay reachable from the warning and the disclosure.
  const strip=d=>d.slice(d.indexOf('<div class="meal-day-totals">'),d.indexOf('<div class="day-actions">')>d.indexOf('<div class="meal-day-totals">')?d.indexOf('<div class="day-actions">'):d.indexOf('<div class="meal-cards">'));
  let day=run('uxDayHTML(0,true)');const t=p=>JSON.parse(run(`JSON.stringify(assignedDayNutrition(0,'${p}'))`));
- for(const p of ['w','h'])assert.ok(strip(day).includes(`<strong>${run(`R(${t(p).k})`)}<small> kcal</small></strong><span>${run(`F(${t(p).p})`)} g protein</span>`));
+ for(const p of ['w','h'])assert.ok(strip(day).includes(`<strong>~${run(`R(${t(p).k})`)}<small> kcal</small></strong><span>${run(`R(${t(p).p})`)} g protein</span>`));
  assert.doesNotMatch(strip(day),/ux-carbs-link|data-ux-carbs|g carbs/);
  assert.match(day,/View carbs<\/button>/);assert.match(day,/<summary>Nutrition &amp; carb checks<\/summary>/);assert.match(day,/data-ux-carbs="0,w">Carbs breakdown/);assert.match(day,/data-ux-carbs="0,h">Carbs breakdown/);
  assert.doesNotMatch(run("uxMealTable(0,'l')"),/<tr class="meal-c-row">/);
  // Husband carbs on: strip button with budget, and a Carbs footer row in Day and Week markup.
  run("uxMacros.h.c=true");day=run('uxDayHTML(0,true)');
- const h=t('h'),range=run(`comparisonRange(${h.a},${h.aHi})`);
+ const h=t('h'),range='~'+Math.round(h.aHi);
  assert.ok(strip(day).includes(`data-ux-carbs="0,h"`));assert.match(strip(day),new RegExp(`>${range} g carbs<small> / 50 g</small></button>`));assert.doesNotMatch(strip(day),/data-ux-carbs="0,w"/);
- const lunch=JSON.parse(run("JSON.stringify(comparisonSum(meal(state.days[0],'l','h')))")),carbRow=`<tr class="meal-c-row"><th scope="row" title="Counted available carbs">Carbs<span class="sr-only"> (counted available)</span></th><td></td><td>${run(`comparisonRange(${lunch.a},${lunch.aHi})`)} g</td></tr>`;
+ const lunch=JSON.parse(run("JSON.stringify(comparisonSum(meal(state.days[0],'l','h')))")),carbRow=`<tr class="meal-c-row"><th scope="row" title="Counted available carbs">Carbs<span class="sr-only"> (counted available)</span></th><td></td><td>~${Math.round(lunch.aHi)} g</td></tr>`;
  assert.ok(run("uxMealTable(0,'l')").includes(carbRow));assert.ok(day.includes(carbRow));assert.ok(run('uxDayHTML(0)').includes(carbRow),'Week day card');
  assert.doesNotMatch(run("uxMealTable(0,'l')"),/net.carb/i);
  // Wife protein off: her protein cell goes, her name and every food row stay.
@@ -890,7 +887,7 @@ test('Edit meals breakfast recipes: per-assignment selects, form-only until Save
  run("els['[data-ek=\"s\"]'].value='S12'");assert.match(run('editFormHTML(collectEdit())'),/data-ek="bh">[\s\S]*<option value="eggAvocado" selected>/);
  assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before,'selecting is pure form state; Cancel leaves nothing behind');
  // Helper absent: inline message, no mutation.
- run("globalThis.prepareKetoBreakfasts=undefined;els['[data-et=\"wheyH\"]']={checked:false};var box={dataset:{},textContent:''};els['#dlgBody .editbtns']={after(m){els['#dlgBody [data-editmessage]']=m}};document.createElement=()=>box");
+ run("globalThis.prepareKetoBreakfasts=undefined;els['[data-et=\"wheyH\"]']={checked:false};var box={dataset:{},textContent:''};els['#dlgBody']={append(m){els['#dlgBody [data-editmessage]']=m}};document.createElement=()=>box");
  await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);assert.equal(run('dlg.open'),true);assert.equal(run('order.length'),0);
  // Helper throws: message shown, dialog open, nothing changed.
  run("globalThis.prepareKetoBreakfasts=(i,sel,day)=>{calls.push({i,sel,day:structuredClone(day),sNow:state.days[0].s});throw Error('This would exceed 3 whey scoops today.')}");
@@ -917,13 +914,13 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.deepEqual(JSON.parse(run('JSON.stringify(uxParts([0,1]))')),{parts:[0,1],total:1,exact:true});assert.equal(run('ratioText(0,1,1)'),'W : H = 0 : 1');
  assert.deepEqual(JSON.parse(run('JSON.stringify(uxParts([.25,.2,.3,.3]))')),{parts:[5,4,6,6],total:21,exact:true});
  const ap=JSON.parse(run('JSON.stringify(uxParts([0.217,0.304,0.174,0.305]))'));assert.equal(ap.exact,false);assert.equal(ap.parts.reduce((a,b)=>a+b,0),ap.total);assert.ok(ap.total<=24&&ap.parts.every(Number.isInteger));
- assert.equal(run(`uxPartsText(${ap.parts[0]},${ap.total},false)`),`≈ ${ap.parts[0]} of ${ap.total} parts`);assert.match(run('ratioText(0.217,0.304,1)'),/^W : H = (≈ )?\d+ : \d+$/);
- assert.equal(run("uxPartsText(1,2)"),'Half the pot');assert.equal(run("uxPartsText(1,2,false)"),'≈ 1 of 2 parts');assert.equal(run("uxPartsText(5,23)"),'5 of 23 parts');
+ assert.equal(run(`uxPartsText(${ap.parts[0]},${ap.total},false)`),`≈ ${ap.parts[0]}/${ap.total}`);assert.match(run('ratioText(0.217,0.304,1)'),/^W : H = (≈ )?\d+ : \d+$/);
+ assert.equal(run("uxPartsText(1,2)"),'Half the pot');assert.equal(run("uxPartsText(1,2,false)"),'≈ 1/2');assert.equal(run("uxPartsText(5,23)"),'5/23');
  for(const [w,h] of [['balanced','keto'],['keto','keto'],['balanced','balanced']]){
   run(`householdDiets={w:'${w}',h:'${h}'}`);
   for(const m of ['l','d'])for(const p of ['w','h'])for(const row of JSON.parse(run(`JSON.stringify(uxServingRows(0,'${m}','${p}'))`))){
    assert.doesNotMatch(row.quantity,/%|\d\.\d+ (of|parts)/,`${w}/${h} ${m} ${p} ${row.label}`);
-   if(row.unweighed)assert.match(row.quantity,/^((≈ )?\d+ of \d+ parts|Half the pot|Whole pot)$/);
+   if(row.unweighed)assert.match(row.quantity,/^((≈ )?\d+\/\d+|Half the pot|Whole pot)$/);
   }
  }
  assert.doesNotMatch(run("uxMealTable(0,'l')"),/% of batch|Batch shares become/);
@@ -957,7 +954,7 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.deepEqual(JSON.parse(run("JSON.stringify(['All changes saved','Saving…','Unsaved changes','Connection lost — drafts are only in this open tab.'].map(t=>uxSaveLabel(t)[0]))")),['Saved','Saving…','Unsaved','Offline']);
  assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:15\}/);
  assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&!\[13,14,15\]\.includes\(formatVersion\)/);
- assert.match(run('uxDayHTML(0)'),/<div class="day-actions"><button data-cook="0">1 · Cook list<\/button><button class="primary" data-weigh="0">2 · Serve<\/button><button data-edit="0">Edit meals<\/button><\/div>/);
+ assert.match(run('uxDayHTML(0)'),/<div class="day-actions"><button data-cook="0">1 · Cook list<\/button><button class="primary" data-weigh="0">2 · Serve<\/button><button data-meal-edit="0|b|h">Edit meals<\/button><\/div>/);
  assert.match(run('uxWeekOverview()'),/data-ux-jump="0"[\s\S]*data-ux-jump="6"/);
  // Phone: a closed adjust control is a flex row (no float), so the action group wraps instead of overlapping it.
  const css=readFileSync(new URL('../ux.css',import.meta.url),'utf8'),phone=css.slice(css.lastIndexOf('@media(max-width:600px){'));
@@ -986,7 +983,7 @@ test('breakfast dropdowns carry No cooked breakfast; cook list shows only what t
  run("householdDiets={w:'balanced',h:'balanced'}");f=form();assert.equal((f.match(/data-ek="b"/g)||[]).length,1);assert.match(f,/data-ek="rw"><option value="cook">Cooked recipe<\/option><option value="__nocook" selected>/);assert.match(f,/data-ek="rh"><option value="cook">Cooked recipe<\/option><option value="__nocook">/);
  // Save: No cooked bypasses prepareKetoBreakfasts; a cooked pick clears only that person's flag and is validated with it cleared.
  run("householdDiets={w:'balanced',h:'keto'};state.days[0].readyB={w:true,h:false};delete ketoMeals[ketoMealKey(0,'h','b')]");
- const setup=(bh,b)=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:state.days[0].s},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:${JSON.stringify(b)}},'[data-ek="bh"]':{value:${JSON.stringify(bh)}},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}calls=[];order=[];dlg.open=true`);
+ const setup=(bh,b)=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:state.days[0].s},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:${JSON.stringify(b)}},'[data-ek="bh"]':{value:${JSON.stringify(bh)}},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody':{append(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}calls=[];order=[];dlg.open=true`);
  run("globalThis.prepareKetoBreakfasts=(i,sel,day)=>{calls.push({sel,ready:structuredClone(day.readyB||null)});return {}}");
  setup('__nocook','__nocook');await run('saveEdit()');
  assert.equal(run('calls.length'),0,'sentinel never reaches the helper');assert.equal(run('JSON.stringify(state.days[0].readyB)'),'{"w":true,"h":true}');assert.equal(run("order.join()"),'save,saveChanges');
@@ -1029,7 +1026,7 @@ test('Edit meals offers Spinach corn (K5) via a shared-recipe intent; phone meal
  run("sharedRecipes[sharedKey(0)]={recipe:'K4'}");assert.match(run('editFormHTML(editValsFromState(0),0)'),/<option value="K4" selected>K4 · Bhindi<\/option>/);
  // Save uses the existing validated shared record; K ids never enter the legacy day.s field.
  run("delete sharedRecipes[sharedKey(0)]");
- const setup=s=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:${JSON.stringify(s)}},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:''},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}order=[];dlg.open=true`);
+ const setup=s=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:${JSON.stringify(s)}},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:''},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody':{append(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','eggH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};}order=[];dlg.open=true`);
  setup('K5');await run('saveEdit()');
  assert.equal(run('sharedRecipe(state.days[0])'),'K5');assert.equal(run('state.days[0].s'),'S1');assert.equal(run("order.join()"),'save,saveChanges');
  setup('S7');await run('saveEdit()');assert.equal(run('sharedRecipe(state.days[0])'),'S7');assert.equal(run('state.days[0].s'),'S7');
@@ -1109,7 +1106,7 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  assert.equal(seeded.curd,opt.curd||0);assert.equal(seeded.whey,opt.whey||0);
  assert.deepEqual(JSON.parse(run(`JSON.stringify(editSidesForPick({...editValsFromState(0),bh:'eggPoach'},0,'h'))`)),v.sidesH,'same saved dish keeps its saved sides');
  f=run(`editFormHTML({...editValsFromState(0),bh:'dahiBowl',sidesH:${JSON.stringify(seeded)}},0)`);assert.doesNotMatch(f,/data-es="h\.(whey|curd)"/);assert.match(f,new RegExp(`Bowl uses curd ${seeded.curd} g \\+ whey ${seeded.whey} scoops`));
- const setup=(bh,sides)=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:state.days[0].s},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:${JSON.stringify(bh)}},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody .editbtns':{after(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};for(const [k,val] of Object.entries(${JSON.stringify(sides)}))els['[data-es="h.'+k+'"]']={value:String(val)};}order=[];calls=[];dlg.open=true`);
+ const setup=(bh,sides)=>run(`editCtx={i:0,iso:null};editSnap=JSON.stringify(editValsFromState(0));editP=editValsFromState(0).p;els={'[data-ek="s"]':{value:state.days[0].s},'[data-ek="dal"]':{value:state.days[0].dal},'[data-ek="b"]':{value:state.days[0].b},'[data-ek="bh"]':{value:${JSON.stringify(bh)}},'[data-editsave]':{disabled:true},'#dlg':dlg,'#dlgBody':{append(m){els['#dlgBody [data-editmessage]']=m}}};{const sv=JSON.parse(editSnap);for(const k of ['wheyW','wheyH','cardioW','off','skipB','skipL','skipD'])els['[data-et="'+k+'"]']={checked:sv[k]};for(const [k,val] of Object.entries(${JSON.stringify(sides)}))els['[data-es="h.'+k+'"]']={value:String(val)};}order=[];calls=[];dlg.open=true`);
  run("globalThis.prepareKetoBreakfasts=(i,sel,day,recipe,sides)=>{calls.push({sel,sides:sides||null,ready:day.readyB||null});return {}}");
  setup('__nocook',{whey:1,almonds:20,walnuts:25,cashews:0,curd:0,milk:0});assert.equal(run('collectEdit().sidesH.avocado'),50,'hidden avocado keeps the saved value');
  // Unchanged sides and dish: the helper is not called and nothing is staged.
@@ -1120,10 +1117,10 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  // No cooked → the same saved dish is still sent as a selection so it is revalidated.
  run("state.days[0].readyB={w:false,h:true}");setup('eggPoach',{whey:1,avocado:50,almonds:20,walnuts:25,cashews:0,curd:0,milk:0});await run('saveEdit()');
  assert.equal(run('JSON.stringify(calls[0].sel)'),'{"h":"eggPoach"}');assert.equal(run('calls[0].ready'),null,'flag cleared on the tentative day');
- // Adjust portions: a side-only change keeps the chosen dish; a dish field change turns it Custom.
+ // Adjust portions: a side-only change keeps the chosen dish; egg count changes preserve the chosen dish.
  run("delete state.days[0].readyB;cloudReady=true;cloudSaving=false;ketoMeals[ketoMealKey(0,'h','b')]=JSON.parse(globalThis.storedBf=JSON.stringify({...ketoConfig(state.days[0],'h','b'),breakfastRecipe:'eggPoach'}))");
  run("updateKetoPortion(ketoMealKey(0,'h','b'),'avocado',0)");assert.equal(run("ketoMeals[ketoMealKey(0,'h','b')].breakfastRecipe"),'eggPoach');assert.equal(run("ketoMeals[ketoMealKey(0,'h','b')].avocado"),0);
- run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',2)");assert.equal(run("'breakfastRecipe' in ketoMeals[ketoMealKey(0,'h','b')]"),false);
+ run("updateKetoPortion(ketoMealKey(0,'h','b'),'quantity',2)");assert.equal(run("ketoMeals[ketoMealKey(0,'h','b')].breakfastRecipe"),'eggPoach');
  // Helper missing: inline message, no mutation.
  run("globalThis.prepareKetoBreakfasts=undefined");const before=run('JSON.stringify([state.days,ketoMeals])');setup('eggPoach',{avocado:10});await run('saveEdit()');assert.equal(run('box.textContent'),'Breakfast recipes need the latest update.');assert.equal(run('JSON.stringify([state.days,ketoMeals])'),before);
  // Quiet day status: Husband's shortfall vs the working range, and nuts today with kcal; no orange warning class.
