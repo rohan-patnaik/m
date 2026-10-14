@@ -44,7 +44,7 @@ function uxFoodRow(x){const unit=x.id==='eggWhite'?'egg':DB[x.id]?.[3]||'g',labe
 function uxParts(shares,maxTotal=24){const sum=shares.reduce((n,x)=>n+(x>0?x:0),0);if(!(sum>0))return null;const frac=shares.map(x=>x>0?x/sum:0),live=frac.filter(f=>f>0).length;let best=null;
  for(let total=live;total<=maxTotal;total++){const parts=frac.map(f=>f>0?Math.max(1,Math.round(f*total)):0),t=parts.reduce((n,x)=>n+x,0),err=Math.max(...parts.map((x,k)=>Math.abs(x/t-frac[k])));if(!best||err<best.err-1e-12)best={parts,total:t,err};if(err<1e-9)break;}
  const g=best.parts.filter(x=>x>0).reduce((a,b)=>gcd(a,b));return {parts:best.parts.map(x=>x/g),total:best.total/g,exact:best.err<1e-9};}
-function uxPotParts(i,dish,scope='all'){const specs=weighSpecs(i,dish,scope),r=uxParts(specs.map(x=>x.factor));return r?specs.map((x,k)=>({...x,parts:r.parts[k],total:r.total,exact:r.exact})):[];}
+function uxPotParts(i,dish,scope='all'){const specs=activeWeighSpecs(i,dish,scope),r=uxParts(specs.map(x=>x.factor));return r?specs.map((x,k)=>({...x,parts:r.parts[k],total:r.total,exact:r.exact})):[];}
 function uxPartsText(n,total,exact=true){const a=exact?'':'≈ ';return n===total?'Whole pot':exact&&total===2&&n===1?'Half the pot':`${a}${n} of ${total} parts`;}
 function uxDishRow(i,m,p,component,lines){
  const d=state.days[i],date=mealDate(d),link=date&&batchLink(date,m,p,component);
@@ -55,7 +55,7 @@ function uxDishRow(i,m,p,component,lines){
  const pid=lines.find(x=>!['oil','spice'].includes(x.id))?.id,label=component==='sabzi'?uxMealText(recipeName(personRecipe(d,p))):component==='dal'?DALNAMES[d.dal]+' dal':UX_MEAL_LABELS[pid]||UX_FOOD_NAMES[pid]||'Dinner protein';
  if(portion)return {label,quantity:`${portion.grams} g cooked`,detail:m==='d'&&r.scope==='all'?'Reserved from the same daily batch':''};
  if(component==='protein')return null;
- const mine=uxPotParts(i,dish).find(x=>x.meal===m&&x.person===p);
+ let mine=uxPotParts(i,dish).find(x=>x.meal===m&&x.person===p);if(!mine&&quantityDishSkipped(i,dish,m,p)){const specs=weighSpecs(i,dish),parts=uxParts(specs.map(x=>x.factor)),n=specs.findIndex(x=>x.meal===m&&x.person===p);if(parts&&n>=0)mine={parts:parts.parts[n],total:parts.total,exact:parts.exact};}
  return {label,quantity:mine?uxPartsText(mine.parts,mine.total,mine.exact):'Weigh to get cooked grams',detail:'Split the whole pot (lunch + dinner) into equal parts',unweighed:true};
 }
 // Root's mealQuantityGroups lists every planned quantity (excluded ones too, so they stay visible struck through):
@@ -64,7 +64,7 @@ function uxServingRows(i,m,p){
  if(typeof mealQuantityGroups==='function'){
   const rows=[];
   for(const g of mealQuantityGroups(state.days[i],m,p)||[]){
-   const made=g.component?[uxDishRow(i,m,p,g.component,g.lines)]:uxLineRows(g.lines);
+   const componentRow=g.component&&uxDishRow(i,m,p,g.component,g.lines);const made=componentRow?[componentRow]:uxLineRows(g.lines);
    for(const r of made)if(r)rows.push({...r,key:g.key,excluded:!!g.excluded,i,m,p});
   }
   return rows;
@@ -258,22 +258,22 @@ function uxCookGroups(i){
  if(d.off)return [['Note',['Eating out — nothing to cook at home today.']],...batch];
  if(kept(d,'b')){
   const bal=['w','h'].filter(p=>!isKeto(p)&&!uxReadyBreakfast(d,p));
-  if(bal.length)add(`Breakfast · ${BREAKFASTS[d.b]} (${bal.map(p=>PERSON_NAMES[p]).join(' + ')})`,bal.flatMap(p=>breakfast(d.b,p,d)));
+  if(bal.length)add(`Breakfast · ${BREAKFASTS[d.b]} (${bal.map(p=>PERSON_NAMES[p]).join(' + ')})`,bal.flatMap(p=>freshMeal(d,'b',p).filter(x=>!['whey','egg','eggWhite'].includes(x.id))));
   for(const p of ['w','h'].filter(p=>isKeto(p)&&!uxSelfCooks(p)&&!uxReadyBreakfast(d,p)))add(`Breakfast · ${PERSON_NAMES[p]} ${uxMealText(uxMealName(i,p,'b'))}`,meal(d,'b',p));
  }
- if(differentSabzis(d)){for(const p of ['w','h'])add(`Sabzi · ${uxMealText(recipeName(personRecipe(d,p)))} for ${PERSON_NAMES[p]} (lunch + dinner)`,['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:originalComponent(d,m,p,'sabzi')));}
+ if(differentSabzis(d)){for(const p of ['w','h'])add(`Sabzi · ${uxMealText(recipeName(personRecipe(d,p)))} for ${PERSON_NAMES[p]} (lunch + dinner)`,['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:includedComponent(d,m,p,'sabzi')));}
  else add(`Sabzi · ${uxMealText(recipeName(sharedRecipe(d)))} (one pot for lunch + dinner)`,freshSabziLines(d));
  const balanced=['w','h'].filter(p=>!isKeto(p));
- add(`Dal · ${DALNAMES[d.dal]} (one pot for lunch + dinner)`,balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).map(()=>L(d.dal,150*dalShare(p)))));
- add('Dinner paneer / soya',balanced.filter(p=>kept(d,'d')&&!coveredComponent(d,'d',p,'protein')).flatMap(p=>originalComponent(d,'d',p,'protein')));
- for(const p of ['w','h'].filter(p=>isKeto(p)&&!uxSelfCooks(p)))add(`${PERSON_NAMES[p]} protein (lunch + dinner)`,['l','d'].filter(m=>kept(d,m)&&!coveredComponent(d,m,p,'protein')).flatMap(m=>ketoComponent(d,p,m,'protein')));
+ add(`Dal · ${DALNAMES[d.dal]} (one pot for lunch + dinner)`,balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).flatMap(m=>includedComponent(d,m,p,'dal'))));
+ add('Dinner paneer / soya',balanced.filter(p=>kept(d,'d')&&!coveredComponent(d,'d',p,'protein')).flatMap(p=>includedComponent(d,'d',p,'protein')));
+ for(const p of ['w','h'].filter(p=>isKeto(p)&&!uxSelfCooks(p)))add(`${PERSON_NAMES[p]} protein (lunch + dinner)`,['l','d'].filter(m=>kept(d,m)&&!coveredComponent(d,m,p,'protein')).flatMap(m=>includedComponent(d,m,p,'protein')));
  add('Rice / roti',balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).flatMap(m=>freshMeal(d,m,p).filter(x=>['rice','atta'].includes(x.id)))));
  return [...groups,...batch];
 }
 
 // A single dish at a time. Existing allocation, global tare and frozen batches are reused.
 let serveStep=1,serveDish='sabzi',serveRecord=null;
-function serveDishes(i){return Object.keys(DISH_NAMES).filter(d=>weighSpecs(i,d).length);}
+function serveDishes(i){return Object.keys(DISH_NAMES).filter(d=>activeWeighSpecs(i,d).length);}
 function openServe(i,meal='l'){
  if(!cloudReady)return;
  weighContext={i,date:dateForDay(i),meal,guided:true};

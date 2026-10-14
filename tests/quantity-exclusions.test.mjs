@@ -87,3 +87,23 @@ test('breakfast edit preview and carb breakdown follow active quantities',()=>{
  near(run("dayCarbBreakdown(0,'h').totals.aHi"),run("assignedDayNutrition(0,'h').aHi"));
  assert.equal(run("dayCarbBreakdown(0,'h').foods.some(x=>x.id==='avocado')"),false);
 });
+test('excluding fresh pot shares invalidates old weights; remaining ingredient amounts do not increase',()=>{
+ const run=ready();run("state.view='week';state.weekKey='2026-10-12';var day=state.days[0],dish=differentSabzis(day)?'sabzi-h':'sabzi';var specs=weighSpecs(0,dish);dailyWeights[dateForDay(0)+'/'+dish]={scope:'all',basis:weighBasis(0,dish,'all'),gross:600,tare:0,netWeight:600,portions:WeighMath.allocateFood(600,0,specs).portions};var oldDinner=JSON.stringify(meal(day,'d','h'));var oldPot=JSON.stringify(dailyWeights)");
+ assert.ok(run('currentWeigh(0,dish)'));
+ run("toggleMealQuantity(0,'l','h','component:sabzi')");
+ assert.equal(run('currentWeigh(0,dish)'),null,'must reweigh instead of silently reallocating old cooked output');
+ assert.equal(run("activeWeighSpecs(0,dish).some(s=>s.meal==='l'&&s.person==='h')"),false);
+ assert.equal(run("JSON.stringify(meal(day,'d','h'))"),run('oldDinner'));
+ assert.equal(run('JSON.stringify(dailyWeights)'),run('oldPot'));
+ run("toggleMealQuantity(0,'l','h','component:sabzi')");assert.ok(run('currentWeigh(0,dish)'));
+});
+test('paneer food toggle stays excluded before weighing; a weighed component remains excluded after reweigh',()=>{
+ const run=ready();run("state.view='week';state.weekKey='2026-10-12';var day=state.days[0];sharedRecipes[sharedKey(0)]={recipe:'K4'};ketoMeals[ketoMealKey(0,'h','d')]={...ketoConfig(day,'h','d'),protein:'paneer',paneerType:'paneerMM',quantity:100,soya:0,eggWhites:0,spinach:0}");
+ run("toggleMealQuantity(0,'d','h','food:paneerMM')");assert.equal(run("meal(day,'d','h').some(x=>x.id==='paneerMM')"),false);assert.equal(run("activeWeighSpecs(0,'prot').some(x=>x.person==='h')"),false);
+ run("toggleMealQuantity(0,'d','h','food:paneerMM');dailyWeights[dateForDay(0)+'/prot']={scope:'all',basis:weighBasis(0,'prot','all'),gross:300,tare:0,netWeight:300,portions:WeighMath.allocateFood(300,0,weighSpecs(0,'prot')).portions}");
+ assert.equal(run("toggleMealQuantity(0,'d','h','component:protein')"),true);
+ assert.equal(run("meal(day,'d','h').some(x=>x.id==='paneerMM')"),false);
+ run("var specs=activeWeighSpecs(0,'prot');dailyWeights[dateForDay(0)+'/prot']={scope:'all',basis:weighBasis(0,'prot','all'),gross:200,tare:0,netWeight:200,portions:specs.length?WeighMath.allocateFood(200,0,specs).portions:[]}");
+ assert.equal(run("mealQuantityGroups(day,'d','h').find(x=>x.key==='component:protein').excluded"),true);
+ assert.equal(run("meal(day,'d','h').some(x=>x.id==='paneerMM')"),false);
+});

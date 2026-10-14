@@ -169,7 +169,7 @@ shopping quantities, while already cooked batches retain their original ingredie
 purchases and frozen nutrition snapshots. Shared dish exclusions remove only the
 selected serving, including its allocated oil, and never enlarge another person's
 portion. Individual ingredient exclusions leave separately planned cooking oil
-counted. The original measured pot and its allocations remain available for undo.
+counted. Original measured pots remain stored for undo. Excluding a fresh pot share makes its old weight stale; reweigh the smaller batch to allocate only the included portions. Other people's ingredient grams never increase.
 
 Verify with `node --test tests/*.test.mjs`. The quantity-exclusions tests cover
 nutrition deltas, shopping, undo/reload, all four diets, dated scope, stale signatures,

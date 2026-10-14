@@ -156,7 +156,7 @@ function mealQuantityGroups(day,m,p){
  if(['l','d'].includes(m)&&kept(day,m))for(const c of ['sabzi','dal','protein']){
   const link=c!=='dal'&&date&&batchLink(date,m,p,c);
   // Unweighed separate protein stays individual foods, matching the displayed rows.
-  if(c==='protein'&&!link&&!currentWeigh(i,'prot')?.portions.some(x=>x.meal===m&&x.person===p))continue;
+  if(c==='protein'&&!link&&!baselineWeigh(i,'prot')?.portions.some(x=>x.meal===m&&x.person===p)&&!quantityDishSkipped(i,'prot',m,p,true))continue;
   if(c!=='dal'&&coveredComponent(day,m,p,c)&&!link)continue;
   const lines=link?BatchMath.portionLines(link.batch,link.serving):c==='dal'?(isKeto(p)?[]:[L(day.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]):originalComponent(day,m,p,c);
   if(!lines.some(x=>x.q>1e-8))continue;
@@ -179,3 +179,21 @@ function toggleMealQuantity(i,m,p,key){
 }
 // Fresh ingredient purchases follow active quantities. Already cooked batches retain their original purchase totals.
 function includedComponent(day,m,p,c){const group=mealQuantityGroups(day,m,p).find(x=>x.component===c);if(group)return group.excluded?[]:group.lines;const original=originalComponent(day,m,p,c),active=mealQuantityGroups(day,m,p).filter(g=>!g.excluded&&!g.component).flatMap(g=>g.lines);return original.map(x=>L(x.id,Math.min(x.q,active.filter(y=>y.id===x.id).reduce((n,y)=>n+y.q,0)))).filter(x=>x.q>1e-8);}
+
+// Weighing uses the same exclusions, but old measurements become stale rather than redistributing an already
+// weighed pot silently. Kept ingredient grams stay fixed; a newly weighed smaller batch uses only kept shares.
+function quantityDishSkipped(i,dish,m,p,componentOnly=false){
+ const day=state.days[i],c=dish==='dal'?'dal':dish==='prot'?'protein':'sabzi',items=mealExclusions[exclusionKey(day,m,p)]?.items||{};
+ const lines=c==='dal'?(isKeto(p)?[]:[L(day.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]):originalComponent(day,m,p,c);
+ if(items['component:'+c]===quantitySignature(day,m,p,'component:'+c,lines.filter(x=>x.q>1e-8)))return true;
+ if(c==='protein'&&!componentOnly){
+  const foods=lines.filter(x=>x.q>1e-8&&!['oil','spice'].includes(x.id));
+  if(foods.length===1){const key=['egg','eggWhite'].includes(foods[0].id)?'eggs':'food:'+foods[0].id;return items[key]===quantitySignature(day,m,p,key,foods);}
+ }
+ return false;
+}
+function activeWeighSpecs(i,dish,scope='all'){return weighSpecs(i,dish,scope).filter(s=>!quantityDishSkipped(i,dish,s.meal,s.person));}
+function baselineWeigh(i,dish){
+ if(!state.weekKey)return null;const r=dailyWeights[dateForDay(i)+'/'+dish];if(!r)return null;
+ try{const basis=JSON.parse(r.basis);delete basis.excluded;return JSON.stringify(basis)===weighBasis(i,dish,r.scope,true)?r:null;}catch{return null;}
+}

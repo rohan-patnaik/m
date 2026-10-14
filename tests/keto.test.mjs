@@ -241,7 +241,7 @@ test('open meal cards preserve all four diet assignments and expose dry, raw and
   assert.equal((html.match(/<section class="meal-card/g)||[]).length,4);
   assert.match(html,/Snacks &amp; milk|Snacks & milk/);
   assert.doesNotMatch(html,/<details[^>]*data-ux-meal/);
-  assert.match(html,/<td title="35 g powder"><b>1 scoop<\/b><\/td>/);assert.doesNotMatch(html,/<small>35 g powder<\/small>/);
+  assert.match(html,/title="[^"]*35 g powder"><b>1 scoop<\/b><\/button>/);assert.doesNotMatch(html,/<small>35 g powder<\/small>/);
   assert.equal(run('JSON.stringify(ledger())'),ledger);
  }
  run("householdDiets={w:'balanced',h:'keto'}");
@@ -1135,8 +1135,8 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
 
 test('meal quantities toggle per person via Root groups; Edit meals splits into sections without horizontal overflow',()=>{
  const {run,listeners}=app(true);
- // Fallback: without Root's helper the table keeps its plain cells.
- assert.doesNotMatch(run("uxMealTable(0,'l')"),/data-ux-qty/);
+ // The integrated backend exposes actual quantity controls.
+ assert.match(run("uxMealTable(0,'l')"),/data-ux-qty/);
  run(`globalThis.toggles=[];globalThis.skipped={};globalThis.mealQuantityGroups=(day,m,p)=>m!=='l'?[]:[
   {key:'sabzi',component:'sabzi',lines:originalComponent(day,m,p,'sabzi'),excluded:!!skipped[p+'sabzi']},
   {key:'eggs',lines:[L('egg',1),L('eggWhite',2)],excluded:!!skipped[p+'eggs']},
