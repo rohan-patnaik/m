@@ -2,6 +2,7 @@
 // USDA carbohydrate includes fibre; IFCT available carbohydrate has fibre added once.
 // Packet carbohydrate is as declared: no unverified net-carb subtraction.
 const COMPARE_NUTRIENTS={
+ "capsicum":{"k":20,"p":.86,"c":4.64,"fb":1.7,"f":.17,"sat":.058,"s":2.4,"added":0,"fdc":170427,"source":"USDA SR Legacy (generic estimate)","basis":"100 g raw edible green pepper","url":"https://fdc.nal.usda.gov/food-details/170427/nutrients"},
  "avocado":{"k":160,"p":2,"c":8.53,"fb":6.7,"f":14.66,"sat":2.126,"s":0.66,"added":0,"source":"USDA SR Legacy NDB09037 (raw generic estimate)","basis":"100 g edible flesh, skin and stone excluded","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf"},
  "almonds":{"k":579,"p":21.15,"c":21.55,"fb":12.5,"f":49.93,"sat":3.802,"s":4.35,"added":0,"fdc":170567,"source":"USDA SR Legacy (raw plain generic estimate)","basis":"100 g raw edible kernels","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg12.pdf"},
  "eggWhite":{"k":17.16,"p":3.597,"c":0.2409,"fb":0,"f":0.0561,"sat":0,"s":0.2343,"added":0,"fdc":172183,"source":"USDA SR Legacy (generic estimate)","basis":"1 large raw egg white, estimated 33 g; cook before eating","url":"https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg01.pdf"},

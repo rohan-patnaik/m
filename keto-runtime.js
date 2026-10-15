@@ -36,7 +36,7 @@ function ketoSuggestion(day,p,m){
  if(m==='e')return {name:p==='h'?'Evening nuts':'Water / unsweetened tea',note:p==='h'?'Up to 20 g total nuts, counted here once.':'No additional snack planned.'};
  const cfg=ketoConfig(day,p,m),date=mealDate(day),prepared=date&&['l','d'].includes(m)?batchLink(date,m,p,'sabzi'):null;
  const veg=prepared?batchName(prepared.batch):recipeName(personRecipe(day,p));
- const savedProtein=date&&batchLink(date,m,p,'protein'),inside=coveredComponent(day,m,p,'protein')&&!savedProtein;const proteinName=savedProtein?batchName(savedProtein.batch):inside?'protein already in prepared sabzi':{paneer:{paneerHP:'high-protein paneer',paneerMM:'Milky Mist paneer',paneer:'Heritage paneer'}[cfg.paneerType]||'paneer',eggs:'eggs',chicken:'chicken breast'}[cfg.protein];const name=m==='b'?ketoBreakfastName(cfg):cfg.mealRecipe==='custom'&&!cfg.quantity?veg:cfg.mealRecipe?veg+' + '+(cfg.protein==='eggs'&&eggPreparationName(cfg)?F(cfg.quantity)+' '+eggPreparationName(cfg).toLowerCase()+' eggs':cfg.mealRecipe==='boiledEggMeal'?F(cfg.quantity)+' boiled eggs':KETO_MAINS[cfg.mealRecipe]?.name||'Custom protein plate'):personRecipe(day,p)==='S12'?veg:veg+' + '+proteinName;
+ const savedProtein=date&&batchLink(date,m,p,'protein'),inside=coveredComponent(day,m,p,'protein')&&!savedProtein;const proteinName=savedProtein?batchName(savedProtein.batch):inside?'protein already in prepared sabzi':{paneer:{paneerHP:'high-protein paneer',paneerMM:'Milky Mist paneer',paneer:'Heritage paneer'}[cfg.paneerType]||'paneer',eggs:'eggs',chicken:'chicken breast'}[cfg.protein];const name=m==='b'?ketoBreakfastName(cfg):['custom','sharedOnly'].includes(cfg.mealRecipe)&&!cfg.quantity?veg:cfg.mealRecipe?veg+' + '+(cfg.protein==='eggs'&&eggPreparationName(cfg)?F(cfg.quantity)+' '+eggPreparationName(cfg).toLowerCase()+' eggs':cfg.mealRecipe==='boiledEggMeal'?F(cfg.quantity)+' boiled eggs':KETO_MAINS[cfg.mealRecipe]?.name||'Custom protein plate'):personRecipe(day,p)==='S12'?veg:veg+' + '+proteinName;
  const scoops=ketoWheyScoops(day,p,m,cfg),whey=scoops>0?F(scoops)+' scoop'+(scoops===1?'':'s')+' whey with water':'';
  return {name,note:m==='b'?'No separate vegetable recipe. Ready protein and cucumber'+(whey?', plus '+whey+'.':'.'):'Share the cook’s actual sabzi. Rice/roti and default dal are omitted for this keto person. Protein choice replaces the separate paneer portion; paneer already inside a shared/prepared recipe still counts.'+(whey?' Plus '+whey+'.':'')};
 }
@@ -47,7 +47,7 @@ function ketoBefore(day,p,m){
  if(day.off||day.skip?.[m])return 'Eating out / skipped';
  if(m==='e')return 'Milk'+(cardioDone(day,p)&&P(p).nuts?' + nuts':'');
  if(m==='b')return [day.b==='B5'?(p==='w'?'Oats':'Poha'):BREAKFASTS[day.b],(p==='w'?day.wheyW:day.wheyH)?'whey':null,p==='h'&&day.eggH?'2 eggs':null].filter(Boolean).join(' + ');
- const prepared=mealDate(day)&&batchLink(mealDate(day),m,p,'sabzi');return (prepared?batchName(prepared.batch):SABZIS[day.s])+' + '+DALNAMES[day.dal]+' dal + '+(m==='l'&&p==='h'?'rice':'roti')+(m==='l'?' + curd':' + dinner protein');
+ const prepared=mealDate(day)&&batchLink(mealDate(day),m,p,'sabzi');return (prepared?batchName(prepared.batch):SABZIS[day.s])+' + '+pulseName(day)+' + '+(m==='l'&&p==='h'?'rice':'roti')+(m==='l'?' + curd':' + dinner protein');
 }
 function ketoEditHTML(day,i,p,m){
  if(day.off||day.skip?.[m]||m==='e')return '';

@@ -52,7 +52,7 @@ function uxDishRow(i,m,p,component,lines){
  if(component==='protein'&&coveredComponent(d,m,p,'protein'))return null;
  const dish=component==='sabzi'?(differentSabzis(d)?'sabzi-'+p:'sabzi'):component==='dal'?'dal':'prot';
  const r=currentWeigh(i,dish),portion=r?.portions.find(x=>x.meal===m&&x.person===p);
- const pid=lines.find(x=>!['oil','spice'].includes(x.id))?.id,label=component==='sabzi'?uxMealText(recipeName(personRecipe(d,p))):component==='dal'?DALNAMES[d.dal]+' dal':UX_MEAL_LABELS[pid]||UX_FOOD_NAMES[pid]||'Dinner protein';
+ const pid=lines.find(x=>!['oil','spice'].includes(x.id))?.id,label=component==='sabzi'?uxMealText(recipeName(personRecipe(d,p))):component==='dal'?pulseName(d):UX_MEAL_LABELS[pid]||UX_FOOD_NAMES[pid]||'Dinner protein';
  if(portion)return {label,quantity:`${portion.grams} g cooked`,detail:m==='d'&&r.scope==='all'?'Reserved from the same daily batch':''};
  if(component==='protein')return null;
  let mine=uxPotParts(i,dish).find(x=>x.meal===m&&x.person===p);if(!mine&&quantityDishSkipped(i,dish,m,p)){const specs=weighSpecs(i,dish),parts=uxParts(specs.map(x=>x.factor)),n=specs.findIndex(x=>x.meal===m&&x.person===p);if(parts&&n>=0)mine={parts:parts.parts[n],total:parts.total,exact:parts.exact};}
@@ -76,7 +76,7 @@ function uxServingRows(i,m,p){
  if(['l','d'].includes(m)){
   for(const c of ['sabzi','dal','protein']){
    const link=mealDate(day)&&c!=='dal'&&batchLink(mealDate(day),m,p,c);
-   const component=c==='dal'?isKeto(p)?[]:[L(day.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]:originalComponent(day,m,p,c);
+   const component=c==='dal'?isKeto(p)?[]:pulseLines(day,p):originalComponent(day,m,p,c);
    if(!link&&!component.some(x=>x.q>0)||c==='protein'&&coveredComponent(day,m,p,c)&&!link)continue;
    const row=uxDishRow(i,m,p,c,component);
    if(row){rows.push(row);remaining=subtractIngredients(remaining,link?BatchMath.portionLines(link.batch,link.serving):component);}
@@ -281,7 +281,7 @@ function uxCookGroups(i){
  if(differentSabzis(d)){for(const p of ['w','h'])add(`Sabzi · ${uxMealText(recipeName(personRecipe(d,p)))} for ${PERSON_NAMES[p]} (lunch + dinner)`,['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:includedComponent(d,m,p,'sabzi')));}
  else add(`Sabzi · ${uxMealText(recipeName(sharedRecipe(d)))} (one pot for lunch + dinner)`,freshSabziLines(d));
  const balanced=['w','h'].filter(p=>!isKeto(p));
- add(`Dal · ${DALNAMES[d.dal]} (one pot for lunch + dinner)`,balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).flatMap(m=>includedComponent(d,m,p,'dal'))));
+ add(`${BEAN_PULSES.includes(d.dal)?'Beans':'Dal'} · ${pulseName(d)} (one pot for lunch + dinner)`,balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).flatMap(m=>includedComponent(d,m,p,'dal'))));
  add('Dinner paneer / soya',balanced.filter(p=>kept(d,'d')&&!coveredComponent(d,'d',p,'protein')).flatMap(p=>includedComponent(d,'d',p,'protein')));
  for(const p of ['w','h'].filter(p=>isKeto(p)&&!uxSelfCooks(p)))add(`${PERSON_NAMES[p]} protein (lunch + dinner)`,['l','d'].filter(m=>kept(d,m)&&!coveredComponent(d,m,p,'protein')).flatMap(m=>includedComponent(d,m,p,'protein')));
  add('Rice / roti',balanced.flatMap(p=>['l','d'].filter(m=>kept(d,m)).flatMap(m=>freshMeal(d,m,p).filter(x=>['rice','atta'].includes(x.id)))));
@@ -297,7 +297,7 @@ function openServe(i,meal='l'){
  const dishes=serveDishes(i);serveDish=dishes.find(d=>currentWeigh(i,d)?.portions.some(s=>s.meal===meal))||dishes[0];serveRecord=serveDish?currentWeigh(i,serveDish):null;serveStep=serveRecord?2:1;
  drawServe();document.querySelector('#dlg').showModal();
 }
-function serveTitle(i,dish){return uxMealText(dish==='sabzi'?recipeName(sharedRecipe(state.days[i])):dish==='dal'?DALNAMES[state.days[i].dal]+' dal':weighDishName(i,dish));}
+function serveTitle(i,dish){return uxMealText(dish==='sabzi'?recipeName(sharedRecipe(state.days[i])):dish==='dal'?pulseName(state.days[i]):weighDishName(i,dish));}
 function drawServe(){
  const {i,meal,date}=weighContext,dishes=serveDishes(i),r=serveDish?dailyWeights[date+'/'+serveDish]:null;
  document.querySelector('#dlgTitle').textContent='Weigh & serve';document.querySelector('#dlg').classList.add('ux-serve-dialog');

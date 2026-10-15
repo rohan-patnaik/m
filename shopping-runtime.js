@@ -1,5 +1,6 @@
 // One household list, independent of the planner/comparison view.
 const PRODUCE_DEFAULTS={
+ capsicum:{yield:.82,step:250,form:'Whole green capsicum · 82% edible estimate'},
  avocado:{yield:.7,step:100,form:'Whole avocado · 70% flesh estimate; weigh after peeling'},
  gobi:{yield:.6,step:100,form:'Whole cauliflower, trimmed'},arbi:{yield:650/750,step:250,form:'Whole arbi'},
  bhindi:{yield:.95,step:250,form:'Whole bhindi'},palak:{yield:.8,step:250,form:'Spinach bunch'},

@@ -63,6 +63,8 @@ function householdKetoBase(day,p,m,cfg=ketoConfig(day,p,m)){
 const KETO_NUT_IDS=['almonds','walnuts','cashews'];
 function ketoEveningOnly(i,p='h'){return p==='h'&&!!ketoMeals[ketoMealKey(i,p,'e')];}
 const KETO_MAINS={
+ simpleChicken:{name:'Simple chicken · separate from shared sabzi',portion:{protein:'chicken',quantity:200,cucumber:50,oil:5}},
+ sharedOnly:{name:'Shared sabzi only · no separate protein',portion:{protein:'paneer',quantity:0,cucumber:50,oil:0}},
  eggSpinach:{name:'Egg & spinach scramble',portion:{protein:'eggs',quantity:4,eggWhites:2,spinach:150,oil:7}},
  eggMushroom:{name:'Mushroom omelette',portion:{protein:'eggs',quantity:4,eggWhites:2,mushroom:150,tomato:50,oil:7}},
  eggCurry:{name:'Egg curry',portion:{protein:'eggs',quantity:4,tomato:80,onion:40,oil:8}},
@@ -260,9 +262,9 @@ function householdPrep(i){
  const groups=[];
  if(differentSabzis(d)){for(const p of ['w','h']){const lines=['l','d'].flatMap(m=>coveredComponent(d,m,p,'sabzi')?[]:includedComponent(d,m,p,'sabzi'));if(lines.length)groups.push(['Cook · '+PERSON_NAMES[p]+' '+recipeName(personRecipe(d,p))+' (once for lunch + dinner)',format(lines)]);}}
  else{const sab=freshSabziLines(d);if(sab.length)groups.push(['Cook · one shared '+recipeName(sharedRecipe(d))+' batch',format(sab)]);}
- const dal=[];for(const p of ['w','h'])if(!isKeto(p))for(const m of ['l','d'])if(kept(d,m))dal.push(...includedComponent(d,m,p,'dal'));if(dal.length)groups.push(['Cook · one dal batch for Balanced portions',format(dal)]);
+ const dal=[];for(const p of ['w','h'])if(!isKeto(p))for(const m of ['l','d'])if(kept(d,m))dal.push(...includedComponent(d,m,p,'dal'));if(dal.length)groups.push(['Cook · one '+pulseName(d)+' batch for Balanced portions',format(dal)]);
  for(const p of ['w','h']){
-  if(!isKeto(p)){const bf=kept(d,'b')?freshMeal(d,'b',p):[];if(bf.length)groups.push(['Cook · '+PERSON_NAMES[p]+' Balanced breakfast',format(bf)]);const extras=[];for(const m of ['l','d','e']){let rest=freshMeal(d,m,p);if(['l','d'].includes(m)){if(!coveredComponent(d,m,p,'sabzi'))rest=subtractIngredients(rest,originalComponent(d,m,p,'sabzi'));rest=subtractIngredients(rest,[L(d.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]);}extras.push(...rest);}if(extras.length)groups.push([PERSON_NAMES[p]+' · Balanced starch / protein / dairy / extras',format(extras)]);continue;}
+  if(!isKeto(p)){const bf=kept(d,'b')?freshMeal(d,'b',p):[];if(bf.length)groups.push(['Cook · '+PERSON_NAMES[p]+' Balanced breakfast',format(bf)]);const extras=[];for(const m of ['l','d','e']){let rest=freshMeal(d,m,p);if(['l','d'].includes(m)){if(!coveredComponent(d,m,p,'sabzi'))rest=subtractIngredients(rest,originalComponent(d,m,p,'sabzi'));rest=subtractIngredients(rest,pulseLines(d,p));}extras.push(...rest);}if(extras.length)groups.push([PERSON_NAMES[p]+' · Balanced starch / protein / dairy / extras',format(extras)]);continue;}
   const ready=[],cook=[];for(const m of ['b','l','d','e']){if(!kept(d,m))continue;const cfg=ketoConfig(d,p,m);const extra=subtractIngredients(freshMeal(d,m,p),coveredComponent(d,m,p,'sabzi')?[]:ketoComponent(d,p,m,'sabzi'));for(const x of extra)(['egg','eggWhite','palak','mushroom','tomato','onion','chicken','soyN','soyS'].includes(x.id)||x.id==='oil'?cook:ready).push(x);}
   if(cook.length)groups.push([PERSON_NAMES[p]+' · self-cooked protein (one batch; reserve portions if needed)',format(cook)]);
   if(ready.length)groups.push([PERSON_NAMES[p]+' · ready portions / no extra cooked recipe',format(ready)]);
@@ -272,7 +274,7 @@ function householdPrep(i){
 function assignedBalancedTitle(day,p,m){
  if(!kept(day,m)||m==='b'||m==='e')return ketoBefore(day,p,m);
  const date=mealDate(day),prepared=date&&batchLink(date,m,p,'sabzi'),recipe=personRecipe(day,p);
- return (prepared?batchName(prepared.batch):recipeName(recipe))+' + '+DALNAMES[day.dal]+' dal + '+(m==='l'&&p==='h'?'rice':'roti')+(m==='l'?' + curd':NO_EXTRA(recipe)?'':' + dinner protein');
+ return (prepared?batchName(prepared.batch):recipeName(recipe))+' + '+pulseName(day)+' + '+(m==='l'&&p==='h'?'rice':'roti')+(m==='l'?' + curd':NO_EXTRA(recipe)?'':' + dinner protein');
 }
 function recipeSelectorsHTML(day,i){
  // Show the recipe the math counts for this week, not a retired raw value.

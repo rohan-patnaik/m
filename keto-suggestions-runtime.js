@@ -39,6 +39,7 @@ function ketoSuggestedDay(i){
  if(blocked)return {blocked:true,reason:'Keep this day’s skipped foods, prepared or weighed portions and history. Balance whey separately, or edit individual meals.'};
  const nuts=parts.concat('e').flatMap(m=>meal(day,m,'h').filter(x=>KETO_NUT_IDS.includes(x.id)).map(x=>({...x,meal:m})));
  if(nuts.reduce((n,x)=>n+x.q,0)>20+1e-8||nuts.some(x=>x.meal!=='e'))return {blocked:true,reason:'Set at most 20 g nuts, evening only, in Day options before suggesting this day.'};
+ if(['K4','K1','S13','S14','S15','S16','S17'].includes(personRecipe(day,'h')))return sharedMenuProteinSuggestion(i);
  const ids=KETO_FOOD_FIRST_MAINS[i],hasAvocado=ids.some(id=>KETO_MAINS[id].portion.avocado>0);
  const variants=(m,j)=>{
   const cfg=ketoMainConfig(i,'h',m,ids[j]),quantities=cfg.protein==='chicken'?[175,200,225,250,275,300]:cfg.protein==='eggs'?[3,4,5]:[100,125,150];
@@ -57,4 +58,45 @@ function ketoSuggestedDay(i){
   if(!best||score<best.score)best={...result,score,mains:ids};
  }
  return best;
+}
+
+// Approved household rotation: one vegetarian sabzi plus dal OR beans. No silent application.
+const SHARED_MENU=[
+ {recipe:'K4',dal:'moong'},
+ {recipe:'S13',dal:'masoor'},
+ {recipe:'S16',dal:'moong'},
+ {recipe:'S14',dal:'moong'},
+ {recipe:'S17',dal:'masoor'},
+ {recipe:'K1',dal:'rajma'},
+ {recipe:'S15',dal:'moong'}
+];
+function sharedMenuProteinSuggestion(i){
+ const variants=m=>{
+  const blank={...ketoMainConfig(i,'h',m,'sharedOnly'),whey:0};
+  const list=[blank];
+  for(const quantity of [150,175,200,225,250,275,300])for(const oil of [5,10])list.push({...ketoMainConfig(i,'h',m,'simpleChicken'),quantity,oil,cucumber:m==='l'?50:0,whey:0});
+  for(const quantity of [3,4,5])for(const eggWhites of [0,2])list.push({...ketoMainConfig(i,'h',m,'boiledEggMeal'),quantity,eggWhites,cucumber:m==='l'?50:0,whey:0});
+  // Optional whole-food fat is a measured side, never hidden cooking oil.
+  return list.flatMap(c=>m==='l'?[0,50,100,150,200,250,300].map(avocado=>({...c,avocado})):[c]);
+ };
+ // Cache each independent meal once; the candidate search then adds numeric totals only.
+ const day=state.days[i],b=structuredClone(ketoConfig(day,'h','b',i));
+ if(!coveredComponent(day,'b','h','protein'))b.whey=0;
+ const breakfast=withKetoDayConfigs(i,{b},()=>meal(day,'b','h'));
+ const base=comparisonSum([...breakfast,...meal(day,'e','h')]),fixed=breakfast.filter(x=>x.id==='whey').reduce((n,x)=>n+x.q,0),scoop=comparisonSum([L('whey',1)]),t=ketoSuggestedTargets();
+ const cached=m=>variants(m).map(cfg=>({cfg,n:withKetoDayConfigs(i,{[m]:cfg},()=>comparisonSum(meal(day,m,'h')))}));
+ const lunches=cached('l'),dinners=cached('d');let best=null;
+ for(const l of lunches)for(const d of dinners){
+  const food={k:base.k+l.n.k+d.n.k,p:base.p+l.n.p+d.n.p,aHi:base.aHi+l.n.aHi+d.n.aHi},candidates=[];
+  for(let q=0;q<=Math.max(0,1.5-fixed)+1e-8;q+=.5){const n={k:food.k+q*scoop.k,p:food.p+q*scoop.p,aHi:food.aHi+q*scoop.aHi};candidates.push({q,n,allowed:n.k<=t.kMax+1e-7&&n.p<=t.pMax+1e-7&&n.aHi<=t.carbs+1e-7,protein:n.p>=t.pMin-1e-7&&n.p<=t.pMax+1e-7});}
+  const chosen=food.p>=t.pMin?candidates[0]:candidates.find(c=>c.allowed&&c.protein)||candidates.filter(c=>c.allowed&&c.n.p<t.pMin).at(-1)||candidates[0],n=chosen.n;
+  const compatible=chosen.allowed&&chosen.protein&&n.k>=t.kMin-1e-7&&fixed<=1.5;
+  const penalty=Math.max(0,t.pMin-n.p)*100+Math.max(0,n.p-t.pMax)*100+Math.max(0,n.aHi-t.carbs)*100+Math.max(0,n.k-t.kMax)*10+Math.max(0,t.kMin-n.k)*10;
+  const cooks=[l.cfg,d.cfg].filter(c=>c.quantity>0),different=new Set(cooks.map(c=>c.protein)).size;
+  const emptyBreakfast=day.readyB?.h&&day.wheyH&&!breakfast.some(x=>x.q>0)&&chosen.q===0;
+  const score=(compatible?0:100000)+(emptyBreakfast?50000:0)+penalty+Math.abs(t.kMax-n.k)+(chosen.q+fixed)*20+different*15;
+  if(!best||score<best.score)best={score,l:l.cfg,d:d.cfg};
+ }
+ const result=withKetoDayConfigs(i,{l:best.l,d:best.d},()=>ketoWheySuggestion(i,{maxScoops:1.5}));
+ return {...result,score:best.score,mains:[best.l.mealRecipe,best.d.mealRecipe]};
 }

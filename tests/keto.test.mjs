@@ -21,7 +21,7 @@ test('UX progress round trips without changing ingredients and lists every sabzi
  run("sharedRecipes[sharedKey(5)]={recipe:'K1',w:'S12'}");
  assert.match(run('uxWeekRow(state.days[5],5)'),/Paneer bhurji/);
  assert.match(run("uxRecipeOptions('S12')"),/value="S12" selected/);
- assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,16);
+ assert.equal((run("uxRecipeOptions('S12')").match(/<option/g)||[]).length,21);
  assert.doesNotMatch(run("uxRecipeOptions('S12')"),/value="K3"/);assert.match(run("uxRecipeOptions('K3')"),/value="K3" selected/);
  assert.doesNotMatch(run('recipeSelectorsHTML(state.days[5],5)'),/value="K3"/);
 });
@@ -952,8 +952,8 @@ test('overhaul: whole-number pot parts, no-cooked breakfast, kitchen egg/nut row
  assert.equal(run('uxEnsureWeek()'),false,'already a saved week: nothing to do');
  // Header save status, toolbar without household diets, and the new wire format.
  assert.deepEqual(JSON.parse(run("JSON.stringify(['All changes saved','Saving…','Unsaved changes','Connection lost — drafts are only in this open tab.'].map(t=>uxSaveLabel(t)[0]))")),['Saved','Saving…','Unsaved','Offline']);
- assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:15\}/);
- assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&!\[13,14,15\]\.includes\(formatVersion\)/);
+ assert.match(readFileSync(new URL('../cloud-runtime.js',import.meta.url),'utf8'),/formatVersion:16\}/);
+ assert.match(readFileSync(new URL('../convex/household.js',import.meta.url),'utf8'),/c\.value\?\.meal\?\.readyB!==undefined\)&&!\[13,14,15,16\]\.includes\(formatVersion\)/);
  assert.match(run('uxDayHTML(0)'),/<div class="day-actions"><button data-cook="0">1 · Cook list<\/button><button class="primary" data-weigh="0">2 · Serve<\/button><button data-meal-edit="0|b|h">Edit meals<\/button><\/div>/);
  assert.match(run('uxWeekOverview()'),/data-ux-jump="0"[\s\S]*data-ux-jump="6"/);
  // Phone: a closed adjust control is a flex row (no float), so the action group wraps instead of overlapping it.
@@ -1087,10 +1087,10 @@ test('breakfast dish vs sides, honest breakfast line, cleaned Edit labels and qu
  assert.match(f,/data-bf-preview="h">[^<]*kcal/);assert.equal(run("JSON.stringify(ketoMeals[ketoMealKey(0,'h','b')])"),stored);
  // Labels: breakfast whey, no H eggs for a Keto husband, Wife-only dal and dinner protein; hidden when not needed.
  assert.match(f,/data-et="wheyW"[^>]*> W breakfast whey/);assert.match(f,/data-et="wheyH"[^>]*> H breakfast whey/);assert.doesNotMatch(f,/data-et="eggH"/);
- assert.match(f,/<label>Wife dal<select data-ek="dal">/);assert.match(f,/<label>Wife dinner protein<select data-ek="p">/);
+ assert.match(f,/<label>Wife dal \/ beans<select data-ek="dal">/);assert.match(f,/<label>Wife dinner protein<select data-ek="p">/);
  run("state.days[0].s='S12'");assert.doesNotMatch(run('editFormHTML(editValsFromState(0),0)'),/data-ek="p"/);run("state.days[0].s='S1'");
  run("householdDiets={w:'keto',h:'keto'}");f=run('editFormHTML(editValsFromState(0),0)');assert.doesNotMatch(f,/data-ek="(p|dal)"/);
- run("householdDiets={w:'balanced',h:'balanced'}");f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/data-et="eggH"/);assert.match(f,/<label>Dal<select/);
+ run("householdDiets={w:'balanced',h:'balanced'}");f=run('editFormHTML(editValsFromState(0),0)');assert.match(f,/data-et="eggH"/);assert.match(f,/<label>Dal \/ beans<select/);
  // Real helpers: options show dish-only kcal; a different non-avocado dish starts with no avocado, eggAvocado with 100 g.
  run("householdDiets={w:'balanced',h:'keto'}");
  assert.match(run('editFormHTML(editValsFromState(0),0)'),/<option value="boiledEggs"[^>]*>3 boiled eggs · dish \d+ kcal/);

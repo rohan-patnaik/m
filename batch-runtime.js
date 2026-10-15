@@ -161,7 +161,7 @@ function mealQuantityGroups(day,m,p){
   // Unweighed separate protein stays individual foods, matching the displayed rows.
   if(c==='protein'&&!link&&!baselineWeigh(i,'prot')?.portions.some(x=>x.meal===m&&x.person===p)&&!quantityDishSkipped(i,'prot',m,p,true))continue;
   if(c!=='dal'&&coveredComponent(day,m,p,c)&&!link)continue;
-  const lines=link?BatchMath.portionLines(link.batch,link.serving):c==='dal'?(isKeto(p)?[]:[L(day.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]):originalComponent(day,m,p,c);
+  const lines=link?BatchMath.portionLines(link.batch,link.serving):c==='dal'?(isKeto(p)?[]:pulseLines(day,p)):originalComponent(day,m,p,c);
   if(!lines.some(x=>x.q>1e-8))continue;
   add('component:'+c,lines,c);remaining=subtractIngredients(remaining,lines);
  }
@@ -187,7 +187,7 @@ function includedComponent(day,m,p,c){const group=mealQuantityGroups(day,m,p).fi
 // weighed pot silently. Kept ingredient grams stay fixed; a newly weighed smaller batch uses only kept shares.
 function quantityDishSkipped(i,dish,m,p,componentOnly=false){
  const day=state.days[i],c=dish==='dal'?'dal':dish==='prot'?'protein':'sabzi',items=mealExclusions[exclusionKey(day,m,p)]?.items||{};
- const lines=c==='dal'?(isKeto(p)?[]:[L(day.dal,150*dalShare(p)),L('oil',oilUse().dal*dalShare(p))]):originalComponent(day,m,p,c);
+ const lines=c==='dal'?(isKeto(p)?[]:pulseLines(day,p)):originalComponent(day,m,p,c);
  if(items['component:'+c]===quantitySignature(day,m,p,'component:'+c,lines.filter(x=>x.q>1e-8)))return true;
  if(c==='protein'&&!componentOnly){
   const foods=lines.filter(x=>x.q>1e-8&&!['oil','spice'].includes(x.id));

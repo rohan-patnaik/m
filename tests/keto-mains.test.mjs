@@ -23,7 +23,7 @@ test('nut transaction validation rejects combined excess and nuts sneaking back 
 });
 test('main previews are pure, respect combined selections and match committed ingredient totals',()=>{
  const run=setup(),before=run('JSON.stringify([state.days,ketoMeals,sharedRecipes,mealExclusions])');
- assert.equal(run("ketoMainOptions(0,'l').length"),11);
+ assert.equal(run("ketoMainOptions(0,'l').length"),13);
  const opts=json(run,"ketoMainOptions(0,'l')");assert.equal(run('JSON.stringify([state.days,ketoMeals,sharedRecipes,mealExclusions])'),before);
  for(const o of opts){run(`var cfg=(${JSON.stringify(o.config)});`);const n=json(run,"comparisonSum(ketoMealWithConfig(state.days[0],'h','l',cfg))");near(n.k,o.nutrition.k);near(n.p,o.nutrition.p);near(n.aHi,o.nutrition.aHi);validateRecord('keto/template/day/0/h/l',o.config);}
  run("var picks=prepareKetoMains(0,{l:'eggCurry',d:'chickenPan'});Object.assign(ketoMeals,picks)");

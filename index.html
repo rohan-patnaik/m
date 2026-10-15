@@ -485,6 +485,7 @@ dialog:has(.batch-editor),dialog:has(.batch-view){max-width:760px}
 <script src="meal-editor-runtime.js"></script>
 <script>
 const DB={
+ capsicum:['Green capsicum · raw edible',20,.86,'g'],
  avocado:['Avocado flesh · raw generic estimate',160,2,'g'],
  almonds:['Almonds · raw plain estimate',579,21.15,'g'],eggWhite:['Extra egg whites · approx 33 g each',17.16,3.597,'egg'],
  paneerMM:['Paneer · Milky Mist regular 500 g',283,16.1,'g'],cashews:['Kaju · plain raw cashews (estimate)',553,18.2,'g'],
@@ -509,7 +510,7 @@ const DB={
 // null = not declared on the matched panel: excluded from sums and flagged in the UI, NOT counted as zero.
 // Dals use ICMR-NIN IFCT 2017 reference means (kJ/4.184); atta uses the Pillsbury Chakki Fresh table
 // (its page shows a stray 333 kcal line beside the structured 364 kcal/100 g table — table value used).
-const FIB={avocado:6.7,almonds:12.5,eggWhite:0,paneerMM:null,cashews:3.3,chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:2.81,oats:10.4,besan:10.8,moong:9.37,masoor:10.43,arhar:11.6,poha:3.46,chana:17,
+const FIB={capsicum:1.7,avocado:6.7,almonds:12.5,eggWhite:0,paneerMM:null,cashews:3.3,chicken:0,paneerHP:null,curdH:null,butterH:null,walnuts:6.7,flax:27.3,cabbage:2.5,atta:10,rice:2.81,oats:10.4,besan:10.8,moong:9.37,masoor:10.43,arhar:11.6,poha:3.46,chana:17,
   whey:null,egg:0,curd:0,milk:0,paneer:0,soyN:null,soyS:15.5,nuts:7,oil:0,onion:1.7,tomato:1.2,carrot:2.8,
   potato:2.1,gobi:2,bhindi:3.2,palak:2.2,arbi:4.1,mushroom:1,cucumber:0.5,corn:2,rajma:15.2,chickpea:12.2,spice:null,
   kalachana:12.2,pasta:2.9,maida:2.76,butter:0,beans:2.7};
@@ -527,7 +528,7 @@ function restoreModes(w){} // Portions are household settings, never restored fr
 // Resting-energy reference only; maintenance and wife body data are unconfirmed.
 const PROFILE={w:{name:'Wife'},h:{name:'Husband',height:172.72,weight:75,age:29}};
 const BREAKFASTS={B1:'Oats + besan chillas',B2:'Besan chillas',B3:'Moong dal chillas',B4:'Poha',B5:'W: oats · H: egg poha'};
-const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo',S12:'Paneer bhurji'};
+const SABZIS={S1:'Bhindi',S2:'Gobi + carrot + potato',S3:'Palak paneer',S4:'Arbi',S5:'Mushroom',S6:'Rajma',S7:'Chhole',S8:'Soya chunks sabzi',S9:'Kala chana + gravy',S10:'White-sauce pasta',S11:'Beans + carrot + aloo',S12:'Paneer bhurji',S13:'Gobi, carrot & paneer',S14:'Cabbage–paneer bhurji',S15:'Mushroom–capsicum–paneer skillet',S16:'Soya chunks & vegetables',S17:'Palak paneer · shared recipe'};
 const PROTEINS={P:'Paneer',Y:'Soya chunks'};
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 // Raw edible recipe grams. Purchasing yields are separate in shopping-runtime.js.
@@ -673,7 +674,12 @@ function sabziBase(id){
    S9:[L('kalachana',100),L('onion',100),L('tomato',150)],
    S10:[L('pasta',200),L('maida',30),L('milk',200),L(butterId(),15),L('onion',100),L('tomato',150)],
    S11:[L('beans',300),L('carrot',150),L('potato',150),L('onion',100)],
-   S12:[L(paneerId(),225),L('onion',100),L('tomato',150)]})[id];
+   S12:[L(paneerId(),225),L('onion',100),L('tomato',150)],
+   S13:[L('gobi',400),L('carrot',100),L(paneerId(),225),L('onion',30),L('tomato',60)],
+   S14:[L('cabbage',400),L(paneerId(),225),L('onion',30),L('tomato',60)],
+   S15:[L('mushroom',400),L('capsicum',200),L(paneerId(),225),L('onion',30)],
+   S16:[L(soyaId(),50),L('cabbage',350),L('onion',20),L('tomato',60)],
+   S17:[L('palak',500),L(paneerId(),225),L('onion',30),L('tomato',80)]})[id];
 }
 function sabzi(id){
   // Full daily batch including its tadka oil (butter in S10 is additional, not a substitute).
@@ -681,7 +687,7 @@ function sabzi(id){
   return [...sabziBase(id),...(oU.sabzi>0?[L('oil',oU.sabzi)]:[])];
 }
 // Sabzis with protein already cooked in (no extra dinner protein).
-const NO_EXTRA=s=>['S3','S8','S9','S10','S12'].includes(s);
+const NO_EXTRA=s=>['S3','S8','S9','S10','S12','S13','S14','S15','S16','S17'].includes(s);
 const CHILLA=d=>['B1','B2','B3'].includes(d.b);
 const gcd=(a,b)=>b?gcd(b,a%b):a;
 const qratio=(a,b)=>{const g=gcd(a,b);return `${a/g} : ${b/g}`;};
@@ -701,7 +707,7 @@ function baseMeal(day,which,person){
   if(which==='l')a.push(L(h?'rice':'atta',h?P(person).rice:P(person).attaLunch));
   // Rest day: no dinner roti for the person who skipped cardio.
   else if(cardio)a.push(L('atta',P(person).attaDinner));
-  a.push(L(day.dal,150*dalShare(person)),L('oil',oU.dal*dalShare(person)),L('spice',1.5),...sc(sabzi(day.s)));
+  a.push(...pulseLines(day,person),L('spice',1.5),...sc(sabzi(day.s)));
   if(which==='l')a.push(L(typeof balancedCurdType==='string'?balancedCurdType:'curd',200));
   else{
     if(!NO_EXTRA(day.s)){
@@ -766,7 +772,10 @@ function mealTitle(d,m){
   if(m==='l')return`${d.s} · ${SABZIS[d.s]}`;
   return NO_EXTRA(d.s)?`${SABZIS[d.s]} (protein in sabzi)`:`${d.s}-${d.p} · ${SABZIS[d.s]} + ${d.p==='Y'?SOYA_OPTS[state.soya]+' soya':PROTEINS[d.p]}`;
 }
-const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar'};
+const DALNAMES={moong:'Moong',masoor:'Masoor',arhar:'Arhar',rajma:'Rajma',chickpea:'Chhole',kalachana:'Kala chana'};
+const BEAN_PULSES=['rajma','chickpea','kalachana'];
+function pulseName(day){return DALNAMES[day.dal]+(BEAN_PULSES.includes(day.dal)?'':' dal');}
+function pulseLines(day,p){const share=dalShare(p);return [L(day.dal,150*share),...(BEAN_PULSES.includes(day.dal)?[L('onion',100*share),L('tomato',150*share)]:[]),L('oil',oilUse().dal*share)];}
 function ratioText(wShare,hShare,cooked){
   // Share pair rendered from the same fractions the splitter uses; cooked<1 names the smaller batch.
   const r=typeof uxParts==='function'?uxParts([wShare,hShare],24):null,W=r?r.parts[0]:Math.round(wShare*360),H=r?r.parts[1]:Math.round(hShare*360),g=gcd(W,H)||1;
@@ -1018,7 +1027,7 @@ function editKetoRecipe(i,p){const r=isKeto(p)&&ketoConfig(state.days[i],p,'b',i
 const EDIT_NOCOOK='__nocook';
 function editReady(d,p){return !!(d.readyB&&d.readyB[p]);}
 function editSabzi(d){return typeof sharedRecipe==='function'?sharedRecipe(d):d.s;}
-// K-series vegetable bases live in sharedRecipes, never in day.s (records accept S1–S12 only).
+// K-series vegetable bases live in sharedRecipes, never in day.s (records accept S1–S17).
 function editSabziOptions(cur){const k={K5:'Palak-corn sabzi (spinach corn)'};if(/^K\d$/.test(cur)&&cur!=='K5'&&!KETO_RETIRED.includes(cur))k[cur]=KETO_SHARED[cur];return opts(SABZIS,cur)+opts(k,cur);}
 function editValsFromState(i){const d=state.days[i];return{mainl:isKeto('h')&&KETO_MAINS[ketoConfig(d,'h','l',i).mealRecipe]?ketoConfig(d,'h','l',i).mealRecipe:'',maind:isKeto('h')&&KETO_MAINS[ketoConfig(d,'h','d',i).mealRecipe]?ketoConfig(d,'h','d',i).mealRecipe:'',evening:isKeto('h')?ketoConfig(d,'h','e',i):undefined,readyW:editReady(d,'w'),readyH:editReady(d,'h'),b:d.b,bw:isKeto('w')&&editReady(d,'w')?EDIT_NOCOOK:editKetoRecipe(i,'w'),bh:isKeto('h')&&editReady(d,'h')?EDIT_NOCOOK:editKetoRecipe(i,'h'),sidesW:editSides(i,'w'),sidesH:editSides(i,'h'),s:editSabzi(d),p:d.p,dal:d.dal,wheyW:!!d.wheyW,wheyH:!!d.wheyH,eggH:!!d.eggH,cardioW:d.cardioW!==false,cardioH:d.cardioH!==false,off:!!d.off,skipB:!!(d.skip&&d.skip.b),skipL:!!(d.skip&&d.skip.l),skipD:!!(d.skip&&d.skip.d)};}
 function editSideSummary(sides,dish,ready){if(!sides)return '';const n=(sides.almonds||0)+(sides.walnuts||0)+(sides.cashews||0),dahi=dish==='dahiBowl',out=[];
@@ -1078,7 +1087,7 @@ function editFormHTML(v,i=editCtx?editCtx.i:0){
     ${isKeto('h')&&!editDayOptionsOnly?['l','d'].map(m=>editMainHTML(v,i,m)).join(''):''}
     <label>Lunch + dinner sabzi<select data-ek="s">${editSabziOptions(v.s)}</select></label>
     ${eaters.length?`<label>${eaters.length===2?'Dinner protein':PERSON_NAMES[eaters[0]]+' dinner protein'}<select data-ek="p">${opts(PROTEINS,v.p)}</select></label>`:''}
-    ${bal.length?`<label>${bal.length===2?'Dal':PERSON_NAMES[bal[0]]+' dal'}<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>`:''}`)}
+    ${bal.length?`<label>${bal.length===2?'Dal / beans':PERSON_NAMES[bal[0]]+' dal / beans'}<select data-ek="dal">${opts(DALNAMES,v.dal)}</select></label>`:''}`)}
     ${keto.length?panel('sides',keto.map(x=>x.sides).join('')):''}
     ${panel('day',`${isKeto('h')?`<div><div class="lbl">Husband evening nuts · 20 g total maximum</div><div class="edit-sides-grid">${KETO_NUT_IDS.map(id=>`<label>${id[0].toUpperCase()+id.slice(1)} (g)<input type="number" min="0" max="20" step="0.5" value="${v.evening?.[id]||0}" data-en="${id}"></label>`).join('')}</div><small class="hintline">Setting an evening allowance removes nuts from breakfast, lunch and dinner.</small></div>`:''}<div><div class="lbl">For the day</div><div class="tglrow">${tgl('wheyW','W breakfast whey')}${tgl('wheyH','H breakfast whey')}${isKeto('h')?'':tgl('eggH','H eggs')}${tgl('cardioW','W cardio')}</div></div>
     <div><div class="lbl">Skip</div><div class="tglrow">${tgl('skipB','Breakfast')}${tgl('skipL','Lunch')}${tgl('skipD','Dinner')}${tgl('off','Eat out (whole day)')}</div></div>`)}
