@@ -642,3 +642,35 @@ button.danger{color:var(--warn);border-color:var(--warn)}
 .simple-meal-footer [data-meal-suggest]{margin-right:auto;min-width:0;padding-inline:8px}
 @media(max-width:360px){.simple-meal-footer{gap:6px}.simple-meal-footer button{min-width:68px}.meal-whey-balance{font-size:10px}}
 @media(max-height:440px) and (min-width:520px){.meal-whey-balance small{font-size:9px}.meal-whey-balance{margin-top:2px}}
+
+/* One-food preview: totals and action stay visible without a scrolling popup. */
+.meal-card-head{justify-content:flex-start;gap:8px}
+.meal-add-button{display:inline-grid;place-items:center;flex:0 0 30px;width:30px;min-height:30px;padding:0;border-radius:50%;font-size:20px;line-height:1;color:var(--accent);background:transparent}
+.meal-add-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.meal-collapsible .meal-card-head h3{flex:1;min-width:0}
+#dlg.simple-meal-dialog.quick-add-dialog[open]{width:min(540px,calc(100vw - 20px));height:fit-content;max-height:calc(100dvh - 20px)}
+.quick-add-dialog #dlgBody{gap:10px;flex:0 0 auto}
+.quick-add-inputs{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
+.quick-add-inputs label{display:grid;gap:4px;font-size:12px;min-width:0}
+.quick-add-inputs select,.quick-add-inputs input{width:100%;min-width:0;min-height:36px}
+.quick-add-existing,.quick-add-note{font-size:11px;color:var(--muted)}
+.quick-add-delta{margin:0 0 10px}
+.quick-add-totals{width:100%;font-size:12px;border-collapse:collapse}
+.quick-add-totals th,.quick-add-totals td{padding:6px 2px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+.quick-add-totals th:first-child{text-align:left}
+.quick-add-budget{padding:9px 0;color:var(--accent)}
+.quick-add-budget.over{color:#a33b24}
+.quick-add-budget small{display:block;color:var(--muted);font-size:11px}
+.quick-add-note{display:block;line-height:1.4}
+@media(max-width:380px){.quick-add-totals{font-size:10px}.quick-add-dialog #dlgBody{gap:7px}.quick-add-inputs{gap:8px}}
+@media(max-height:440px) and (min-width:520px){
+ #dlg.simple-meal-dialog.quick-add-dialog[open]{width:min(760px,calc(100vw - 20px))}
+ .quick-add-dialog .quick-add-totals{font-size:10px}
+ .simple-meal-dialog.quick-add-dialog #dlgBody{display:grid;grid-template-columns:1fr 1.25fr;grid-template-rows:auto auto auto auto;gap:6px 14px}
+ .quick-add-dialog .simple-meal-scope{display:block;grid-column:1;grid-row:1}
+ .quick-add-dialog .quick-add-inputs{grid-column:1;grid-row:2}
+ .quick-add-dialog .quick-add-existing{grid-column:1;grid-row:3}
+ .quick-add-dialog .simple-meal-summary{grid-column:2;grid-row:1/4}
+ .quick-add-dialog .simple-meal-footer{grid-column:2;grid-row:4}
+ .quick-add-dialog .simple-meal-error{grid-column:1;grid-row:4}
+}

@@ -41,7 +41,7 @@ function openMealEditor(i,m='b',p=isKeto('h')?'h':'w',iso){
  if(iso)selectWeek(mondayOf(iso));
  const drafts={};for(const person of ['w','h'].filter(isKeto))for(const part of ['b','l','d'])drafts[person+'/'+part]=structuredClone(ketoConfig(state.days[i],person,part,i));
  mealEditor={i,m,p:isKeto(p)?p:['w','h'].find(isKeto),day:structuredClone(state.days[i]),drafts,original:JSON.stringify([state.days[i],drafts]),scope:state.weekKey,nutritionRevision:householdRevision(Object.values(cloudBase)),autoWhey:false,added:{},page:0};
- const dlg=document.querySelector('#dlg');dlg.classList.remove('ux-edit-dialog','ux-serve-dialog','ux-cal-dialog');dlg.classList.add('simple-meal-dialog');renderMealEditor();if(!dlg.open)dlg.showModal();fitMealEditor();
+ const dlg=document.querySelector('#dlg');dlg.classList.remove('ux-edit-dialog','ux-serve-dialog','ux-cal-dialog','quick-add-dialog');dlg.classList.add('simple-meal-dialog');renderMealEditor();if(!dlg.open)dlg.showModal();fitMealEditor();
 }
 function mealEditorField(k){
  const e=mealEditor,cfg=mealEditorCurrent(),[name,unit,max,step]=MEAL_FIELDS[k],eggs=k==='quantity'&&cfg.protein==='eggs',label=k==='quantity'?eggs?'Whole eggs':cfg.protein==='chicken'?'Chicken':'Paneer':name;
@@ -101,7 +101,7 @@ function commitMealEditor(){
  const [oldDay,oldDrafts]=JSON.parse(e.original),changed=Object.entries(e.drafts).filter(([id,cfg])=>JSON.stringify(cfg)!==JSON.stringify(oldDrafts[id]));
  if(!changed.length&&JSON.stringify(oldDay)===JSON.stringify(e.day))return false;
  if(JSON.stringify(state.days[e.i])!==JSON.stringify(oldDay)||changed.some(([id])=>{const[p,m]=id.split('/');return JSON.stringify(ketoConfig(state.days[e.i],p,m,e.i))!==JSON.stringify(oldDrafts[id]);}))throw Error('This meal changed while you were editing. Close and reopen it.');
- for(const [id,cfg]of changed){const [p,m]=id.split('/');if(coveredComponent(state.days[e.i],m,p,'protein'))throw Error('This meal now belongs to a prepared batch. Reopen it.');MealCloud.validateRecord(ketoMealKey(e.i,p,m),cfg);}
+ for(const [id,cfg]of changed){const [p,m]=id.split('/');if(coveredComponent(state.days[e.i],m,p,'protein')&&(!e.quickAdd||JSON.stringify(ketoComponent(e.day,p,m,'protein',cfg))!==JSON.stringify(ketoComponent(oldDay,p,m,'protein',oldDrafts[id]))))throw Error('This meal now belongs to a prepared batch. Reopen it.');MealCloud.validateRecord(ketoMealKey(e.i,p,m),cfg);}
  const values={...cloudDraft};for(const [id,cfg]of Object.entries(e.drafts)){const [p,m]=id.split('/');values[ketoMealKey(e.i,p,m)]=cfg;}const dayKey=(state.weekKey?'week/'+state.weekKey:'template')+'/day/'+e.i;values[dayKey]={...values[dayKey],meal:e.day};
  const rows=Object.entries(values).map(([key,value])=>({key,value}));MealCloud.validateKetoWheyTotals(rows);MealCloud.validateKetoNuts(rows);
  if(state.view==='day'&&!state.weekKey){const mon=mondayOf(dayViewISO());copyDietScope('template',mon);lockedWeeks[mon]={days:structuredClone(state.days),utDay:structuredClone(state.utDay),savedAt:Date.now()};state.weekKey=mon;}
@@ -111,6 +111,7 @@ function commitMealEditor(){
 async function saveMealEditor(){
  const e=mealEditor;if(e.saving)return;
  try{
+  if(e.quickAdd&&!e.applied)quickAddPreview(e.quickAdd.field,e.quickAdd.amount);
   for(const el of document.querySelectorAll('[data-meal-field]'))if(!el.checkValidity()){el.reportValidity();return;}
   if(!e.applied){if(!commitMealEditor())return;e.applied=true;}
   e.saving=true;document.querySelectorAll('#dlg button,#dlg input,#dlg select').forEach(x=>x.disabled=true);
@@ -146,4 +147,52 @@ document.addEventListener('change',e=>{const el=e.target;if(!el.closest?.('#dlg.
  }catch(error){mealEditorError(error.message);}
 });
 window.addEventListener('resize',fitMealEditor);
-document.addEventListener('DOMContentLoaded',()=>document.querySelector('#dlg').addEventListener('close',()=>{const dlg=document.querySelector('#dlg');if(!dlg.open)dlg.classList.remove('simple-meal-dialog');}));
+document.addEventListener('DOMContentLoaded',()=>document.querySelector('#dlg').addEventListener('close',()=>{const dlg=document.querySelector('#dlg');if(!dlg.open)dlg.classList.remove('simple-meal-dialog','quick-add-dialog');}));
+
+// Add one food to a meal, staging changes in the same guarded editor as Edit meal.
+const QUICK_ADD_FIELDS=['milk','curd','cucumber','avocado','quantity','eggWhites','soya','spinach','mushroom','tomato','onion','whey','butter','oil','flax'];
+const QUICK_ADD_SIDES=['milk','curd','cucumber','avocado','whey','butter','flax'];
+function quickAddFields(){return QUICK_ADD_FIELDS.filter(k=>mealEditorAllowed().includes(k)&&(!mealEditorLocked()||QUICK_ADD_SIDES.includes(k)));}
+function quickAddName(k){const cfg=mealEditorCurrent();return k==='quantity'?cfg.protein==='eggs'?'Whole eggs':cfg.protein==='chicken'?'Chicken':'Paneer':MEAL_FIELDS[k][0];}
+function quickAddUnit(k){return k==='quantity'&&mealEditorCurrent().protein==='eggs'?'eggs':MEAL_FIELDS[k][1];}
+function quickAddDefault(k){return {milk:100,curd:100,cucumber:100,avocado:50,quantity:mealEditorCurrent().protein==='eggs'?1:50,eggWhites:1,soya:10,spinach:50,mushroom:50,tomato:25,onion:10,whey:.5,butter:5,oil:5,flax:5}[k];}
+function quickAddStart(){
+ const e=mealEditor;e.quickAdd={field:'milk',amount:100};e.nutritionGuard=e.nutritionRevision;
+ e.quickAdd.base=structuredClone(e.drafts);e.quickAdd.before=mealEditorWithDraft(()=>({day:assignedDayNutrition(e.i,e.p),meal:comparisonSum(meal(e.day,e.m,e.p)),excluded:mealQuantityGroups(e.day,e.m,e.p).filter(g=>g.excluded).map(g=>g.key)}));
+}
+function quickAddPreview(field,amount){
+ const e=mealEditor,q=e.quickAdd;e.drafts=structuredClone(q.base);q.field=field;q.amount=amount;
+ if(!kept(e.day,e.m))throw Error('This meal is skipped. Enable it in Day options first.');
+ if(!quickAddFields().includes(field)||!Number.isFinite(amount)||amount<=0)throw Error('Enter an amount greater than zero.');
+ if((field==='eggWhites'||field==='quantity'&&mealEditorCurrent().protein==='eggs')&&!Number.isInteger(amount)||field==='whey'&&!Number.isInteger(amount*2))throw Error(field==='whey'?'Use half-scoop increments.':'Use whole numbers of eggs or whites.');
+ try{
+  mealEditorSet(field,(mealEditorCurrent()[field]||0)+amount);
+  return mealEditorWithDraft(()=>{
+   const groups=mealQuantityGroups(e.day,e.m,e.p);
+   if(q.before.excluded.some(key=>!groups.some(g=>g.key===key&&g.excluded)))throw Error('This would restore a crossed-out food. Restore it in the meal first, then add more.');
+   // Check daily whey/nut constraints without saving any record.
+   const values={...cloudDraft};for(const [id,cfg]of Object.entries(e.drafts)){const [p,m]=id.split('/');values[ketoMealKey(e.i,p,m)]=cfg;}
+   const rows=Object.entries(values).map(([key,value])=>({key,value}));MealCloud.validateKetoWheyTotals(rows);MealCloud.validateKetoNuts(rows);
+   const day=assignedDayNutrition(e.i,e.p),part=comparisonSum(meal(e.day,e.m,e.p)),targets=ketoSuggestedTargets();
+   return {day,meal:part,added:{k:day.k-q.before.day.k,p:day.p-q.before.day.p,aHi:day.aHi-q.before.day.aHi},caloriesLeft:targets.kMax-day.k,carbsLeft:targets.carbs-day.aHi,targets};
+  });
+ }catch(error){e.drafts=structuredClone(q.base);throw error;}
+}
+function quickAddSummary(x){
+ const q=mealEditor.quickAdd,range=(a,b)=>`${F(a)} → <b>${F(b)}</b>`,remaining=(n,unit)=>`${F(Math.abs(n))} ${unit} ${n<0?'over':'left'}`;
+ return `<p class="quick-add-delta">Adds <b>${F(x.added.k)} kcal</b> · ${F(x.added.aHi)} g carbs · ${F(x.added.p)} g protein</p><table class="quick-add-totals"><thead><tr><th></th><th>kcal</th><th>Carbs · g</th><th>Protein · g</th></tr></thead><tbody><tr><th>Meal</th><td>${range(q.before.meal.k,x.meal.k)}</td><td>${range(q.before.meal.aHi,x.meal.aHi)}</td><td>${range(q.before.meal.p,x.meal.p)}</td></tr><tr><th>Day</th><td>${range(q.before.day.k,x.day.k)}</td><td>${range(q.before.day.aHi,x.day.aHi)}</td><td>${range(q.before.day.p,x.day.p)}</td></tr></tbody></table><div class="quick-add-budget${x.caloriesLeft<0||x.carbsLeft<0?' over':''}"><b>${remaining(x.caloriesLeft,'kcal')} · ${remaining(x.carbsLeft,'g carbs')}</b><small>Daily limits: ${F(x.targets.kMax)} kcal · ${F(x.targets.carbs)} g counted carbs</small></div><small class="quick-add-note">${x.day.carbUnknown?'Some carb data is incomplete; this is an estimate.':'Nutrition is estimated from your saved food labels.'} Limits are intake budgets, not a measured calorie deficit.</small>`;
+}
+function quickAddRefresh(){
+ const e=mealEditor,save=document.querySelector('[data-meal-save]'),summary=document.querySelector('.simple-meal-summary'),error=document.querySelector('[data-meal-error]');
+ try{const x=quickAddPreview(e.quickAdd.field,e.quickAdd.amount);summary.innerHTML=quickAddSummary(x);error.textContent='';save.disabled=false;save.textContent=x.caloriesLeft<0||x.carbsLeft<0?'Add anyway':'Add to meal';}
+ catch(err){summary.innerHTML='';error.textContent=err.message;save.disabled=true;}
+}
+function renderQuickAdd(){
+ const e=mealEditor,q=e.quickAdd,k=q.field,base=q.base[e.p+'/'+e.m][k]||0,eggs=k==='quantity'&&mealEditorCurrent().protein==='eggs',max=(eggs?6:MEAL_FIELDS[k][2])-base;
+ document.querySelector('#dlg').classList.add('quick-add-dialog');document.querySelector('#dlgTitle').textContent=`Add to ${UX_MEALS[e.m].toLowerCase()}`;
+ document.querySelector('#dlgBody').innerHTML=`<p class="simple-meal-scope">${PERSON_NAMES[e.p]} · ${e.scope?dateForDay(e.i):state.view==='day'?dateForDay(e.i):DAYS[e.i]+' · weekly template'}</p><div class="quick-add-inputs"><label>Food<select data-quick-food aria-label="Food to add">${quickAddFields().map(f=>`<option value="${f}"${k===f?' selected':''}>${quickAddName(f)}</option>`).join('')}</select></label><label>Add amount <span class="simple-meal-amount"><input data-quick-amount aria-label="Amount to add" type="number" inputmode="decimal" min="${k==='whey'?.5:eggs||k==='eggWhites'?1:.1}" max="${Math.max(0,max)}" step="${k==='whey'?.5:eggs||k==='eggWhites'?1:'any'}" value="${q.amount}"><small>${quickAddUnit(k)}</small></span></label></div><small class="quick-add-existing">Already in this meal: ${F(base)} ${quickAddUnit(k)}. Add amount is extra.</small><div class="simple-meal-summary" aria-live="polite"></div><p class="simple-meal-error" role="status" data-meal-error></p><div class="simple-meal-footer"><button type="button" data-meal-cancel>Cancel</button><button type="button" class="primary" data-meal-save>Add to meal</button></div>`;
+ quickAddRefresh();
+}
+document.addEventListener('click',e=>{const b=e.target.closest?.('[data-meal-quick-add]');if(!b||!cloudReady||cloudSaving)return;const [i,m]=b.dataset.mealQuickAdd.split('|');openMealEditor(Number(i),m,isKeto('h')?'h':'w');quickAddStart();renderQuickAdd();});
+document.addEventListener('change',e=>{if(!e.target.matches?.('[data-quick-food]')||mealEditor?.saving||mealEditor?.applied)return;mealEditor.drafts=structuredClone(mealEditor.quickAdd.base);mealEditor.quickAdd.field=e.target.value;mealEditor.quickAdd.amount=quickAddDefault(e.target.value);renderQuickAdd();});
+document.addEventListener('input',e=>{if(!e.target.matches?.('[data-quick-amount]')||mealEditor?.saving||mealEditor?.applied)return;mealEditor.quickAdd.amount=e.target.value===''?NaN:Number(e.target.value);quickAddRefresh();});
