@@ -3,6 +3,7 @@ import {build} from 'esbuild';
 const out=process.env.MEAL_BUILD_DIR||'dist';
 await mkdir(out,{recursive:true});
 await copyFile('index.html',out+'/index.html');
+await copyFile('trip-plan.html',out+'/trip-plan.html');
 await copyFile('ux-runtime.js',out+'/ux-runtime.js');
 await copyFile('keto-suggestions-runtime.js',out+'/keto-suggestions-runtime.js');
 await copyFile('meal-editor-runtime.js',out+'/meal-editor-runtime.js');
